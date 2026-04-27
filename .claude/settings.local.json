@@ -43,7 +43,8 @@
       "Bash(pip list *)",
       "Bash(kaggle datasets *)",
       "Bash(kaggle kernels *)",
-      "Bash(dir *)"
+      "Bash(dir *)",
+      "Bash(git commit *)"
     ]
   }
 }
