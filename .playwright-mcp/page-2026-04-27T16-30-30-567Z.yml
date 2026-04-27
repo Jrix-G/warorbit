@@ -1,0 +1,638 @@
+- generic [ref=e2]:
+  - navigation "Main Kaggle page navigation" [ref=e13]:
+    - generic [ref=e15]:
+      - button "Navigation menu" [ref=e17] [cursor=pointer]: menu
+      - link "Skip to content" [ref=e18] [cursor=pointer]:
+        - /url: "#site-content"
+        - text: Skip to
+        - text: content
+      - link "Return to Kaggle home page" [ref=e20] [cursor=pointer]:
+        - /url: /
+        - img "Kaggle" [ref=e21]
+    - button "Create" [ref=e23] [cursor=pointer]:
+      - img [ref=e24]
+      - generic [ref=e29]: Create
+    - generic [ref=e32]:
+      - list [ref=e33]:
+        - listitem "Home List Item" [ref=e34]:
+          - link "Home" [ref=e36] [cursor=pointer]:
+            - /url: /
+            - generic [ref=e37]:
+              - generic [ref=e40]: explore
+              - paragraph [ref=e42]: Home
+        - listitem "Competitions List Item" [ref=e43]:
+          - link "Competitions" [ref=e45] [cursor=pointer]:
+            - /url: /competitions
+            - generic [ref=e46]:
+              - generic [ref=e49]: emoji_events
+              - paragraph [ref=e51]: Competitions
+        - listitem "Benchmarks List Item" [ref=e53]:
+          - link "Benchmarks" [ref=e55] [cursor=pointer]:
+            - /url: /benchmarks
+            - generic [ref=e56]:
+              - generic [ref=e59]: leaderboard
+              - paragraph [ref=e61]: Benchmarks
+        - listitem "Game Arena List Item" [ref=e62]:
+          - link "Game Arena" [ref=e64] [cursor=pointer]:
+            - /url: /game-arena
+            - generic [ref=e65]:
+              - generic [ref=e68]: smart_toy
+              - paragraph [ref=e70]: Game Arena
+      - list [ref=e71]:
+        - listitem "Data Hub List Item" [ref=e72]:
+          - generic [ref=e73]:
+            - link "Data Hub" [ref=e74] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e75]:
+                - generic [ref=e78]: code
+                - paragraph [ref=e80]: Data Hub
+            - button "Expand" [ref=e82] [cursor=pointer]: expand_more
+      - list [ref=e83]:
+        - listitem "More on Kaggle List Item" [ref=e84]:
+          - generic [ref=e85]:
+            - link "More on Kaggle" [ref=e86] [cursor=pointer]:
+              - /url: "#"
+              - generic [ref=e87]:
+                - generic [ref=e90]: format_list_bulleted
+                - paragraph [ref=e92]: More
+            - button "Expand" [ref=e94] [cursor=pointer]: expand_more
+  - navigation "Main menu, search and your account" [ref=e96]:
+    - generic [ref=e97]:
+      - generic [ref=e101]:
+        - generic [ref=e102]: search
+        - textbox "Search" [ref=e103]
+        - group
+      - generic [ref=e105]:
+        - link "Sign In" [ref=e107] [cursor=pointer]:
+          - /url: /account/login?phase=startSignInTab&returnUrl=%2Fcompetitions%2Forbit-wars%2Fcode
+          - button "Sign In" [ref=e108]:
+            - generic [ref=e109]: Sign In
+        - link "Register" [ref=e111] [cursor=pointer]:
+          - /url: /account/login?phase=startRegisterTab&returnUrl=%2Fcompetitions%2Forbit-wars%2Fcode
+          - button "Register" [ref=e112]:
+            - generic [ref=e113]: Register
+  - main [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.
+      - generic [ref=e7]:
+        - link "Learn more" [ref=e8] [cursor=pointer]:
+          - /url: /cookies
+          - generic [ref=e9]: Learn more
+        - generic [ref=e10] [cursor=pointer]: OK, Got it.
+    - generic [ref=e116]:
+      - generic [ref=e118]:
+        - generic [ref=e119]:
+          - link "Kaggle's profile" [ref=e120] [cursor=pointer]:
+            - /url: /organizations/kaggle
+            - generic "Kaggle" [ref=e121]
+            - img [ref=e122]
+          - generic [ref=e125]:
+            - generic [ref=e127]: Kaggle
+            - generic [ref=e128]: · Featured Simulation Competition · 2 months to go
+          - generic [ref=e129]:
+            - button "Join Competition" [ref=e131] [cursor=pointer]:
+              - generic [ref=e132]: Join Competition
+            - button "Competition options menu collapsed" [ref=e134] [cursor=pointer]: more_horiz
+        - generic [ref=e136]:
+          - heading "Orbit Wars" [level=1] [ref=e137]
+          - paragraph [ref=e139]: Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.
+      - generic [ref=e143]:
+        - tablist [ref=e150]:
+          - tab "Overview, 1 of 7" [ref=e151] [cursor=pointer]:
+            - generic [ref=e152]: Overview
+          - tab "Data, 2 of 7" [ref=e153] [cursor=pointer]:
+            - generic [ref=e154]: Data
+          - tab "Code, 3 of 7" [selected] [ref=e155] [cursor=pointer]:
+            - generic [ref=e156]: Code
+          - tab "Models, 4 of 7" [ref=e157] [cursor=pointer]:
+            - generic [ref=e158]: Models
+          - tab "Discussion, 5 of 7" [ref=e159] [cursor=pointer]:
+            - generic [ref=e160]: Discussion
+          - tab "Leaderboard, 6 of 7" [ref=e161] [cursor=pointer]:
+            - generic [ref=e162]: Leaderboard
+          - tab "Rules, 7 of 7" [ref=e163] [cursor=pointer]:
+            - generic [ref=e164]: Rules
+        - separator [ref=e166]
+      - generic [ref=e168]:
+        - generic [ref=e169]:
+          - heading "Notebooks" [level=2] [ref=e172]
+          - button "New Notebook" [ref=e173] [cursor=pointer]:
+            - generic [ref=e174]: add
+            - generic [ref=e175]: New Notebook
+        - generic [ref=e176]:
+          - generic [ref=e179]:
+            - generic [ref=e180]: search
+            - textbox "Search notebooks" [ref=e181]
+            - generic "Filter is added" [ref=e183]:
+              - button "Filters" [ref=e184] [cursor=pointer]:
+                - generic [ref=e185]: filter_list
+                - generic [ref=e186]: Filters
+            - group
+          - tablist [ref=e191]:
+            - tab "All, 1 of 4" [selected] [ref=e192] [cursor=pointer]:
+              - generic [ref=e193]: All
+            - tab "Your Work, 2 of 4" [ref=e194] [cursor=pointer]:
+              - generic [ref=e195]: Your Work
+            - tab "Shared With You, 3 of 4" [ref=e196] [cursor=pointer]:
+              - generic [ref=e197]: Shared With You
+            - tab "Bookmarks, 4 of 4" [ref=e198] [cursor=pointer]:
+              - generic [ref=e199]: Bookmarks
+          - generic [ref=e203]:
+            - combobox "Select Sort. Hotness currently selected." [ref=e204] [cursor=pointer]:
+              - generic [ref=e206]: Hotness
+            - textbox: Hotness
+            - img
+          - generic [ref=e207]:
+            - separator [ref=e208]
+            - list [ref=e210]:
+              - paragraph [ref=e211]: Pinned notebooks
+              - listitem "Getting Started List Item" [ref=e212]:
+                - generic [ref=e213]:
+                  - link "Getting Started" [active] [ref=e214] [cursor=pointer]:
+                    - generic [ref=e215]:
+                      - link "Bovard Doerschuk-Tiberi's profile (opens in a new tab)" [ref=e219]:
+                        - /url: /bovard
+                        - generic "Bovard Doerschuk-Tiberi" [ref=e220]
+                        - img [ref=e221]
+                        - generic [ref=e225]: keep_pin
+                      - generic [ref=e226]:
+                        - generic [ref=e227]: Getting Started
+                        - generic [ref=e229]: Updated 9d ago
+                        - generic [ref=e231]:
+                          - link "1 comment" [ref=e232]:
+                            - /url: /code/bovard/getting-started/comments
+                          - text: ·
+                          - generic [ref=e233]: Orbit Wars
+                  - generic [ref=e234]:
+                    - generic [ref=e235]:
+                      - button "Upvote" [ref=e236] [cursor=pointer]:
+                        - generic [ref=e237]: arrow_drop_up
+                      - generic "555 votes" [ref=e238]: "555"
+                    - generic [ref=e239]:
+                      - generic [ref=e240]: Gold
+                      - button "More options for this notebook" [ref=e241] [cursor=pointer]: more_horiz
+              - paragraph [ref=e242]: Unpinned notebooks
+              - listitem "KRONOS OMEGA.🐉🛸 List Item" [ref=e243]:
+                - generic [ref=e244]:
+                  - link "KRONOS OMEGA.🐉🛸" [ref=e245] [cursor=pointer]:
+                    - generic [ref=e246]:
+                      - link "Dr/ameen Fayed's profile (opens in a new tab)" [ref=e250]:
+                        - /url: /aminmahmoudalifayed
+                        - generic "Dr/ameen Fayed" [ref=e251]
+                        - img [ref=e252]
+                      - generic [ref=e255]:
+                        - generic [ref=e256]: KRONOS OMEGA.🐉🛸
+                        - generic [ref=e258]: Updated 6h ago
+                        - generic [ref=e260]:
+                          - link "0 comments" [ref=e261]:
+                            - /url: /code/aminmahmoudalifayed/kronos-omega/comments
+                          - text: ·
+                          - generic [ref=e262]: Orbit Wars
+                  - generic [ref=e263]:
+                    - generic [ref=e264]:
+                      - button "Upvote" [ref=e265] [cursor=pointer]:
+                        - generic [ref=e266]: arrow_drop_up
+                      - generic "31 votes" [ref=e267]: "31"
+                    - generic [ref=e268]:
+                      - generic [ref=e269]: Bronze
+                      - button "More options for this notebook" [ref=e270] [cursor=pointer]: more_horiz
+              - listitem "Orbit Wars — Tamrazov × Ykhnkf Hybrid List Item" [ref=e271]:
+                - generic [ref=e272]:
+                  - link "Orbit Wars — Tamrazov × Ykhnkf Hybrid" [ref=e273] [cursor=pointer]:
+                    - generic [ref=e274]:
+                      - link "konbu17's profile (opens in a new tab)" [ref=e278]:
+                        - /url: /konbu17
+                        - generic "konbu17" [ref=e279]
+                        - img [ref=e280]
+                      - generic [ref=e283]:
+                        - generic [ref=e284]: Orbit Wars — Tamrazov × Ykhnkf Hybrid
+                        - generic [ref=e286]: Updated 6h ago
+                        - generic [ref=e288]:
+                          - link "0 comments" [ref=e289]:
+                            - /url: /code/konbu17/orbit-wars-tamrazov-ykhnkf-hybrid/comments
+                          - text: ·
+                          - generic [ref=e290]: Orbit Wars
+                  - generic [ref=e291]:
+                    - generic [ref=e292]:
+                      - button "Upvote" [ref=e293] [cursor=pointer]:
+                        - generic [ref=e294]: arrow_drop_up
+                      - generic "3 votes" [ref=e295]: "3"
+                    - button "More options for this notebook" [ref=e297] [cursor=pointer]: more_horiz
+              - listitem "[Utility] Replay JSON to Pandas DataFrame for ML/R List Item" [ref=e298]:
+                - generic [ref=e299]:
+                  - link "[Utility] Replay JSON to Pandas DataFrame for ML/R" [ref=e300] [cursor=pointer]:
+                    - generic [ref=e301]:
+                      - link "Yumeko's profile (opens in a new tab)" [ref=e305]:
+                        - /url: /yumekohata
+                        - generic "Yumeko" [ref=e306]
+                        - img [ref=e307]
+                      - generic [ref=e310]:
+                        - generic [ref=e311]: "[Utility] Replay JSON to Pandas DataFrame for ML/R"
+                        - generic [ref=e313]: Updated 13h ago
+                        - generic [ref=e315]:
+                          - link "0 comments" [ref=e316]:
+                            - /url: /code/yumekohata/utility-replay-json-to-pandas-dataframe-for-ml-r/comments
+                          - text: ·
+                          - generic [ref=e317]: Orbit Wars
+                  - generic [ref=e318]:
+                    - generic [ref=e319]:
+                      - button "Upvote" [ref=e320] [cursor=pointer]:
+                        - generic [ref=e321]: arrow_drop_up
+                      - generic "7 votes" [ref=e322]: "7"
+                    - button "More options for this notebook" [ref=e324] [cursor=pointer]: more_horiz
+              - listitem "【demo】🚀 Orbit Wars Demystified List Item" [ref=e325]:
+                - generic [ref=e326]:
+                  - link "【demo】🚀 Orbit Wars Demystified" [ref=e327] [cursor=pointer]:
+                    - generic [ref=e328]:
+                      - link "m-toshi desu's profile (opens in a new tab)" [ref=e332]:
+                        - /url: /mtoshidesu
+                        - generic "m-toshi desu" [ref=e333]
+                        - img [ref=e334]
+                      - generic [ref=e337]:
+                        - generic [ref=e338]: 【demo】🚀 Orbit Wars Demystified
+                        - generic [ref=e340]: Updated 3h ago
+                        - generic [ref=e342]:
+                          - link "0 comments" [ref=e343]:
+                            - /url: /code/mtoshidesu/demo-orbit-wars-demystified/comments
+                          - text: ·
+                          - generic [ref=e344]: Orbit Wars
+                  - generic [ref=e345]:
+                    - generic [ref=e346]:
+                      - button "Upvote" [ref=e347] [cursor=pointer]:
+                        - generic [ref=e348]: arrow_drop_up
+                      - generic "5 votes" [ref=e349]: "5"
+                    - button "More options for this notebook" [ref=e351] [cursor=pointer]: more_horiz
+              - listitem "Cosmic Chaos List Item" [ref=e352]:
+                - generic [ref=e353]:
+                  - link "Cosmic Chaos" [ref=e354] [cursor=pointer]:
+                    - generic [ref=e355]:
+                      - link "Pro_Analyst's profile (opens in a new tab)" [ref=e359]:
+                        - /url: /alkakumari1234
+                        - generic "Pro_Analyst" [ref=e360]
+                        - img [ref=e361]
+                      - generic [ref=e364]:
+                        - generic [ref=e365]: Cosmic Chaos
+                        - generic [ref=e367]: Updated 6h ago
+                        - generic [ref=e369]:
+                          - link "0 comments" [ref=e370]:
+                            - /url: /code/alkakumari1234/cosmic-chaos/comments
+                          - text: ·
+                          - generic [ref=e371]: Orbit Wars
+                  - generic [ref=e372]:
+                    - generic [ref=e373]:
+                      - button "Upvote" [ref=e374] [cursor=pointer]:
+                        - generic [ref=e375]: arrow_drop_up
+                      - generic "2 votes" [ref=e376]: "2"
+                    - button "More options for this notebook" [ref=e378] [cursor=pointer]: more_horiz
+              - listitem "OMEGA v6 ULTRA — Orbit Wars Supreme Agent List Item" [ref=e379]:
+                - generic [ref=e380]:
+                  - link "OMEGA v6 ULTRA — Orbit Wars Supreme Agent" [ref=e381] [cursor=pointer]:
+                    - generic [ref=e382]:
+                      - link "Berat Erol ÇELİK's profile (opens in a new tab)" [ref=e386]:
+                        - /url: /beraterolelk
+                        - generic "Berat Erol ÇELİK" [ref=e387]
+                        - img [ref=e388]
+                      - generic [ref=e391]:
+                        - generic [ref=e392]: OMEGA v6 ULTRA — Orbit Wars Supreme Agent
+                        - generic [ref=e394]: Updated 4h ago
+                        - generic [ref=e396]:
+                          - link "0 comments" [ref=e397]:
+                            - /url: /code/beraterolelk/omega-v6-ultra-orbit-wars-supreme-agent/comments
+                          - text: ·
+                          - generic [ref=e398]: Orbit Wars
+                  - generic [ref=e399]:
+                    - generic [ref=e400]:
+                      - button "Upvote" [ref=e401] [cursor=pointer]:
+                        - generic [ref=e402]: arrow_drop_up
+                      - generic "0 votes" [ref=e403]: "0"
+                    - button "More options for this notebook" [ref=e405] [cursor=pointer]: more_horiz
+              - listitem "Orbit Wars Strategic Agent List Item" [ref=e406]:
+                - generic [ref=e407]:
+                  - link "Orbit Wars Strategic Agent" [ref=e408] [cursor=pointer]:
+                    - generic [ref=e409]:
+                      - link "Francis Banda's profile (opens in a new tab)" [ref=e413]:
+                        - /url: /francisbanda
+                        - generic "Francis Banda" [ref=e414]
+                        - img [ref=e415]
+                      - generic [ref=e418]:
+                        - generic [ref=e419]: Orbit Wars Strategic Agent
+                        - generic [ref=e421]: Updated 21h ago
+                        - generic [ref=e423]:
+                          - link "0 comments" [ref=e424]:
+                            - /url: /code/francisbanda/orbit-wars-strategic-agent/comments
+                          - text: ·
+                          - generic [ref=e425]: Orbit Wars
+                  - generic [ref=e426]:
+                    - generic [ref=e427]:
+                      - button "Upvote" [ref=e428] [cursor=pointer]:
+                        - generic [ref=e429]: arrow_drop_up
+                      - generic "4 votes" [ref=e430]: "4"
+                    - button "More options for this notebook" [ref=e432] [cursor=pointer]: more_horiz
+              - 'listitem "Orbit Wars: Heuristic Agent List Item" [ref=e433]':
+                - generic [ref=e434]:
+                  - 'link "Orbit Wars: Heuristic Agent" [ref=e435] [cursor=pointer]':
+                    - generic [ref=e436]:
+                      - link "Emanuel Lázaro's profile (opens in a new tab)" [ref=e440]:
+                        - /url: /emanuellcs
+                        - generic "Emanuel Lázaro" [ref=e441]
+                        - img [ref=e442]
+                      - generic [ref=e445]:
+                        - generic [ref=e446]: "Orbit Wars: Heuristic Agent"
+                        - generic [ref=e448]: Updated 1d ago
+                        - generic [ref=e450]:
+                          - link "0 comments" [ref=e451]:
+                            - /url: /code/emanuellcs/orbit-wars-heuristic-agent/comments
+                          - text: ·
+                          - generic [ref=e452]: Orbit Wars
+                  - generic [ref=e453]:
+                    - generic [ref=e454]:
+                      - button "Upvote" [ref=e455] [cursor=pointer]:
+                        - generic [ref=e456]: arrow_drop_up
+                      - generic "6 votes" [ref=e457]: "6"
+                    - button "More options for this notebook" [ref=e459] [cursor=pointer]: more_horiz
+              - listitem "Orbit Wars Strategic Agent v14 List Item" [ref=e460]:
+                - generic [ref=e461]:
+                  - link "Orbit Wars Strategic Agent v14" [ref=e462] [cursor=pointer]:
+                    - generic [ref=e463]:
+                      - link "Francis Banda's profile (opens in a new tab)" [ref=e467]:
+                        - /url: /francisbanda
+                        - generic "Francis Banda" [ref=e468]
+                        - img [ref=e469]
+                      - generic [ref=e472]:
+                        - generic [ref=e473]: Orbit Wars Strategic Agent v14
+                        - generic [ref=e475]: Updated 21h ago
+                        - generic [ref=e477]:
+                          - link "0 comments" [ref=e478]:
+                            - /url: /code/francisbanda/orbit-wars-strategic-agent-v14/comments
+                          - text: ·
+                          - generic [ref=e479]: Orbit Wars
+                  - generic [ref=e480]:
+                    - generic [ref=e481]:
+                      - button "Upvote" [ref=e482] [cursor=pointer]:
+                        - generic [ref=e483]: arrow_drop_up
+                      - generic "2 votes" [ref=e484]: "2"
+                    - button "More options for this notebook" [ref=e486] [cursor=pointer]: more_horiz
+              - listitem "OMEGA v5 — Orbit Wars Supreme Domination Engine List Item" [ref=e487]:
+                - generic [ref=e488]:
+                  - link "OMEGA v5 — Orbit Wars Supreme Domination Engine" [ref=e489] [cursor=pointer]:
+                    - generic [ref=e490]:
+                      - link "Berat Erol ÇELİK's profile (opens in a new tab)" [ref=e494]:
+                        - /url: /beraterolelk
+                        - generic "Berat Erol ÇELİK" [ref=e495]
+                        - img [ref=e496]
+                      - generic [ref=e499]:
+                        - generic [ref=e500]: OMEGA v5 — Orbit Wars Supreme Domination Engine
+                        - generic [ref=e502]: Updated 1d ago
+                        - generic [ref=e504]:
+                          - link "0 comments" [ref=e505]:
+                            - /url: /code/beraterolelk/omega-v5-orbit-wars-supreme-domination-engine/comments
+                          - text: ·
+                          - generic [ref=e506]: Orbit Wars
+                  - generic [ref=e507]:
+                    - generic [ref=e508]:
+                      - button "Upvote" [ref=e509] [cursor=pointer]:
+                        - generic [ref=e510]: arrow_drop_up
+                      - generic "11 votes" [ref=e511]: "11"
+                    - button "More options for this notebook" [ref=e513] [cursor=pointer]: more_horiz
+              - listitem "OrbitBotNext List Item" [ref=e514]:
+                - generic [ref=e515]:
+                  - link "OrbitBotNext" [ref=e516] [cursor=pointer]:
+                    - generic [ref=e517]:
+                      - link "Pascal's profile (opens in a new tab)" [ref=e521]:
+                        - /url: /pascalledesma
+                        - generic "Pascal" [ref=e522]
+                        - img [ref=e523]
+                      - generic [ref=e526]:
+                        - generic [ref=e527]: OrbitBotNext
+                        - generic [ref=e529]: Updated 2d ago
+                        - generic [ref=e531]:
+                          - link "0 comments" [ref=e532]:
+                            - /url: /code/pascalledesma/orbitbotnext/comments
+                          - text: ·
+                          - generic [ref=e533]: Orbit Wars
+                  - generic [ref=e534]:
+                    - generic [ref=e535]:
+                      - button "Upvote" [ref=e536] [cursor=pointer]:
+                        - generic [ref=e537]: arrow_drop_up
+                      - generic "62 votes" [ref=e538]: "62"
+                    - generic [ref=e539]:
+                      - generic [ref=e540]: Silver
+                      - button "More options for this notebook" [ref=e541] [cursor=pointer]: more_horiz
+              - listitem "[LB - 928.7] Physics-Accurate Planner List Item" [ref=e542]:
+                - generic [ref=e543]:
+                  - link "[LB - 928.7] Physics-Accurate Planner" [ref=e544] [cursor=pointer]:
+                    - generic [ref=e545]:
+                      - link "sigmaborov's profile (opens in a new tab)" [ref=e549]:
+                        - /url: /sigmaborov
+                        - generic "sigmaborov" [ref=e550]
+                        - img [ref=e551]
+                      - generic [ref=e554]:
+                        - generic [ref=e555]: "[LB - 928.7] Physics-Accurate Planner"
+                        - generic [ref=e557]: Updated 9d ago
+                        - generic [ref=e559]:
+                          - link "0 comments" [ref=e560]:
+                            - /url: /code/sigmaborov/lb-928-7-physics-accurate-planner/comments
+                          - text: ·
+                          - generic [ref=e561]: Orbit Wars
+                  - generic [ref=e562]:
+                    - generic [ref=e563]:
+                      - button "Upvote" [ref=e564] [cursor=pointer]:
+                        - generic [ref=e565]: arrow_drop_up
+                      - generic "42 votes" [ref=e566]: "42"
+                    - generic [ref=e567]:
+                      - generic [ref=e568]: Silver
+                      - button "More options for this notebook" [ref=e569] [cursor=pointer]: more_horiz
+              - listitem "Distance-Prioritized Agent [LB max score 1100] List Item" [ref=e570]:
+                - generic [ref=e571]:
+                  - link "Distance-Prioritized Agent [LB max score 1100]" [ref=e572] [cursor=pointer]:
+                    - generic [ref=e573]:
+                      - link "ykhnkf's profile (opens in a new tab)" [ref=e577]:
+                        - /url: /ykhnkf
+                        - generic "ykhnkf" [ref=e578]
+                        - img [ref=e579]
+                      - generic [ref=e582]:
+                        - generic [ref=e583]: Distance-Prioritized Agent [LB max score 1100]
+                        - generic [ref=e585]: Updated 5d ago
+                        - generic [ref=e587]:
+                          - link "0 comments" [ref=e588]:
+                            - /url: /code/ykhnkf/distance-prioritized-agent-lb-max-score-1100/comments
+                          - text: ·
+                          - generic [ref=e589]: Orbit Wars
+                  - generic [ref=e590]:
+                    - generic [ref=e591]:
+                      - button "Upvote" [ref=e592] [cursor=pointer]:
+                        - generic [ref=e593]: arrow_drop_up
+                      - generic "49 votes" [ref=e594]: "49"
+                    - generic [ref=e595]:
+                      - generic [ref=e596]: Silver
+                      - button "More options for this notebook" [ref=e597] [cursor=pointer]: more_horiz
+              - listitem "Orbit Wars 2026 - Tactical Heuristic List Item" [ref=e598]:
+                - generic [ref=e599]:
+                  - link "Orbit Wars 2026 - Tactical Heuristic" [ref=e600] [cursor=pointer]:
+                    - generic [ref=e601]:
+                      - link "sigmaborov's profile (opens in a new tab)" [ref=e605]:
+                        - /url: /sigmaborov
+                        - generic "sigmaborov" [ref=e606]
+                        - img [ref=e607]
+                      - generic [ref=e610]:
+                        - generic [ref=e611]: Orbit Wars 2026 - Tactical Heuristic
+                        - generic [ref=e613]: Updated 11d ago
+                        - generic [ref=e615]:
+                          - link "2 comments" [ref=e616]:
+                            - /url: /code/sigmaborov/orbit-wars-2026-tactical-heuristic/comments
+                          - text: ·
+                          - generic [ref=e617]: Orbit Wars
+                  - generic [ref=e618]:
+                    - generic [ref=e619]:
+                      - button "Upvote" [ref=e620] [cursor=pointer]:
+                        - generic [ref=e621]: arrow_drop_up
+                      - generic "54 votes" [ref=e622]: "54"
+                    - generic [ref=e623]:
+                      - generic [ref=e624]: Bronze
+                      - button "More options for this notebook" [ref=e625] [cursor=pointer]: more_horiz
+              - listitem "[Utility] 🚀 Tactical Visualizer for Orbit Wars List Item" [ref=e626]:
+                - generic [ref=e627]:
+                  - link "[Utility] 🚀 Tactical Visualizer for Orbit Wars" [ref=e628] [cursor=pointer]:
+                    - generic [ref=e629]:
+                      - link "Fedor Baart's profile (opens in a new tab)" [ref=e633]:
+                        - /url: /fedorbaart
+                        - generic "Fedor Baart" [ref=e634]
+                        - img [ref=e635]
+                      - generic [ref=e638]:
+                        - generic [ref=e639]: "[Utility] 🚀 Tactical Visualizer for Orbit Wars"
+                        - generic [ref=e641]: Updated 7d ago
+                        - generic [ref=e643]:
+                          - link "1 comment" [ref=e644]:
+                            - /url: /code/fedorbaart/utility-tactical-visualizer-for-orbit-wars/comments
+                          - text: ·
+                          - generic [ref=e645]:
+                            - text: Orbit Wars
+                            - generic [ref=e648]: "+1"
+                  - generic [ref=e649]:
+                    - generic [ref=e650]:
+                      - button "Upvote" [ref=e651] [cursor=pointer]:
+                        - generic [ref=e652]: arrow_drop_up
+                      - generic "38 votes" [ref=e653]: "38"
+                    - generic [ref=e654]:
+                      - generic [ref=e655]: Bronze
+                      - button "More options for this notebook" [ref=e656] [cursor=pointer]: more_horiz
+              - listitem "orbitwork-v14 List Item" [ref=e657]:
+                - generic [ref=e658]:
+                  - link "orbitwork-v14" [ref=e659] [cursor=pointer]:
+                    - generic [ref=e660]:
+                      - link "Pascal's profile (opens in a new tab)" [ref=e664]:
+                        - /url: /pascalledesma
+                        - generic "Pascal" [ref=e665]
+                        - img [ref=e666]
+                      - generic [ref=e669]:
+                        - generic [ref=e670]: orbitwork-v14
+                        - generic [ref=e672]: Updated 3d ago
+                        - generic [ref=e674]:
+                          - link "0 comments" [ref=e675]:
+                            - /url: /code/pascalledesma/orbitwork-v14/comments
+                          - text: ·
+                          - generic [ref=e676]: Orbit Wars
+                  - generic [ref=e677]:
+                    - generic [ref=e678]:
+                      - button "Upvote" [ref=e679] [cursor=pointer]:
+                        - generic [ref=e680]: arrow_drop_up
+                      - generic "30 votes" [ref=e681]: "30"
+                    - generic [ref=e682]:
+                      - generic [ref=e683]: Silver
+                      - button "More options for this notebook" [ref=e684] [cursor=pointer]: more_horiz
+              - 'listitem "Orbit Wars | Target score: 2000.4 List Item" [ref=e685]':
+                - generic [ref=e686]:
+                  - 'link "Orbit Wars | Target score: 2000.4" [ref=e687] [cursor=pointer]':
+                    - generic [ref=e688]:
+                      - link "RAHUL CHAUHAN's profile (opens in a new tab)" [ref=e692]:
+                        - /url: /rahulchauhan016
+                        - generic "RAHUL CHAUHAN" [ref=e693]
+                        - img [ref=e694]
+                      - generic [ref=e697]:
+                        - generic [ref=e698]: "Orbit Wars | Target score: 2000.4"
+                        - generic [ref=e700]: Updated 7d ago
+                        - generic [ref=e702]:
+                          - link "1 comment" [ref=e703]:
+                            - /url: /code/rahulchauhan016/orbit-wars-target-score-2000-4/comments
+                          - text: ·
+                          - generic [ref=e704]: Orbit Wars
+                  - generic [ref=e705]:
+                    - generic [ref=e706]:
+                      - button "Upvote" [ref=e707] [cursor=pointer]:
+                        - generic [ref=e708]: arrow_drop_up
+                      - generic "37 votes" [ref=e709]: "37"
+                    - generic [ref=e710]:
+                      - generic [ref=e711]: Bronze
+                      - button "More options for this notebook" [ref=e712] [cursor=pointer]: more_horiz
+              - listitem "Orbit Wat Strategy & Solution List Item" [ref=e713]:
+                - generic [ref=e714]:
+                  - link "Orbit Wat Strategy & Solution" [ref=e715] [cursor=pointer]:
+                    - generic [ref=e716]:
+                      - link "Syed Ali Hasnat's profile (opens in a new tab)" [ref=e720]:
+                        - /url: /syedalihasnat
+                        - generic "Syed Ali Hasnat" [ref=e721]
+                        - img [ref=e722]
+                      - generic [ref=e725]:
+                        - generic [ref=e726]: Orbit Wat Strategy & Solution
+                        - generic [ref=e728]: Updated 1d ago
+                        - generic [ref=e730]:
+                          - link "0 comments" [ref=e731]:
+                            - /url: /code/syedalihasnat/orbit-wat-strategy-solution/comments
+                          - text: ·
+                          - generic [ref=e732]: Orbit Wars
+                  - generic [ref=e733]:
+                    - generic [ref=e734]:
+                      - button "Upvote" [ref=e735] [cursor=pointer]:
+                        - generic [ref=e736]: arrow_drop_up
+                      - generic "3 votes" [ref=e737]: "3"
+                    - button "More options for this notebook" [ref=e739] [cursor=pointer]: more_horiz
+              - listitem "[LB MAX SCORE 1000] - AGI IS HERE❤️ List Item" [ref=e740]:
+                - generic [ref=e741]:
+                  - link "[LB MAX SCORE 1000] - AGI IS HERE❤️" [ref=e742] [cursor=pointer]:
+                    - generic [ref=e743]:
+                      - link "bogdan janson's profile (opens in a new tab)" [ref=e747]:
+                        - /url: /johnjanson
+                        - generic "bogdan janson" [ref=e748]
+                        - img [ref=e749]
+                      - generic [ref=e752]:
+                        - generic [ref=e753]: "[LB MAX SCORE 1000] - AGI IS HERE❤️"
+                        - generic [ref=e755]: Updated 8d ago
+                        - generic [ref=e757]:
+                          - link "1 comment" [ref=e758]:
+                            - /url: /code/johnjanson/lb-max-score-1000-agi-is-here/comments
+                          - text: ·
+                          - generic [ref=e759]: Orbit Wars
+                  - generic [ref=e760]:
+                    - generic [ref=e761]:
+                      - button "Upvote" [ref=e762] [cursor=pointer]:
+                        - generic [ref=e763]: arrow_drop_up
+                      - generic "28 votes" [ref=e764]: "28"
+                    - generic [ref=e765]:
+                      - generic [ref=e766]: Bronze
+                      - button "More options for this notebook" [ref=e767] [cursor=pointer]: more_horiz
+              - 'listitem "Orbit Wars: Complete Game Mechanics Deep Dive List Item" [ref=e768]':
+                - generic [ref=e769]:
+                  - 'link "Orbit Wars: Complete Game Mechanics Deep Dive" [ref=e770] [cursor=pointer]':
+                    - generic [ref=e771]:
+                      - link "Dingrong Xue's profile (opens in a new tab)" [ref=e775]:
+                        - /url: /dylanxue04
+                        - generic "Dingrong Xue" [ref=e776]
+                        - img [ref=e777]
+                      - generic [ref=e780]:
+                        - generic [ref=e781]: "Orbit Wars: Complete Game Mechanics Deep Dive"
+                        - generic [ref=e783]: Updated 5d ago
+                        - generic [ref=e785]:
+                          - link "0 comments" [ref=e786]:
+                            - /url: /code/dylanxue04/orbit-wars-complete-game-mechanics-deep-dive/comments
+                          - text: ·
+                          - generic [ref=e787]: Orbit Wars
+                  - generic [ref=e788]:
+                    - generic [ref=e789]:
+                      - button "Upvote" [ref=e790] [cursor=pointer]:
+                        - generic [ref=e791]: arrow_drop_up
+                      - generic "31 votes" [ref=e792]: "31"
+                    - generic [ref=e793]:
+                      - generic [ref=e794]: Bronze
+                      - button "More options for this notebook" [ref=e795] [cursor=pointer]: more_horiz
+              - listitem "undefined List Item" [ref=e796]
+  - alert [ref=e12]

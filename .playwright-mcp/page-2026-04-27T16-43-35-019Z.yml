@@ -1,0 +1,911 @@
+- generic [ref=e2]:
+  - navigation "Main Kaggle page navigation" [ref=e3]:
+    - generic [ref=e5]:
+      - button "Navigation menu" [ref=e7] [cursor=pointer]: menu
+      - link "Skip to content" [ref=e8] [cursor=pointer]:
+        - /url: "#site-content"
+        - text: Skip to
+        - text: content
+      - link "Return to Kaggle home page" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img "Kaggle" [ref=e11]
+    - button "Create" [ref=e13] [cursor=pointer]:
+      - img [ref=e14]
+      - generic [ref=e19]: Create
+    - generic [ref=e20]:
+      - generic [ref=e22]:
+        - list [ref=e23]:
+          - listitem "Home List Item" [ref=e24]:
+            - link "Home" [ref=e26] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e27]:
+                - generic [ref=e30]: explore
+                - paragraph [ref=e32]: Home
+          - listitem "Competitions List Item" [ref=e33]:
+            - link "Competitions" [ref=e35] [cursor=pointer]:
+              - /url: /competitions
+              - generic [ref=e36]:
+                - generic [ref=e39]: emoji_events
+                - paragraph [ref=e41]: Competitions
+          - listitem "Benchmarks List Item" [ref=e43]:
+            - link "Benchmarks" [ref=e45] [cursor=pointer]:
+              - /url: /benchmarks
+              - generic [ref=e46]:
+                - generic [ref=e49]: leaderboard
+                - paragraph [ref=e51]: Benchmarks
+          - listitem "Game Arena List Item" [ref=e52]:
+            - link "Game Arena" [ref=e54] [cursor=pointer]:
+              - /url: /game-arena
+              - generic [ref=e55]:
+                - generic [ref=e58]: smart_toy
+                - paragraph [ref=e60]: Game Arena
+        - list [ref=e61]:
+          - listitem "Data Hub List Item" [ref=e62]:
+            - generic [ref=e63]:
+              - link "Data Hub" [ref=e64] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e65]:
+                  - generic [ref=e68]: code
+                  - paragraph [ref=e70]: Data Hub
+              - button "Expand" [ref=e72] [cursor=pointer]: expand_more
+        - list [ref=e73]:
+          - listitem "More on Kaggle List Item" [ref=e74]:
+            - generic [ref=e75]:
+              - link "More on Kaggle" [ref=e76] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e77]:
+                  - generic [ref=e80]: format_list_bulleted
+                  - paragraph [ref=e82]: More
+              - button "Expand" [ref=e84] [cursor=pointer]: expand_more
+      - button "View Active Events" [ref=e86] [cursor=pointer]:
+        - generic [ref=e88]: auto_awesome_motion
+        - paragraph [ref=e89]: View Active Events
+  - navigation "Main menu, search and your account" [ref=e90]:
+    - generic [ref=e91]:
+      - generic [ref=e95]:
+        - generic [ref=e96]: search
+        - textbox "Search" [ref=e97]
+        - group
+      - button "Jason Mourier" [ref=e103] [cursor=pointer]:
+        - generic "Jason Mourier" [ref=e104]
+        - img [ref=e105]
+  - main [ref=e108]:
+    - generic [ref=e110]:
+      - generic [ref=e111]: Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.
+      - generic [ref=e112]:
+        - link "Learn more" [ref=e113] [cursor=pointer]:
+          - /url: /cookies
+          - generic [ref=e114]: Learn more
+        - generic [ref=e115] [cursor=pointer]: OK, Got it.
+    - generic [ref=e118]:
+      - generic [ref=e120]:
+        - generic [ref=e121]:
+          - link "Kaggle's profile" [ref=e122] [cursor=pointer]:
+            - /url: /organizations/kaggle
+            - generic "Kaggle" [ref=e123]
+            - img [ref=e124]
+          - generic [ref=e127]:
+            - generic [ref=e129]: Kaggle
+            - generic [ref=e130]: · Featured Simulation Competition · 2 months to go
+          - generic [ref=e131]:
+            - button "Submit Agent" [ref=e133] [cursor=pointer]:
+              - generic [ref=e134]: Submit Agent
+            - button "Competition options menu collapsed" [ref=e136] [cursor=pointer]: more_horiz
+        - generic [ref=e138]:
+          - heading "Orbit Wars" [level=1] [ref=e139]
+          - paragraph [ref=e141]: Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.
+      - generic [ref=e145]:
+        - generic [ref=e149]:
+          - tablist [ref=e152]:
+            - tab "Overview, 1 of 9" [ref=e153] [cursor=pointer]:
+              - generic [ref=e154]: Overview
+            - tab "Data, 2 of 9" [ref=e155] [cursor=pointer]:
+              - generic [ref=e156]: Data
+            - tab "Code, 3 of 9" [ref=e157] [cursor=pointer]:
+              - generic [ref=e158]: Code
+            - tab "Models, 4 of 9" [ref=e159] [cursor=pointer]:
+              - generic [ref=e160]: Models
+            - tab "Discussion, 5 of 9" [ref=e161] [cursor=pointer]:
+              - generic [ref=e162]: Discussion
+            - tab "Leaderboard, 6 of 9" [active] [selected] [ref=e163] [cursor=pointer]:
+              - generic [ref=e164]: Leaderboard
+            - tab "Rules, 7 of 9" [ref=e165] [cursor=pointer]:
+              - generic [ref=e166]: Rules
+            - tab "Team, 8 of 9" [ref=e167] [cursor=pointer]:
+              - generic [ref=e168]: Team
+            - tab "Submissions, 9 of 9" [ref=e169] [cursor=pointer]:
+              - generic [ref=e170]: Submissions
+          - img [ref=e173] [cursor=pointer]
+        - separator [ref=e175]
+      - generic [ref=e648]:
+        - generic [ref=e649]:
+          - heading "Leaderboard" [level=2] [ref=e653]
+          - generic [ref=e654]:
+            - button "Download Leaderboard" [ref=e656] [cursor=pointer]:
+              - generic [ref=e657]: file_download
+              - generic [ref=e658]: Raw Data
+            - button "Refresh" [ref=e659] [cursor=pointer]:
+              - generic [ref=e660]: refresh
+              - generic [ref=e661]: Refresh
+        - generic [ref=e664]:
+          - generic [ref=e665]: search
+          - textbox "Search leaderboard" [ref=e666]
+          - group
+        - generic [ref=e667]:
+          - paragraph
+          - paragraph [ref=e670]: Prize Contenders
+        - list [ref=e672]:
+          - listitem "undefined List Item" [ref=e673]:
+            - generic [ref=e674]:
+              - generic [ref=e675]: "#"
+              - generic [ref=e676]: Team
+              - generic [ref=e677]: Members
+              - generic [ref=e678]: Score
+              - generic [ref=e679]: Agents
+              - generic [ref=e680]: Last
+              - generic [ref=e681]: Join
+          - listitem "undefined List Item" [ref=e682]:
+            - generic [ref=e683]:
+              - generic [ref=e684]: "1"
+              - generic [ref=e686]: kovi
+              - link "kovi's profile" [ref=e689] [cursor=pointer]:
+                - /url: /kovi22
+                - generic "kovi" [ref=e690]
+                - img [ref=e691]
+              - generic [ref=e695]:
+                - img "Gold Medal" [ref=e696]
+                - generic [ref=e697]: "2580.7"
+              - generic [ref=e698]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e699] [cursor=pointer]: live_tv
+              - generic [ref=e701]: 1d
+          - listitem "undefined List Item" [ref=e703]:
+            - generic [ref=e704]:
+              - generic [ref=e705]: "2"
+              - generic [ref=e707]: Shun_PI
+              - link "Shun_PI's profile" [ref=e710] [cursor=pointer]:
+                - /url: /shunrcn
+                - generic "Shun_PI" [ref=e711]
+                - img [ref=e712]
+              - generic [ref=e716]:
+                - img "Gold Medal" [ref=e717]
+                - generic [ref=e718]: "1629.8"
+              - generic [ref=e719]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e720] [cursor=pointer]: live_tv
+              - generic [ref=e722]: 3d
+          - listitem "undefined List Item" [ref=e724]:
+            - generic [ref=e725]:
+              - generic [ref=e726]: "3"
+              - generic [ref=e728]: bowwowforeach
+              - link "bowwowforeach's profile" [ref=e731] [cursor=pointer]:
+                - /url: /bowwowforeach
+                - generic "bowwowforeach" [ref=e732]
+                - img [ref=e733]
+              - generic [ref=e737]:
+                - img "Gold Medal" [ref=e738]
+                - generic [ref=e739]: "1593.2"
+              - generic [ref=e740]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e741] [cursor=pointer]: live_tv
+              - generic [ref=e743]: 2d
+          - listitem "undefined List Item" [ref=e745]:
+            - generic [ref=e746]:
+              - generic [ref=e747]: "4"
+              - generic [ref=e749]: HY2017
+              - link "HY2017's profile" [ref=e752] [cursor=pointer]:
+                - /url: /hy2017
+                - generic "HY2017" [ref=e753]
+                - img [ref=e754]
+              - generic [ref=e758]:
+                - img "Gold Medal" [ref=e759]
+                - generic [ref=e760]: "1441.3"
+              - generic [ref=e761]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e762] [cursor=pointer]: live_tv
+              - generic [ref=e764]: 10h
+          - listitem "undefined List Item" [ref=e766]:
+            - generic [ref=e767]:
+              - generic [ref=e768]: "5"
+              - generic [ref=e770]: Orbital Occle
+              - link "Milan Peelman's profile" [ref=e773] [cursor=pointer]:
+                - /url: /milanpeelman
+                - generic "Milan Peelman" [ref=e774]
+                - img [ref=e775]
+              - generic [ref=e779]:
+                - img "Gold Medal" [ref=e780]
+                - generic [ref=e781]: "1431.1"
+              - generic [ref=e782]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e783] [cursor=pointer]: live_tv
+              - generic [ref=e785]: 1h
+          - listitem "undefined List Item" [ref=e787]:
+            - generic [ref=e788]:
+              - generic [ref=e789]: "6"
+              - generic [ref=e791]: Erfan Eshratifar
+              - link "Erfan Eshratifar's profile" [ref=e794] [cursor=pointer]:
+                - /url: /erfaneshrati
+                - generic "Erfan Eshratifar" [ref=e795]
+                - img [ref=e796]
+              - generic [ref=e800]:
+                - img "Gold Medal" [ref=e801]
+                - generic [ref=e802]: "1425.1"
+              - generic [ref=e803]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e804] [cursor=pointer]: live_tv
+              - generic [ref=e806]: 1h
+          - listitem "undefined List Item" [ref=e808]:
+            - generic [ref=e809]:
+              - generic [ref=e810]: "7"
+              - generic [ref=e812]: sash
+              - link "sash's profile" [ref=e815] [cursor=pointer]:
+                - /url: /sash2104
+                - generic "sash" [ref=e816]
+                - img [ref=e817]
+              - generic [ref=e821]:
+                - img "Gold Medal" [ref=e822]
+                - generic [ref=e823]: "1405.0"
+              - generic [ref=e824]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e825] [cursor=pointer]: live_tv
+              - generic [ref=e827]: 4h
+          - listitem "undefined List Item" [ref=e829]:
+            - generic [ref=e830]:
+              - generic [ref=e831]: "8"
+              - generic [ref=e833]: glass_256
+              - link "glass_256's profile" [ref=e836] [cursor=pointer]:
+                - /url: /glass256
+                - generic "glass_256" [ref=e837]
+                - img [ref=e838]
+              - generic [ref=e842]:
+                - img "Gold Medal" [ref=e843]
+                - generic [ref=e844]: "1369.1"
+              - generic [ref=e845]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e846] [cursor=pointer]: live_tv
+              - generic [ref=e848]: 4h
+          - listitem "undefined List Item" [ref=e850]:
+            - generic [ref=e851]:
+              - generic [ref=e852]: "9"
+              - generic [ref=e854]: ush
+              - link "ush's profile" [ref=e857] [cursor=pointer]:
+                - /url: /kusuha
+                - generic "ush" [ref=e858]
+                - img [ref=e859]
+              - generic [ref=e863]:
+                - img "Gold Medal" [ref=e864]
+                - generic [ref=e865]: "1361.0"
+              - generic [ref=e866]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e867] [cursor=pointer]: live_tv
+              - generic [ref=e869]: 6h
+          - listitem "undefined List Item" [ref=e871]:
+            - generic [ref=e872]:
+              - generic [ref=e873]: "10"
+              - generic [ref=e875]: fgwiebfaoish
+              - link "fgwiebfaoish's profile" [ref=e878] [cursor=pointer]:
+                - /url: /fgwiebfaoish
+                - generic "fgwiebfaoish" [ref=e879]
+                - img [ref=e880]
+              - generic [ref=e884]:
+                - img "Gold Medal" [ref=e885]
+                - generic [ref=e886]: "1340.0"
+              - generic [ref=e887]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e888] [cursor=pointer]: live_tv
+              - generic [ref=e890]: 2d
+          - listitem "undefined List Item" [ref=e892]:
+            - generic [ref=e893]:
+              - generic [ref=e894]: "11"
+              - generic [ref=e896]: Ezra
+              - link "Ezra's profile" [ref=e899] [cursor=pointer]:
+                - /url: /ezberch
+                - generic "Ezra" [ref=e900]
+                - img [ref=e901]
+              - generic [ref=e905]:
+                - img "Gold Medal" [ref=e906]
+                - generic [ref=e907]: "1320.3"
+              - generic [ref=e908]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e909] [cursor=pointer]: live_tv
+              - generic [ref=e911]: 17h
+          - listitem "undefined List Item" [ref=e913]:
+            - generic [ref=e914]:
+              - generic [ref=e915]: "12"
+              - generic [ref=e917]: mtmr_s1
+              - link "mtmr_s1's profile" [ref=e920] [cursor=pointer]:
+                - /url: /mtmrs1
+                - generic "mtmr_s1" [ref=e921]
+                - img [ref=e922]
+              - generic [ref=e926]:
+                - img "Gold Medal" [ref=e927]
+                - generic [ref=e928]: "1296.9"
+              - generic [ref=e929]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e930] [cursor=pointer]: live_tv
+              - generic [ref=e932]: 2d
+          - listitem "undefined List Item" [ref=e934]:
+            - generic [ref=e935]:
+              - generic [ref=e936]: "13"
+              - generic [ref=e938]: c-number
+              - link "c-number's profile" [ref=e941] [cursor=pointer]:
+                - /url: /cnumber
+                - generic "c-number" [ref=e942]
+                - img [ref=e943]
+              - generic [ref=e947]:
+                - img "Gold Medal" [ref=e948]
+                - generic [ref=e949]: "1295.0"
+              - generic [ref=e950]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e951] [cursor=pointer]: live_tv
+              - generic [ref=e953]: 1d
+          - listitem "undefined List Item" [ref=e955]:
+            - generic [ref=e956]:
+              - generic [ref=e957]: "14"
+              - generic [ref=e959]: Naoism
+              - link "Naoism's profile" [ref=e962] [cursor=pointer]:
+                - /url: /naoism
+                - generic "Naoism" [ref=e963]
+                - img [ref=e964]
+              - generic [ref=e968]:
+                - img "Silver Medal" [ref=e969]
+                - generic [ref=e970]: "1281.6"
+              - generic [ref=e971]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e972] [cursor=pointer]: live_tv
+              - generic [ref=e974]: 15h
+          - listitem "undefined List Item" [ref=e976]:
+            - generic [ref=e977]:
+              - generic [ref=e978]: "15"
+              - generic [ref=e980]: gasin
+              - link "gasin's profile" [ref=e983] [cursor=pointer]:
+                - /url: /gascin
+                - generic "gasin" [ref=e984]
+                - img [ref=e985]
+              - generic [ref=e989]:
+                - img "Silver Medal" [ref=e990]
+                - generic [ref=e991]: "1275.6"
+              - generic [ref=e992]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e993] [cursor=pointer]: live_tv
+              - generic [ref=e995]: 7d
+          - listitem "undefined List Item" [ref=e997]:
+            - generic [ref=e998]:
+              - generic [ref=e999]: "16"
+              - generic [ref=e1001]: lookaside
+              - link "lookaside's profile" [ref=e1004] [cursor=pointer]:
+                - /url: /lookaside
+                - generic "lookaside" [ref=e1005]
+                - img [ref=e1006]
+              - generic [ref=e1010]:
+                - img "Silver Medal" [ref=e1011]
+                - generic [ref=e1012]: "1267.5"
+              - generic [ref=e1013]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1014] [cursor=pointer]: live_tv
+              - generic [ref=e1016]: 7d
+          - listitem "undefined List Item" [ref=e1018]:
+            - generic [ref=e1019]:
+              - generic [ref=e1020]: "17"
+              - generic [ref=e1022]: Andrew Tratz
+              - link "Andrew Tratz's profile" [ref=e1025] [cursor=pointer]:
+                - /url: /jademonk
+                - generic "Andrew Tratz" [ref=e1026]
+                - img [ref=e1027]
+              - generic [ref=e1031]:
+                - img "Silver Medal" [ref=e1032]
+                - generic [ref=e1033]: "1263.0"
+              - generic [ref=e1034]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1035] [cursor=pointer]: live_tv
+              - generic [ref=e1037]: 2h
+          - listitem "undefined List Item" [ref=e1039]:
+            - generic [ref=e1040]:
+              - generic [ref=e1041]: "18"
+              - generic [ref=e1043]: Qixiu
+              - link "Qixiu's profile" [ref=e1046] [cursor=pointer]:
+                - /url: /lantingguo
+                - generic "Qixiu" [ref=e1047]
+                - img [ref=e1048]
+              - generic [ref=e1052]:
+                - img "Silver Medal" [ref=e1053]
+                - generic [ref=e1054]: "1254.1"
+              - generic [ref=e1055]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1056] [cursor=pointer]: live_tv
+              - generic [ref=e1058]: 3d
+          - listitem "undefined List Item" [ref=e1060]:
+            - generic [ref=e1061]:
+              - generic [ref=e1062]: "19"
+              - generic [ref=e1064]: Rasmus Larsen
+              - link "Rasmus Larsen's profile" [ref=e1067] [cursor=pointer]:
+                - /url: /synquid
+                - generic "Rasmus Larsen" [ref=e1068]
+                - img [ref=e1069]
+              - generic [ref=e1073]:
+                - img "Silver Medal" [ref=e1074]
+                - generic [ref=e1075]: "1246.1"
+              - generic [ref=e1076]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1077] [cursor=pointer]: live_tv
+              - generic [ref=e1079]: 8h
+          - listitem "undefined List Item" [ref=e1081]:
+            - generic [ref=e1082]:
+              - generic [ref=e1083]: "20"
+              - generic [ref=e1085]: Yiheng (Ethan) Cai
+              - link "Yiheng (Ethan) Cai's profile" [ref=e1088] [cursor=pointer]:
+                - /url: /ethanyihengcai
+                - generic "Yiheng (Ethan) Cai" [ref=e1089]
+                - img [ref=e1090]
+              - generic [ref=e1094]:
+                - img "Silver Medal" [ref=e1095]
+                - generic [ref=e1096]: "1245.1"
+              - generic [ref=e1097]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1098] [cursor=pointer]: live_tv
+              - generic [ref=e1100]: 4d
+          - listitem "undefined List Item" [ref=e1102]:
+            - generic [ref=e1103]:
+              - generic [ref=e1104]: "21"
+              - generic [ref=e1106]: istinetz
+              - link "istinetz's profile" [ref=e1109] [cursor=pointer]:
+                - /url: /istinetz
+                - generic "istinetz" [ref=e1110]
+                - img [ref=e1111]
+              - generic [ref=e1115]:
+                - img "Silver Medal" [ref=e1116]
+                - generic [ref=e1117]: "1241.8"
+              - generic [ref=e1118]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1119] [cursor=pointer]: live_tv
+              - generic [ref=e1121]: 2h
+          - listitem "undefined List Item" [ref=e1123]:
+            - generic [ref=e1124]:
+              - generic [ref=e1125]: "22"
+              - generic [ref=e1127]: TimeIsGold
+              - link "WOOSUNG YOON's profile" [ref=e1130] [cursor=pointer]:
+                - /url: /woosungyoon
+                - generic "WOOSUNG YOON" [ref=e1131]
+                - img [ref=e1132]
+              - generic [ref=e1136]:
+                - img "Silver Medal" [ref=e1137]
+                - generic [ref=e1138]: "1220.8"
+              - generic [ref=e1139]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1140] [cursor=pointer]: live_tv
+              - generic [ref=e1142]: 16h
+              - link [ref=e1144] [cursor=pointer]:
+                - /url: /woosungyoon
+                - generic [ref=e1145]: emoji_people
+          - listitem "undefined List Item" [ref=e1146]:
+            - generic [ref=e1147]:
+              - generic [ref=e1148]: "23"
+              - generic [ref=e1150]: HassenHamdi Winning InchaAllah
+              - link "Hassen Hamdi's profile" [ref=e1153] [cursor=pointer]:
+                - /url: /hassenhamdi
+                - generic "Hassen Hamdi" [ref=e1154]
+                - img [ref=e1155]
+              - generic [ref=e1159]:
+                - img "Silver Medal" [ref=e1160]
+                - generic [ref=e1161]: "1219.4"
+              - generic [ref=e1162]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1163] [cursor=pointer]: live_tv
+              - generic [ref=e1165]: 20h
+          - listitem "undefined List Item" [ref=e1167]:
+            - generic [ref=e1168]:
+              - generic [ref=e1169]: "24"
+              - generic [ref=e1171]: Sean Jones
+              - link "Sean Jones's profile" [ref=e1174] [cursor=pointer]:
+                - /url: /seanjones444
+                - generic "Sean Jones" [ref=e1175]
+                - img [ref=e1176]
+              - generic [ref=e1180]:
+                - img "Silver Medal" [ref=e1181]
+                - generic [ref=e1182]: "1216.0"
+              - generic [ref=e1183]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1184] [cursor=pointer]: live_tv
+              - generic [ref=e1186]: 1d
+          - listitem "undefined List Item" [ref=e1188]:
+            - generic [ref=e1189]:
+              - generic [ref=e1190]: "25"
+              - generic [ref=e1192]: NightlyOrbit
+              - link "Ebi's profile" [ref=e1195] [cursor=pointer]:
+                - /url: /ebinan92
+                - generic "Ebi" [ref=e1196]
+                - img [ref=e1197]
+              - generic [ref=e1201]:
+                - img "Silver Medal" [ref=e1202]
+                - generic [ref=e1203]: "1212.3"
+              - generic [ref=e1204]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1205] [cursor=pointer]: live_tv
+              - generic [ref=e1207]: 2d
+          - listitem "undefined List Item" [ref=e1209]:
+            - generic [ref=e1210]:
+              - generic [ref=e1211]: "26"
+              - generic [ref=e1213]: K_ChanHo
+              - link "K_ChanHo's profile" [ref=e1216] [cursor=pointer]:
+                - /url: /kchanho
+                - generic "K_ChanHo" [ref=e1217]
+                - img [ref=e1218]
+              - generic [ref=e1222]:
+                - img "Silver Medal" [ref=e1223]
+                - generic [ref=e1224]: "1206.5"
+              - generic [ref=e1225]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1226] [cursor=pointer]: live_tv
+              - generic [ref=e1228]: 2d
+          - listitem "undefined List Item" [ref=e1230]:
+            - generic [ref=e1231]:
+              - generic [ref=e1232]: "27"
+              - generic [ref=e1234]: ra5anchor
+              - link "ra5anchor's profile" [ref=e1237] [cursor=pointer]:
+                - /url: /junmitsui
+                - generic "ra5anchor" [ref=e1238]
+                - img [ref=e1239]
+              - generic [ref=e1243]:
+                - img "Silver Medal" [ref=e1244]
+                - generic [ref=e1245]: "1195.0"
+              - generic [ref=e1246]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1247] [cursor=pointer]: live_tv
+              - generic [ref=e1249]: 1d
+          - listitem "undefined List Item" [ref=e1251]:
+            - generic [ref=e1252]:
+              - generic [ref=e1253]: "28"
+              - generic [ref=e1255]: Kha Vo
+              - link "Kha Vo's profile" [ref=e1258] [cursor=pointer]:
+                - /url: /khahuras
+                - generic "Kha Vo" [ref=e1259]
+                - img [ref=e1260]
+              - generic [ref=e1264]:
+                - img "Silver Medal" [ref=e1265]
+                - generic [ref=e1266]: "1186.3"
+              - generic [ref=e1267]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1268] [cursor=pointer]: live_tv
+              - generic [ref=e1270]: 2h
+          - listitem "undefined List Item" [ref=e1272]:
+            - generic [ref=e1273]:
+              - generic [ref=e1274]: "29"
+              - generic [ref=e1276]: arcobi
+              - link "Bossaerts vincent's profile" [ref=e1279] [cursor=pointer]:
+                - /url: /bossaertsvincent
+                - generic "Bossaerts vincent" [ref=e1280]
+                - img [ref=e1281]
+              - generic [ref=e1285]:
+                - img "Silver Medal" [ref=e1286]
+                - generic [ref=e1287]: "1181.7"
+              - generic [ref=e1288]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1289] [cursor=pointer]: live_tv
+              - generic [ref=e1291]: 2d
+          - listitem "undefined List Item" [ref=e1293]:
+            - generic [ref=e1294]:
+              - generic [ref=e1295]: "30"
+              - generic [ref=e1297]: Ousagi
+              - link "Ousagi's profile" [ref=e1300] [cursor=pointer]:
+                - /url: /enzowalter
+                - generic "Ousagi" [ref=e1301]
+                - img [ref=e1302]
+              - generic [ref=e1306]:
+                - img "Silver Medal" [ref=e1307]
+                - generic [ref=e1308]: "1176.8"
+              - generic [ref=e1309]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1310] [cursor=pointer]: live_tv
+              - generic [ref=e1312]: 15m
+          - listitem "undefined List Item" [ref=e1314]:
+            - generic [ref=e1315]:
+              - generic [ref=e1316]: "31"
+              - generic [ref=e1318]: Thinker
+              - generic [ref=e1320]:
+                - link "Sayaka Miki's profile" [ref=e1321] [cursor=pointer]:
+                  - /url: /linkinpony
+                  - generic "Sayaka Miki" [ref=e1322]
+                  - img [ref=e1323]
+                - link "kirakoko's profile" [ref=e1326] [cursor=pointer]:
+                  - /url: /kirakoko
+                  - generic "kirakoko" [ref=e1327]
+                  - img [ref=e1328]
+                - link "D_GaoDiao's profile" [ref=e1331] [cursor=pointer]:
+                  - /url: /dgaodiao
+                  - generic "D_GaoDiao" [ref=e1332]
+                  - img [ref=e1333]
+                - link "LemoMew's profile" [ref=e1336] [cursor=pointer]:
+                  - /url: /lemomew
+                  - generic "LemoMew" [ref=e1337]
+                  - img [ref=e1338]
+              - generic [ref=e1342]:
+                - img "Silver Medal" [ref=e1343]
+                - generic [ref=e1344]: "1163.8"
+              - generic [ref=e1345]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1346] [cursor=pointer]: live_tv
+              - generic [ref=e1348]: 2h
+          - listitem "undefined List Item" [ref=e1350]:
+            - generic [ref=e1351]:
+              - generic [ref=e1352]: "32"
+              - generic [ref=e1354]: Caiden Matthews
+              - link "Caiden Matthews's profile" [ref=e1357] [cursor=pointer]:
+                - /url: /caidenmatthews
+                - generic "Caiden Matthews" [ref=e1358]
+                - img [ref=e1359]
+              - generic [ref=e1363]:
+                - img "Silver Medal" [ref=e1364]
+                - generic [ref=e1365]: "1159.7"
+              - generic [ref=e1366]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1367] [cursor=pointer]: live_tv
+              - generic [ref=e1369]: 2h
+          - listitem "undefined List Item" [ref=e1371]:
+            - generic [ref=e1372]:
+              - generic [ref=e1373]: "33"
+              - generic [ref=e1375]: aDg4b
+              - link "aDg4b's profile" [ref=e1378] [cursor=pointer]:
+                - /url: /egrehbbt
+                - generic "aDg4b" [ref=e1379]
+                - img [ref=e1380]
+              - generic [ref=e1384]:
+                - img "Silver Medal" [ref=e1385]
+                - generic [ref=e1386]: "1152.6"
+              - generic [ref=e1387]:
+                - text: "1"
+                - button "View episodes from this team's highest scoring agent." [ref=e1388] [cursor=pointer]: live_tv
+              - generic [ref=e1390]: 2h
+              - link [ref=e1392] [cursor=pointer]:
+                - /url: /egrehbbt
+                - generic [ref=e1393]: emoji_people
+          - listitem "undefined List Item" [ref=e1394]:
+            - generic [ref=e1395]:
+              - generic [ref=e1396]: "34"
+              - generic [ref=e1398]: klog
+              - link "klog's profile" [ref=e1401] [cursor=pointer]:
+                - /url: /mhrzmmhrzm
+                - generic "klog" [ref=e1402]
+                - img [ref=e1403]
+              - generic [ref=e1407]:
+                - img "Silver Medal" [ref=e1408]
+                - generic [ref=e1409]: "1152.0"
+              - generic [ref=e1410]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1411] [cursor=pointer]: live_tv
+              - generic [ref=e1413]: 6d
+          - listitem "undefined List Item" [ref=e1415]:
+            - generic [ref=e1416]:
+              - generic [ref=e1417]: "35"
+              - generic [ref=e1419]: Nandodemo
+              - link "Kh0a's profile" [ref=e1422] [cursor=pointer]:
+                - /url: /llkh0a
+                - generic "Kh0a" [ref=e1423]
+                - img [ref=e1424]
+              - generic [ref=e1428]:
+                - img "Silver Medal" [ref=e1429]
+                - generic [ref=e1430]: "1151.0"
+              - generic [ref=e1431]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1432] [cursor=pointer]: live_tv
+              - generic [ref=e1434]: 31m
+          - listitem "undefined List Item" [ref=e1436]:
+            - generic [ref=e1437]:
+              - generic [ref=e1438]: "36"
+              - generic [ref=e1440]: Vincent Schuler
+              - link "Vincent Schuler's profile" [ref=e1443] [cursor=pointer]:
+                - /url: /vincentschuler
+                - generic "Vincent Schuler" [ref=e1444]
+                - img [ref=e1445]
+              - generic [ref=e1449]:
+                - img "Silver Medal" [ref=e1450]
+                - generic [ref=e1451]: "1149.3"
+              - generic [ref=e1452]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1453] [cursor=pointer]: live_tv
+              - generic [ref=e1455]: 3h
+          - listitem "undefined List Item" [ref=e1457]:
+            - generic [ref=e1458]:
+              - generic [ref=e1459]: "37"
+              - generic [ref=e1461]: Mille Initiate
+              - link "Mille Initiate's profile" [ref=e1464] [cursor=pointer]:
+                - /url: /milleinitiate
+                - generic "Mille Initiate" [ref=e1465]
+                - img [ref=e1466]
+              - generic [ref=e1470]:
+                - img "Silver Medal" [ref=e1471]
+                - generic [ref=e1472]: "1149.3"
+              - generic [ref=e1473]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1474] [cursor=pointer]: live_tv
+              - generic [ref=e1476]: 9h
+          - listitem "undefined List Item" [ref=e1478]:
+            - generic [ref=e1479]:
+              - generic [ref=e1480]: "38"
+              - generic [ref=e1482]: sary sary
+              - link "sary sary's profile" [ref=e1485] [cursor=pointer]:
+                - /url: /sarysary
+                - generic "sary sary" [ref=e1486]
+                - img [ref=e1487]
+              - generic [ref=e1491]:
+                - img "Silver Medal" [ref=e1492]
+                - generic [ref=e1493]: "1148.6"
+              - generic [ref=e1494]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1495] [cursor=pointer]: live_tv
+              - generic [ref=e1497]: 16h
+          - listitem "undefined List Item" [ref=e1499]:
+            - generic [ref=e1500]:
+              - generic [ref=e1501]: "39"
+              - generic [ref=e1503]: Ha Quang Minh
+              - link "Hà Quang Minh's profile" [ref=e1506] [cursor=pointer]:
+                - /url: /haaminh
+                - generic "Hà Quang Minh" [ref=e1507]
+                - img [ref=e1508]
+              - generic [ref=e1512]:
+                - img "Silver Medal" [ref=e1513]
+                - generic [ref=e1514]: "1145.7"
+              - generic [ref=e1515]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1516] [cursor=pointer]: live_tv
+              - generic [ref=e1518]: 12h
+          - listitem "undefined List Item" [ref=e1520]:
+            - generic [ref=e1521]:
+              - generic [ref=e1522]: "40"
+              - generic [ref=e1524]: burgundy
+              - link "burgundy's profile" [ref=e1527] [cursor=pointer]:
+                - /url: /burgundy
+                - generic "burgundy" [ref=e1528]
+                - img [ref=e1529]
+              - generic [ref=e1533]:
+                - img "Silver Medal" [ref=e1534]
+                - generic [ref=e1535]: "1143.4"
+              - generic [ref=e1536]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1537] [cursor=pointer]: live_tv
+              - generic [ref=e1539]: 1d
+          - listitem "undefined List Item" [ref=e1541]:
+            - generic [ref=e1542]:
+              - generic [ref=e1543]: "41"
+              - generic [ref=e1545]: "24601"
+              - link "Dr. T.'s profile" [ref=e1548] [cursor=pointer]:
+                - /url: /jftripp
+                - generic "Dr. T." [ref=e1549]
+                - img [ref=e1550]
+              - generic [ref=e1554]:
+                - img "Silver Medal" [ref=e1555]
+                - generic [ref=e1556]: "1136.9"
+              - generic [ref=e1557]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1558] [cursor=pointer]: live_tv
+              - generic [ref=e1560]: 1d
+          - listitem "undefined List Item" [ref=e1562]:
+            - generic [ref=e1563]:
+              - generic [ref=e1564]: "42"
+              - generic [ref=e1566]: siman
+              - link "siman's profile" [ref=e1569] [cursor=pointer]:
+                - /url: /simann
+                - generic "siman" [ref=e1570]
+                - img [ref=e1571]
+              - generic [ref=e1575]:
+                - img "Silver Medal" [ref=e1576]
+                - generic [ref=e1577]: "1122.2"
+              - generic [ref=e1578]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1579] [cursor=pointer]: live_tv
+              - generic [ref=e1581]: 1d
+          - listitem "undefined List Item" [ref=e1583]:
+            - generic [ref=e1584]:
+              - generic [ref=e1585]: "43"
+              - generic [ref=e1587]: Bangrocket
+              - link "Joshua Heidorn's profile" [ref=e1590] [cursor=pointer]:
+                - /url: /joshuaheidorn
+                - generic "Joshua Heidorn" [ref=e1591]
+                - img [ref=e1592]
+              - generic [ref=e1596]:
+                - img "Silver Medal" [ref=e1597]
+                - generic [ref=e1598]: "1118.3"
+              - generic [ref=e1599]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1600] [cursor=pointer]: live_tv
+              - generic [ref=e1602]: 6h
+          - listitem "undefined List Item" [ref=e1604]:
+            - generic [ref=e1605]:
+              - generic [ref=e1606]: "44"
+              - generic [ref=e1608]: Sukjae Cho
+              - link "Sukjae Cho's profile" [ref=e1611] [cursor=pointer]:
+                - /url: /jandjenter
+                - generic "Sukjae Cho" [ref=e1612]
+                - img [ref=e1613]
+              - generic [ref=e1617]:
+                - img "Silver Medal" [ref=e1618]
+                - generic [ref=e1619]: "1117.7"
+              - generic [ref=e1620]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1621] [cursor=pointer]: live_tv
+              - generic [ref=e1623]: 11h
+          - listitem "undefined List Item" [ref=e1625]:
+            - generic [ref=e1626]:
+              - generic [ref=e1627]: "45"
+              - generic [ref=e1629]: Ryan Tuosto
+              - link "Ryan Tuosto's profile" [ref=e1632] [cursor=pointer]:
+                - /url: /ryantuosto
+                - generic "Ryan Tuosto" [ref=e1633]
+                - img [ref=e1634]
+              - generic [ref=e1638]:
+                - img "Silver Medal" [ref=e1639]
+                - generic [ref=e1640]: "1112.7"
+              - generic [ref=e1641]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1642] [cursor=pointer]: live_tv
+              - generic [ref=e1644]: 38m
+          - listitem "undefined List Item" [ref=e1646]:
+            - generic [ref=e1647]:
+              - generic [ref=e1648]: "46"
+              - generic [ref=e1650]: Joe Bishop
+              - link "Joe Bishop's profile" [ref=e1653] [cursor=pointer]:
+                - /url: /ebjdoe
+                - generic "Joe Bishop" [ref=e1654]
+                - img [ref=e1655]
+              - generic [ref=e1659]:
+                - img "Silver Medal" [ref=e1660]
+                - generic [ref=e1661]: "1102.4"
+              - generic [ref=e1662]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1663] [cursor=pointer]: live_tv
+              - generic [ref=e1665]: 6h
+          - listitem "undefined List Item" [ref=e1667]:
+            - generic [ref=e1668]:
+              - generic [ref=e1669]: "47"
+              - generic [ref=e1671]: SebastianGil00
+              - generic [ref=e1673]:
+                - link "SebastianGil00's profile" [ref=e1674] [cursor=pointer]:
+                  - /url: /sebastiangil00
+                  - generic "SebastianGil00" [ref=e1675]
+                  - img [ref=e1676]
+                - link "Kimberley Duran's profile" [ref=e1679] [cursor=pointer]:
+                  - /url: /kimberleyduran
+                  - generic "Kimberley Duran" [ref=e1680]
+                  - img [ref=e1681]
+              - generic [ref=e1685]:
+                - img "Silver Medal" [ref=e1686]
+                - generic [ref=e1687]: "1101.7"
+              - generic [ref=e1688]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1689] [cursor=pointer]: live_tv
+              - generic [ref=e1691]: 5d
+          - listitem "undefined List Item" [ref=e1693]:
+            - generic [ref=e1694]:
+              - generic [ref=e1695]: "48"
+              - generic [ref=e1697]: LukasM1
+              - link "LukasM1's profile" [ref=e1700] [cursor=pointer]:
+                - /url: /lukasm1
+                - generic "LukasM1" [ref=e1701]
+                - img [ref=e1702]
+              - generic [ref=e1706]:
+                - img "Silver Medal" [ref=e1707]
+                - generic [ref=e1708]: "1098.9"
+              - generic [ref=e1709]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1710] [cursor=pointer]: live_tv
+              - generic [ref=e1712]: 3d
+          - listitem "undefined List Item" [ref=e1714]:
+            - generic [ref=e1715]:
+              - generic [ref=e1716]: "49"
+              - generic [ref=e1718]: SamaReddy94
+              - link "SamaReddy94's profile" [ref=e1721] [cursor=pointer]:
+                - /url: /samareddy94
+                - generic "SamaReddy94" [ref=e1722]
+                - img [ref=e1723]
+              - generic [ref=e1727]:
+                - img "Silver Medal" [ref=e1728]
+                - generic [ref=e1729]: "1097.5"
+              - generic [ref=e1730]:
+                - text: "2"
+                - button "View episodes from this team's highest scoring agent." [ref=e1731] [cursor=pointer]: live_tv
+              - generic [ref=e1733]: 6h
+        - generic [ref=e1735]:
+          - generic [ref=e1736]: 50 - 1525
+          - button "Load 1476 More Rows" [ref=e1738] [cursor=pointer]:
+            - generic [ref=e1739]: unfold_more
+            - generic [ref=e1740]: See 1476 More
+  - alert [ref=e647]

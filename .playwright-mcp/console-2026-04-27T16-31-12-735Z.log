@@ -1,0 +1,20 @@
+[     337ms] [LOG]  _                       _       
+| |    Welcome to       | |      
+| | __ ___   __ _  __ _ | | ___  
+| |/ /|__ \ / _` |/ _` || |/ _ \ 
+|   < / _  | (_| | (_| || |  __/ 
+|_|\_\\__,_|\__, |\__, ||_|\___| 
+             __/ | __/ |         
+            |___/ |___/          
+ @ https://www.kaggle.com/static/assets/app.js?v=858ef96394231df4:0
+[     392ms] [WARNING] No `HydrateFallback` element provided to render during initial hydration @ https://www.kaggle.com/static/assets/vendor.js?v=f36df333f5148fa7:255
+[    1062ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://www.kaggle.com/api/i/competitions.HostService/GetCompetitionSimulationSettings:0
+[    1066ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://www.kaggle.com/api/i/competitions.PageService/GetPage:0
+[    1074ms] t: Unauthenticated
+    at v (https://www.kaggle.com/static/assets/app.js?v=858ef96394231df4:1:1736851)
+    at https://www.kaggle.com/static/assets/app.js?v=858ef96394231df4:1:2546162
+    at c (https://www.kaggle.com/static/assets/app.js?v=858ef96394231df4:1:2544981)
+    at Object.<anonymous> (https://www.kaggle.com/static/assets/app.js?v=858ef96394231df4:1:2544268)
+    at w (https://www.kaggle.com/static/assets/app.js?v=858ef96394231df4:1:2542791)
+    at i (https://www.kaggle.com/static/assets/app.js?v=858ef96394231df4:1:2542988)
+[   11451ms] [LOG] [ReplayAdapter] Sending iframeCapabilities: {iframeHandlesUi: true, hasControls: true, hasReasoningLogs: false, managesPlayback: true} ui mode: inline @ https://www.kaggleusercontent.com/episode-visualizers/orbit_wars/default/assets/index-BVVl5ZTZ.js:563

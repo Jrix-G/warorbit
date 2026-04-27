@@ -1,0 +1,958 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e1261]:
+      - generic [ref=e15]:
+        - button [ref=e1262] [cursor=pointer]: menu
+        - link [ref=e1263] [cursor=pointer]:
+          - /url: "#site-content"
+          - text: Skip to content
+        - link [ref=e1264] [cursor=pointer]:
+          - /url: /
+          - img [ref=e1265]
+      - button [ref=e1266] [cursor=pointer]:
+        - img [ref=e24]
+        - generic [ref=e29]: Create
+      - generic [ref=e32]:
+        - list [ref=e33]:
+          - listitem [ref=e1267]:
+            - link [ref=e1268] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e37]:
+                - generic [ref=e40]: explore
+                - paragraph [ref=e42]: Home
+          - listitem [ref=e1269]:
+            - link [ref=e1270] [cursor=pointer]:
+              - /url: /competitions
+              - generic [ref=e46]:
+                - generic [ref=e49]: emoji_events
+                - paragraph [ref=e51]: Competitions
+          - listitem [ref=e1271]:
+            - link [ref=e1272] [cursor=pointer]:
+              - /url: /benchmarks
+              - generic [ref=e56]:
+                - generic [ref=e59]: leaderboard
+                - paragraph [ref=e61]: Benchmarks
+          - listitem [ref=e1273]:
+            - link [ref=e1274] [cursor=pointer]:
+              - /url: /game-arena
+              - generic [ref=e65]:
+                - generic [ref=e68]: smart_toy
+                - paragraph [ref=e70]: Game Arena
+        - list [ref=e71]:
+          - listitem [ref=e1275]:
+            - generic [ref=e73]:
+              - link [ref=e1276] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e75]:
+                  - generic [ref=e78]: code
+                  - paragraph [ref=e80]: Data Hub
+              - button [ref=e1277] [cursor=pointer]: expand_more
+        - list [ref=e83]:
+          - listitem [ref=e1278]:
+            - generic [ref=e85]:
+              - link [ref=e1279] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e87]:
+                  - generic [ref=e90]: format_list_bulleted
+                  - paragraph [ref=e92]: More
+              - button [ref=e1280] [cursor=pointer]: expand_more
+    - navigation [ref=e1281]:
+      - generic [ref=e97]:
+        - generic [ref=e101]:
+          - generic [ref=e102]: search
+          - textbox [ref=e1282]:
+            - /placeholder: Search
+          - group
+        - generic [ref=e105]:
+          - link [ref=e1283] [cursor=pointer]:
+            - /url: /account/login?phase=startSignInTab&returnUrl=%2Fcompetitions%2Forbit-wars%2Fleaderboard
+            - button [ref=e1284]:
+              - generic [ref=e109]: Sign In
+          - link [ref=e1285] [cursor=pointer]:
+            - /url: /account/login?phase=startRegisterTab&returnUrl=%2Fcompetitions%2Forbit-wars%2Fleaderboard
+            - button [ref=e1286]:
+              - generic [ref=e113]: Register
+    - main [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.
+        - generic [ref=e7]:
+          - link [ref=e1287] [cursor=pointer]:
+            - /url: /cookies
+            - generic [ref=e9]: Learn more
+          - generic [ref=e10] [cursor=pointer]: OK, Got it.
+      - generic [ref=e116]:
+        - generic [ref=e118]:
+          - generic [ref=e119]:
+            - link [ref=e1288] [cursor=pointer]:
+              - /url: /organizations/kaggle
+              - img [ref=e122]
+            - generic [ref=e125]:
+              - generic [ref=e127]: Kaggle
+              - generic [ref=e128]: · Featured Simulation Competition · 2 months to go
+            - generic [ref=e129]:
+              - button [ref=e1290] [cursor=pointer]:
+                - generic [ref=e132]: Join Competition
+              - button [ref=e1291] [cursor=pointer]: more_horiz
+          - generic [ref=e136]:
+            - heading [level=1] [ref=e1292]: Orbit Wars
+            - paragraph [ref=e139]: Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.
+        - generic [ref=e143]:
+          - tablist [ref=e150]:
+            - tab [ref=e1293] [cursor=pointer]:
+              - generic [ref=e152]: Overview
+            - tab [ref=e1294] [cursor=pointer]:
+              - generic [ref=e154]: Data
+            - tab [ref=e1295] [cursor=pointer]:
+              - generic [ref=e156]: Code
+            - tab [ref=e1296] [cursor=pointer]:
+              - generic [ref=e158]: Models
+            - tab [ref=e1297] [cursor=pointer]:
+              - generic [ref=e160]: Discussion
+            - tab [selected] [ref=e1298] [cursor=pointer]:
+              - generic [ref=e162]: Leaderboard
+            - tab [ref=e1299] [cursor=pointer]:
+              - generic [ref=e164]: Rules
+          - separator [ref=e166]
+        - generic [ref=e168]:
+          - generic [ref=e169]:
+            - heading [level=2] [ref=e1300]: Leaderboard
+            - generic [ref=e174]:
+              - button [ref=e1301] [cursor=pointer]:
+                - generic [ref=e177]: file_download
+                - generic [ref=e178]: Raw Data
+              - button [ref=e1302] [cursor=pointer]:
+                - generic [ref=e180]: refresh
+                - generic [ref=e181]: Refresh
+          - generic [ref=e184]:
+            - generic [ref=e185]: search
+            - textbox [ref=e1303]:
+              - /placeholder: Search leaderboard
+            - group
+          - paragraph [ref=e190]: Prize Contenders
+          - list [ref=e192]:
+            - listitem [ref=e1304]:
+              - generic [ref=e194]:
+                - generic [ref=e195]: "#"
+                - generic [ref=e196]: Team
+                - generic [ref=e197]: Members
+                - generic [ref=e198]: Score
+                - generic [ref=e199]: Agents
+                - generic [ref=e200]: Last
+                - generic [ref=e201]: Join
+            - listitem [ref=e1305]:
+              - generic [ref=e203]:
+                - generic [ref=e204]: "1"
+                - generic [ref=e206]: kovi
+                - link [ref=e1306] [cursor=pointer]:
+                  - /url: /kovi22
+                  - img [ref=e211]
+                - generic [ref=e215]:
+                  - img [ref=e1308]
+                  - generic [ref=e217]: "2580.7"
+                - generic [ref=e218]:
+                  - text: "2"
+                  - button [ref=e1309] [cursor=pointer]: live_tv
+                - generic [ref=e221]: 1d
+            - listitem [ref=e1310]:
+              - generic [ref=e224]:
+                - generic [ref=e225]: "2"
+                - generic [ref=e227]: Shun_PI
+                - link [ref=e1311] [cursor=pointer]:
+                  - /url: /shunrcn
+                  - img [ref=e232]
+                - generic [ref=e236]:
+                  - img [ref=e1313]
+                  - generic [ref=e238]: "1629.8"
+                - generic [ref=e239]:
+                  - text: "2"
+                  - button [ref=e1314] [cursor=pointer]: live_tv
+                - generic [ref=e242]: 3d
+            - listitem [ref=e1315]:
+              - generic [ref=e245]:
+                - generic [ref=e246]: "3"
+                - generic [ref=e248]: bowwowforeach
+                - link [ref=e1316] [cursor=pointer]:
+                  - /url: /bowwowforeach
+                  - img [ref=e253]
+                - generic [ref=e257]:
+                  - img [ref=e1318]
+                  - generic [ref=e259]: "1593.2"
+                - generic [ref=e260]:
+                  - text: "2"
+                  - button [ref=e1319] [cursor=pointer]: live_tv
+                - generic [ref=e263]: 2d
+            - listitem [ref=e1320]:
+              - generic [ref=e266]:
+                - generic [ref=e267]: "4"
+                - generic [ref=e269]: HY2017
+                - link [ref=e1321] [cursor=pointer]:
+                  - /url: /hy2017
+                  - img [ref=e274]
+                - generic [ref=e278]:
+                  - img [ref=e1323]
+                  - generic [ref=e280]: "1444.8"
+                - generic [ref=e281]:
+                  - text: "2"
+                  - button [ref=e1324] [cursor=pointer]: live_tv
+                - generic [ref=e284]: 9h
+            - listitem [ref=e1325]:
+              - generic [ref=e287]:
+                - generic [ref=e288]: "5"
+                - generic [ref=e290]: Orbital Occle
+                - link [ref=e1326] [cursor=pointer]:
+                  - /url: /milanpeelman
+                  - img [ref=e295]
+                - generic [ref=e299]:
+                  - img [ref=e1328]
+                  - generic [ref=e301]: "1426.9"
+                - generic [ref=e302]:
+                  - text: "2"
+                  - button [ref=e1329] [cursor=pointer]: live_tv
+                - generic [ref=e305]: 1h
+            - listitem [ref=e1330]:
+              - generic [ref=e308]:
+                - generic [ref=e309]: "6"
+                - generic [ref=e311]: sash
+                - link [ref=e1331] [cursor=pointer]:
+                  - /url: /sash2104
+                  - img [ref=e316]
+                - generic [ref=e320]:
+                  - img [ref=e1333]
+                  - generic [ref=e322]: "1405.0"
+                - generic [ref=e323]:
+                  - text: "2"
+                  - button [ref=e1334] [cursor=pointer]: live_tv
+                - generic [ref=e326]: 4h
+            - listitem [ref=e1335]:
+              - generic [ref=e329]:
+                - generic [ref=e330]: "7"
+                - generic [ref=e332]: glass_256
+                - link [ref=e1336] [cursor=pointer]:
+                  - /url: /glass256
+                  - img [ref=e337]
+                - generic [ref=e341]:
+                  - img [ref=e1338]
+                  - generic [ref=e343]: "1369.2"
+                - generic [ref=e344]:
+                  - text: "2"
+                  - button [ref=e1339] [cursor=pointer]: live_tv
+                - generic [ref=e347]: 3h
+            - listitem [ref=e1340]:
+              - generic [ref=e350]:
+                - generic [ref=e351]: "8"
+                - generic [ref=e353]: ush
+                - link [ref=e1341] [cursor=pointer]:
+                  - /url: /kusuha
+                  - img [ref=e358]
+                - generic [ref=e362]:
+                  - img [ref=e1343]
+                  - generic [ref=e364]: "1361.0"
+                - generic [ref=e365]:
+                  - text: "2"
+                  - button [ref=e1344] [cursor=pointer]: live_tv
+                - generic [ref=e368]: 6h
+            - listitem [ref=e1345]:
+              - generic [ref=e371]:
+                - generic [ref=e372]: "9"
+                - generic [ref=e374]: fgwiebfaoish
+                - link [ref=e1346] [cursor=pointer]:
+                  - /url: /fgwiebfaoish
+                  - img [ref=e379]
+                - generic [ref=e383]:
+                  - img [ref=e1348]
+                  - generic [ref=e385]: "1343.6"
+                - generic [ref=e386]:
+                  - text: "2"
+                  - button [ref=e1349] [cursor=pointer]: live_tv
+                - generic [ref=e389]: 2d
+            - listitem [ref=e1350]:
+              - generic [ref=e392]:
+                - generic [ref=e393]: "10"
+                - generic [ref=e395]: Erfan Eshratifar
+                - link [ref=e1351] [cursor=pointer]:
+                  - /url: /erfaneshrati
+                  - img [ref=e400]
+                - generic [ref=e404]:
+                  - img [ref=e1353]
+                  - generic [ref=e406]: "1327.4"
+                - generic [ref=e407]:
+                  - text: "2"
+                  - button [ref=e1354] [cursor=pointer]: live_tv
+                - generic [ref=e410]: 1h
+            - listitem [ref=e1355]:
+              - generic [ref=e413]:
+                - generic [ref=e414]: "11"
+                - generic [ref=e416]: Ezra
+                - link [ref=e1356] [cursor=pointer]:
+                  - /url: /ezberch
+                  - img [ref=e421]
+                - generic [ref=e425]:
+                  - img [ref=e1358]
+                  - generic [ref=e427]: "1320.3"
+                - generic [ref=e428]:
+                  - text: "2"
+                  - button [ref=e1359] [cursor=pointer]: live_tv
+                - generic [ref=e431]: 17h
+            - listitem [ref=e1360]:
+              - generic [ref=e434]:
+                - generic [ref=e435]: "12"
+                - generic [ref=e437]: mtmr_s1
+                - link [ref=e1361] [cursor=pointer]:
+                  - /url: /mtmrs1
+                  - img [ref=e442]
+                - generic [ref=e446]:
+                  - img [ref=e1363]
+                  - generic [ref=e448]: "1300.4"
+                - generic [ref=e449]:
+                  - text: "2"
+                  - button [ref=e1364] [cursor=pointer]: live_tv
+                - generic [ref=e452]: 2d
+            - listitem [ref=e1365]:
+              - generic [ref=e455]:
+                - generic [ref=e456]: "13"
+                - generic [ref=e458]: c-number
+                - link [ref=e1366] [cursor=pointer]:
+                  - /url: /cnumber
+                  - img [ref=e463]
+                - generic [ref=e467]:
+                  - img [ref=e1368]
+                  - generic [ref=e469]: "1299.8"
+                - generic [ref=e470]:
+                  - text: "2"
+                  - button [ref=e1369] [cursor=pointer]: live_tv
+                - generic [ref=e473]: 1d
+            - listitem [ref=e1370]:
+              - generic [ref=e476]:
+                - generic [ref=e477]: "14"
+                - generic [ref=e479]: Naoism
+                - link [ref=e1371] [cursor=pointer]:
+                  - /url: /naoism
+                  - img [ref=e484]
+                - generic [ref=e488]:
+                  - img [ref=e1373]
+                  - generic [ref=e490]: "1281.6"
+                - generic [ref=e491]:
+                  - text: "2"
+                  - button [ref=e1374] [cursor=pointer]: live_tv
+                - generic [ref=e494]: 15h
+            - listitem [ref=e1375]:
+              - generic [ref=e497]:
+                - generic [ref=e498]: "15"
+                - generic [ref=e500]: gasin
+                - link [ref=e1376] [cursor=pointer]:
+                  - /url: /gascin
+                  - img [ref=e505]
+                - generic [ref=e509]:
+                  - img [ref=e1378]
+                  - generic [ref=e511]: "1275.6"
+                - generic [ref=e512]:
+                  - text: "2"
+                  - button [ref=e1379] [cursor=pointer]: live_tv
+                - generic [ref=e515]: 7d
+            - listitem [ref=e1380]:
+              - generic [ref=e518]:
+                - generic [ref=e519]: "16"
+                - generic [ref=e521]: lookaside
+                - link [ref=e1381] [cursor=pointer]:
+                  - /url: /lookaside
+                  - img [ref=e526]
+                - generic [ref=e530]:
+                  - img [ref=e1383]
+                  - generic [ref=e532]: "1267.6"
+                - generic [ref=e533]:
+                  - text: "2"
+                  - button [ref=e1384] [cursor=pointer]: live_tv
+                - generic [ref=e536]: 7d
+            - listitem [ref=e1385]:
+              - generic [ref=e539]:
+                - generic [ref=e540]: "17"
+                - generic [ref=e542]: Qixiu
+                - link [ref=e1386] [cursor=pointer]:
+                  - /url: /lantingguo
+                  - img [ref=e547]
+                - generic [ref=e551]:
+                  - img [ref=e1388]
+                  - generic [ref=e553]: "1254.1"
+                - generic [ref=e554]:
+                  - text: "2"
+                  - button [ref=e1389] [cursor=pointer]: live_tv
+                - generic [ref=e557]: 3d
+            - listitem [ref=e1390]:
+              - generic [ref=e560]:
+                - generic [ref=e561]: "18"
+                - generic [ref=e563]: Andrew Tratz
+                - link [ref=e1391] [cursor=pointer]:
+                  - /url: /jademonk
+                  - img [ref=e568]
+                - generic [ref=e572]:
+                  - img [ref=e1393]
+                  - generic [ref=e574]: "1248.2"
+                - generic [ref=e575]:
+                  - text: "2"
+                  - button [ref=e1394] [cursor=pointer]: live_tv
+                - generic [ref=e578]: 2h
+            - listitem [ref=e1395]:
+              - generic [ref=e581]:
+                - generic [ref=e582]: "19"
+                - generic [ref=e584]: Rasmus Larsen
+                - link [ref=e1396] [cursor=pointer]:
+                  - /url: /synquid
+                  - img [ref=e589]
+                - generic [ref=e593]:
+                  - img [ref=e1398]
+                  - generic [ref=e595]: "1246.1"
+                - generic [ref=e596]:
+                  - text: "2"
+                  - button [ref=e1399] [cursor=pointer]: live_tv
+                - generic [ref=e599]: 8h
+            - listitem [ref=e1400]:
+              - generic [ref=e602]:
+                - generic [ref=e603]: "20"
+                - generic [ref=e605]: Yiheng (Ethan) Cai
+                - link [ref=e1401] [cursor=pointer]:
+                  - /url: /ethanyihengcai
+                  - img [ref=e610]
+                - generic [ref=e614]:
+                  - img [ref=e1403]
+                  - generic [ref=e616]: "1241.0"
+                - generic [ref=e617]:
+                  - text: "2"
+                  - button [ref=e1404] [cursor=pointer]: live_tv
+                - generic [ref=e620]: 4d
+            - listitem [ref=e1405]:
+              - generic [ref=e623]:
+                - generic [ref=e624]: "21"
+                - generic [ref=e626]: istinetz
+                - link [ref=e1406] [cursor=pointer]:
+                  - /url: /istinetz
+                  - img [ref=e631]
+                - generic [ref=e635]:
+                  - img [ref=e1408]
+                  - generic [ref=e637]: "1234.1"
+                - generic [ref=e638]:
+                  - text: "2"
+                  - button [ref=e1409] [cursor=pointer]: live_tv
+                - generic [ref=e641]: 1h
+            - listitem [ref=e1410]:
+              - generic [ref=e644]:
+                - generic [ref=e645]: "22"
+                - generic [ref=e647]: TimeIsGold
+                - link [ref=e1411] [cursor=pointer]:
+                  - /url: /woosungyoon
+                  - img [ref=e652]
+                - generic [ref=e656]:
+                  - img [ref=e1413]
+                  - generic [ref=e658]: "1230.1"
+                - generic [ref=e659]:
+                  - text: "2"
+                  - button [ref=e1414] [cursor=pointer]: live_tv
+                - generic [ref=e662]: 15h
+                - link [ref=e664] [cursor=pointer]:
+                  - /url: /woosungyoon
+                  - generic [ref=e665]: emoji_people
+            - listitem [ref=e1415]:
+              - generic [ref=e667]:
+                - generic [ref=e668]: "23"
+                - generic [ref=e670]: Ousagi
+                - link [ref=e1416] [cursor=pointer]:
+                  - /url: /enzowalter
+                  - img [ref=e675]
+                - generic [ref=e679]:
+                  - img [ref=e1418]
+                  - generic [ref=e681]: "1228.0"
+                - generic [ref=e682]:
+                  - text: "2"
+                  - button [ref=e1419] [cursor=pointer]: live_tv
+                - generic [ref=e685]: 2h
+            - listitem [ref=e1420]:
+              - generic [ref=e688]:
+                - generic [ref=e689]: "24"
+                - generic [ref=e691]: Sean Jones
+                - link [ref=e1421] [cursor=pointer]:
+                  - /url: /seanjones444
+                  - img [ref=e696]
+                - generic [ref=e700]:
+                  - img [ref=e1423]
+                  - generic [ref=e702]: "1222.4"
+                - generic [ref=e703]:
+                  - text: "2"
+                  - button [ref=e1424] [cursor=pointer]: live_tv
+                - generic [ref=e706]: 1d
+            - listitem [ref=e1425]:
+              - generic [ref=e709]:
+                - generic [ref=e710]: "25"
+                - generic [ref=e712]: HassenHamdi Winning InchaAllah
+                - link [ref=e1426] [cursor=pointer]:
+                  - /url: /hassenhamdi
+                  - img [ref=e717]
+                - generic [ref=e721]:
+                  - img [ref=e1428]
+                  - generic [ref=e723]: "1221.0"
+                - generic [ref=e724]:
+                  - text: "2"
+                  - button [ref=e1429] [cursor=pointer]: live_tv
+                - generic [ref=e727]: 20h
+            - listitem [ref=e1430]:
+              - generic [ref=e730]:
+                - generic [ref=e731]: "26"
+                - generic [ref=e733]: NightlyOrbit
+                - link [ref=e1431] [cursor=pointer]:
+                  - /url: /ebinan92
+                  - img [ref=e738]
+                - generic [ref=e742]:
+                  - img [ref=e1433]
+                  - generic [ref=e744]: "1212.3"
+                - generic [ref=e745]:
+                  - text: "2"
+                  - button [ref=e1434] [cursor=pointer]: live_tv
+                - generic [ref=e748]: 2d
+            - listitem [ref=e1435]:
+              - generic [ref=e751]:
+                - generic [ref=e752]: "27"
+                - generic [ref=e754]: K_ChanHo
+                - link [ref=e1436] [cursor=pointer]:
+                  - /url: /kchanho
+                  - img [ref=e759]
+                - generic [ref=e763]:
+                  - img [ref=e1438]
+                  - generic [ref=e765]: "1206.5"
+                - generic [ref=e766]:
+                  - text: "2"
+                  - button [ref=e1439] [cursor=pointer]: live_tv
+                - generic [ref=e769]: 2d
+            - listitem [ref=e1440]:
+              - generic [ref=e772]:
+                - generic [ref=e773]: "28"
+                - generic [ref=e775]: ra5anchor
+                - link [ref=e1441] [cursor=pointer]:
+                  - /url: /junmitsui
+                  - img [ref=e780]
+                - generic [ref=e784]:
+                  - img [ref=e1443]
+                  - generic [ref=e786]: "1195.0"
+                - generic [ref=e787]:
+                  - text: "2"
+                  - button [ref=e1444] [cursor=pointer]: live_tv
+                - generic [ref=e790]: 1d
+            - listitem [ref=e1445]:
+              - generic [ref=e793]:
+                - generic [ref=e794]: "29"
+                - generic [ref=e796]: arcobi
+                - link [ref=e1446] [cursor=pointer]:
+                  - /url: /bossaertsvincent
+                  - img [ref=e801]
+                - generic [ref=e805]:
+                  - img [ref=e1448]
+                  - generic [ref=e807]: "1187.0"
+                - generic [ref=e808]:
+                  - text: "2"
+                  - button [ref=e1449] [cursor=pointer]: live_tv
+                - generic [ref=e811]: 2d
+            - listitem [ref=e1450]:
+              - generic [ref=e814]:
+                - generic [ref=e815]: "30"
+                - generic [ref=e817]: Kha Vo
+                - link [ref=e1451] [cursor=pointer]:
+                  - /url: /khahuras
+                  - img [ref=e822]
+                - generic [ref=e826]:
+                  - img [ref=e1453]
+                  - generic [ref=e828]: "1186.3"
+                - generic [ref=e829]:
+                  - text: "2"
+                  - button [ref=e1454] [cursor=pointer]: live_tv
+                - generic [ref=e832]: 2h
+            - listitem [ref=e1455]:
+              - generic [ref=e835]:
+                - generic [ref=e836]: "31"
+                - generic [ref=e838]: Caiden Matthews
+                - link [ref=e1456] [cursor=pointer]:
+                  - /url: /caidenmatthews
+                  - img [ref=e843]
+                - generic [ref=e847]:
+                  - img [ref=e1458]
+                  - generic [ref=e849]: "1159.7"
+                - generic [ref=e850]:
+                  - text: "2"
+                  - button [ref=e1459] [cursor=pointer]: live_tv
+                - generic [ref=e853]: 2h
+            - listitem [ref=e1460]:
+              - generic [ref=e856]:
+                - generic [ref=e857]: "32"
+                - generic [ref=e859]: aDg4b
+                - link [ref=e1461] [cursor=pointer]:
+                  - /url: /egrehbbt
+                  - img [ref=e864]
+                - generic [ref=e868]:
+                  - img [ref=e1463]
+                  - generic [ref=e870]: "1156.2"
+                - generic [ref=e871]:
+                  - text: "1"
+                  - button [ref=e1464] [cursor=pointer]: live_tv
+                - generic [ref=e874]: 1h
+                - link [ref=e876] [cursor=pointer]:
+                  - /url: /egrehbbt
+                  - generic [ref=e877]: emoji_people
+            - listitem [ref=e1465]:
+              - generic [ref=e879]:
+                - generic [ref=e880]: "33"
+                - generic [ref=e882]: Ha Quang Minh
+                - link [ref=e1466] [cursor=pointer]:
+                  - /url: /haaminh
+                  - img [ref=e887]
+                - generic [ref=e891]:
+                  - img [ref=e1468]
+                  - generic [ref=e893]: "1153.3"
+                - generic [ref=e894]:
+                  - text: "2"
+                  - button [ref=e1469] [cursor=pointer]: live_tv
+                - generic [ref=e897]: 12h
+            - listitem [ref=e1470]:
+              - generic [ref=e900]:
+                - generic [ref=e901]: "34"
+                - generic [ref=e903]: klog
+                - link [ref=e1471] [cursor=pointer]:
+                  - /url: /mhrzmmhrzm
+                  - img [ref=e908]
+                - generic [ref=e912]:
+                  - img [ref=e1473]
+                  - generic [ref=e914]: "1152.0"
+                - generic [ref=e915]:
+                  - text: "2"
+                  - button [ref=e1474] [cursor=pointer]: live_tv
+                - generic [ref=e918]: 6d
+            - listitem [ref=e1475]:
+              - generic [ref=e921]:
+                - generic [ref=e922]: "35"
+                - generic [ref=e924]: Nandodemo
+                - link [ref=e1476] [cursor=pointer]:
+                  - /url: /llkh0a
+                  - img [ref=e929]
+                - generic [ref=e933]:
+                  - img [ref=e1478]
+                  - generic [ref=e935]: "1151.0"
+                - generic [ref=e936]:
+                  - text: "2"
+                  - button [ref=e1479] [cursor=pointer]: live_tv
+                - generic [ref=e939]: 19m
+            - listitem [ref=e1480]:
+              - generic [ref=e942]:
+                - generic [ref=e943]: "36"
+                - generic [ref=e945]: Vincent Schuler
+                - link [ref=e1481] [cursor=pointer]:
+                  - /url: /vincentschuler
+                  - img [ref=e950]
+                - generic [ref=e954]:
+                  - img [ref=e1483]
+                  - generic [ref=e956]: "1149.3"
+                - generic [ref=e957]:
+                  - text: "2"
+                  - button [ref=e1484] [cursor=pointer]: live_tv
+                - generic [ref=e960]: 3h
+            - listitem [ref=e1485]:
+              - generic [ref=e963]:
+                - generic [ref=e964]: "37"
+                - generic [ref=e966]: Mille Initiate
+                - link [ref=e1486] [cursor=pointer]:
+                  - /url: /milleinitiate
+                  - img [ref=e971]
+                - generic [ref=e975]:
+                  - img [ref=e1488]
+                  - generic [ref=e977]: "1149.3"
+                - generic [ref=e978]:
+                  - text: "2"
+                  - button [ref=e1489] [cursor=pointer]: live_tv
+                - generic [ref=e981]: 9h
+            - listitem [ref=e1490]:
+              - generic [ref=e984]:
+                - generic [ref=e985]: "38"
+                - generic [ref=e987]: sary sary
+                - link [ref=e1491] [cursor=pointer]:
+                  - /url: /sarysary
+                  - img [ref=e992]
+                - generic [ref=e996]:
+                  - img [ref=e1493]
+                  - generic [ref=e998]: "1148.6"
+                - generic [ref=e999]:
+                  - text: "2"
+                  - button [ref=e1494] [cursor=pointer]: live_tv
+                - generic [ref=e1002]: 15h
+            - listitem [ref=e1495]:
+              - generic [ref=e1005]:
+                - generic [ref=e1006]: "39"
+                - generic [ref=e1008]: Thinker
+                - generic [ref=e1010]:
+                  - link [ref=e1496] [cursor=pointer]:
+                    - /url: /linkinpony
+                    - img [ref=e1013]
+                  - link [ref=e1498] [cursor=pointer]:
+                    - /url: /kirakoko
+                    - img [ref=e1018]
+                  - link [ref=e1500] [cursor=pointer]:
+                    - /url: /dgaodiao
+                    - img [ref=e1023]
+                  - link [ref=e1502] [cursor=pointer]:
+                    - /url: /lemomew
+                    - img [ref=e1028]
+                - generic [ref=e1032]:
+                  - img [ref=e1504]
+                  - generic [ref=e1034]: "1147.6"
+                - generic [ref=e1035]:
+                  - text: "2"
+                  - button [ref=e1505] [cursor=pointer]: live_tv
+                - generic [ref=e1038]: 1h
+            - listitem [ref=e1506]:
+              - generic [ref=e1041]:
+                - generic [ref=e1042]: "40"
+                - generic [ref=e1044]: burgundy
+                - link [ref=e1507] [cursor=pointer]:
+                  - /url: /burgundy
+                  - img [ref=e1049]
+                - generic [ref=e1053]:
+                  - img [ref=e1509]
+                  - generic [ref=e1055]: "1146.1"
+                - generic [ref=e1056]:
+                  - text: "2"
+                  - button [ref=e1510] [cursor=pointer]: live_tv
+                - generic [ref=e1059]: 1d
+            - listitem [ref=e1511]:
+              - generic [ref=e1062]:
+                - generic [ref=e1063]: "41"
+                - generic [ref=e1065]: "24601"
+                - link [ref=e1512] [cursor=pointer]:
+                  - /url: /jftripp
+                  - img [ref=e1070]
+                - generic [ref=e1074]:
+                  - img [ref=e1514]
+                  - generic [ref=e1076]: "1136.9"
+                - generic [ref=e1077]:
+                  - text: "2"
+                  - button [ref=e1515] [cursor=pointer]: live_tv
+                - generic [ref=e1080]: 1d
+            - listitem [ref=e1516]:
+              - generic [ref=e1083]:
+                - generic [ref=e1084]: "42"
+                - generic [ref=e1086]: siman
+                - link [ref=e1517] [cursor=pointer]:
+                  - /url: /simann
+                  - img [ref=e1091]
+                - generic [ref=e1095]:
+                  - img [ref=e1519]
+                  - generic [ref=e1097]: "1122.2"
+                - generic [ref=e1098]:
+                  - text: "2"
+                  - button [ref=e1520] [cursor=pointer]: live_tv
+                - generic [ref=e1101]: 1d
+            - listitem [ref=e1521]:
+              - generic [ref=e1104]:
+                - generic [ref=e1105]: "43"
+                - generic [ref=e1107]: Quoc Tran Anh Le
+                - link [ref=e1522] [cursor=pointer]:
+                  - /url: /anhlquctrn
+                  - img [ref=e1112]
+                - generic [ref=e1116]:
+                  - img [ref=e1524]
+                  - generic [ref=e1118]: "1121.0"
+                - generic [ref=e1119]:
+                  - text: "2"
+                  - button [ref=e1525] [cursor=pointer]: live_tv
+                - generic [ref=e1122]: 5h
+            - listitem [ref=e1526]:
+              - generic [ref=e1125]:
+                - generic [ref=e1126]: "44"
+                - generic [ref=e1128]: Bangrocket
+                - link [ref=e1527] [cursor=pointer]:
+                  - /url: /joshuaheidorn
+                  - img [ref=e1133]
+                - generic [ref=e1137]:
+                  - img [ref=e1529]
+                  - generic [ref=e1139]: "1118.3"
+                - generic [ref=e1140]:
+                  - text: "2"
+                  - button [ref=e1530] [cursor=pointer]: live_tv
+                - generic [ref=e1143]: 6h
+            - listitem [ref=e1531]:
+              - generic [ref=e1146]:
+                - generic [ref=e1147]: "45"
+                - generic [ref=e1149]: Sukjae Cho
+                - link [ref=e1532] [cursor=pointer]:
+                  - /url: /jandjenter
+                  - img [ref=e1154]
+                - generic [ref=e1158]:
+                  - img [ref=e1534]
+                  - generic [ref=e1160]: "1117.7"
+                - generic [ref=e1161]:
+                  - text: "2"
+                  - button [ref=e1535] [cursor=pointer]: live_tv
+                - generic [ref=e1164]: 10h
+            - listitem [ref=e1536]:
+              - generic [ref=e1167]:
+                - generic [ref=e1168]: "46"
+                - generic [ref=e1170]: Ryan Tuosto
+                - link [ref=e1537] [cursor=pointer]:
+                  - /url: /ryantuosto
+                  - img [ref=e1175]
+                - generic [ref=e1179]:
+                  - img [ref=e1539]
+                  - generic [ref=e1181]: "1112.7"
+                - generic [ref=e1182]:
+                  - text: "2"
+                  - button [ref=e1540] [cursor=pointer]: live_tv
+                - generic [ref=e1185]: 26m
+            - listitem [ref=e1541]:
+              - generic [ref=e1188]:
+                - generic [ref=e1189]: "47"
+                - generic [ref=e1191]: Joe Bishop
+                - link [ref=e1542] [cursor=pointer]:
+                  - /url: /ebjdoe
+                  - img [ref=e1196]
+                - generic [ref=e1200]:
+                  - img [ref=e1544]
+                  - generic [ref=e1202]: "1102.3"
+                - generic [ref=e1203]:
+                  - text: "2"
+                  - button [ref=e1545] [cursor=pointer]: live_tv
+                - generic [ref=e1206]: 6h
+            - listitem [ref=e1546]:
+              - generic [ref=e1209]:
+                - generic [ref=e1210]: "48"
+                - generic [ref=e1212]: SebastianGil00
+                - generic [ref=e1214]:
+                  - link [ref=e1547] [cursor=pointer]:
+                    - /url: /sebastiangil00
+                    - img [ref=e1217]
+                  - link [ref=e1549] [cursor=pointer]:
+                    - /url: /kimberleyduran
+                    - img [ref=e1222]
+                - generic [ref=e1226]:
+                  - img [ref=e1551]
+                  - generic [ref=e1228]: "1101.7"
+                - generic [ref=e1229]:
+                  - text: "2"
+                  - button [ref=e1552] [cursor=pointer]: live_tv
+                - generic [ref=e1232]: 5d
+            - listitem [ref=e1553]:
+              - generic [ref=e1235]:
+                - generic [ref=e1236]: "49"
+                - generic [ref=e1238]: Dapp
+                - link [ref=e1554] [cursor=pointer]:
+                  - /url: /lgloria
+                  - img [ref=e1243]
+                - generic [ref=e1247]:
+                  - img [ref=e1556]
+                  - generic [ref=e1249]: "1099.1"
+                - generic [ref=e1250]:
+                  - text: "2"
+                  - button [ref=e1557] [cursor=pointer]: live_tv
+                - generic [ref=e1253]: 11h
+          - generic [ref=e1255]:
+            - generic [ref=e1256]: 50 - 1524
+            - button [ref=e1558] [cursor=pointer]:
+              - generic [ref=e1259]: unfold_more
+              - generic [ref=e1260]: See 1475 More
+    - alert [ref=e12]
+  - region "Game History" [ref=e1562]:
+    - generic [ref=e1563]:
+      - button "Close" [active] [ref=e1564] [cursor=pointer]: arrow_back
+      - heading "Game History" [level=1] [ref=e1565]
+    - separator [ref=e1566]
+    - generic [ref=e1569]:
+      - generic [ref=e1570]:
+        - generic [ref=e1571]:
+          - heading "Games" [level=2] [ref=e1572]
+          - button "Filters" [ref=e1574] [cursor=pointer]:
+            - generic [ref=e1575]: filter_list
+            - generic [ref=e1576]: Filters
+          - button "Collapse Episodes" [ref=e1577] [cursor=pointer]: left_panel_close
+        - generic [ref=e1581]:
+          - listitem [ref=e1583]:
+            - generic "7 minutes ago" [ref=e1584]: 7m ago
+            - button "kovi🏆 NaviCE" [ref=e1585]:
+              - generic [ref=e1587]:
+                - generic [ref=e1588]: smart_toy
+                - paragraph [ref=e1589]: kovi🏆
+              - separator [ref=e1590]
+              - generic [ref=e1592]:
+                - generic [ref=e1593]: smart_toy
+                - paragraph [ref=e1594]: NaviCE
+          - listitem [ref=e1596]:
+            - generic "3 hours ago" [ref=e1597]: 3h ago
+            - button "kovi🏆 Yash Marathe" [ref=e1598]:
+              - generic [ref=e1600]:
+                - generic [ref=e1601]: smart_toy
+                - paragraph [ref=e1602]: kovi🏆
+              - separator [ref=e1603]
+              - generic [ref=e1605]:
+                - generic [ref=e1606]: smart_toy
+                - paragraph [ref=e1607]: Yash Marathe
+          - listitem [ref=e1609]:
+            - generic "6 hours ago" [ref=e1610]: 6h ago
+            - button "kovi🏆 Aizaki" [ref=e1611]:
+              - generic [ref=e1613]:
+                - generic [ref=e1614]: smart_toy
+                - paragraph [ref=e1615]: kovi🏆
+              - separator [ref=e1616]
+              - generic [ref=e1618]:
+                - generic [ref=e1619]: smart_toy
+                - paragraph [ref=e1620]: Aizaki
+          - listitem [ref=e1622]:
+            - generic "8 hours ago" [ref=e1623]: 8h ago
+            - button "kovi🏆 Juracan" [ref=e1624]:
+              - generic [ref=e1626]:
+                - generic [ref=e1627]: smart_toy
+                - paragraph [ref=e1628]: kovi🏆
+              - separator [ref=e1629]
+              - generic [ref=e1631]:
+                - generic [ref=e1632]: smart_toy
+                - paragraph [ref=e1633]: Juracan
+          - listitem [ref=e1635]:
+            - generic "11 hours ago" [ref=e1636]: 11h ago
+            - button "kovi🏆 Koen Nuis" [ref=e1637]:
+              - generic [ref=e1639]:
+                - generic [ref=e1640]: smart_toy
+                - paragraph [ref=e1641]: kovi🏆
+              - separator [ref=e1642]
+              - generic [ref=e1644]:
+                - generic [ref=e1645]: smart_toy
+                - paragraph [ref=e1646]: Koen Nuis
+          - listitem [ref=e1648]:
+            - generic "13 hours ago" [ref=e1649]: 13h ago
+            - button "kovi🏆 half_centuries" [ref=e1650]:
+              - generic [ref=e1652]:
+                - generic [ref=e1653]: smart_toy
+                - paragraph [ref=e1654]: kovi🏆
+              - separator [ref=e1655]
+              - generic [ref=e1657]:
+                - generic [ref=e1658]: smart_toy
+                - paragraph [ref=e1659]: half_centuries
+          - listitem [ref=e1661]:
+            - generic "15 hours ago" [ref=e1662]: 15h ago
+            - button "kovi🏆 Sangram Patil" [ref=e1663]:
+              - generic [ref=e1665]:
+                - generic [ref=e1666]: smart_toy
+                - paragraph [ref=e1667]: kovi🏆
+              - separator [ref=e1668]
+              - generic [ref=e1670]:
+                - generic [ref=e1671]: smart_toy
+                - paragraph [ref=e1672]: Sangram Patil
+      - iframe [ref=e1676]:
+        - generic [ref=f4e5]:
+          - status [ref=f4e6]
+          - generic [ref=f4e10]:
+            - button "Restart" [ref=f4e11] [cursor=pointer]:
+              - img [ref=f4e12]
+            - button "Previous step" [disabled] [ref=f4e14] [cursor=pointer]:
+              - img [ref=f4e15]
+            - button "Pause" [ref=f4e17] [cursor=pointer]:
+              - img [ref=f4e18]
+            - button "Next step" [ref=f4e20] [cursor=pointer]:
+              - img [ref=f4e21]
+            - slider "Step slider" [ref=f4e24] [cursor=pointer]: "0"
+            - generic [ref=f4e25]: 1 / 65
+            - combobox "Playback speed" [ref=f4e26] [cursor=pointer]:
+              - option "0.25x"
+              - option "0.5x"
+              - option "1x" [selected]
+              - option "1.5x"
+              - option "2x"
+              - option "4x"

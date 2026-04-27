@@ -1,0 +1,87 @@
+{
+  "game_meta": {
+    "episode_id": 75514378,
+    "submission_id": 51987365,
+    "total_turns": 220,
+    "players": {
+      "0": "Mahdieh Rezaie (WINNER - 737 ships)",
+      "1": "kovi (LOSER - 2578 ships)",
+      "2": "yuto083 (914 ships)",
+      "3": "Arne De Brabandere (538 ships)"
+    }
+  },
+  "critical_turns": {
+    "turn_1": {
+      "note": "Starting state - all players own initial planets",
+      "mahdieh_ships": null,
+      "kovi_ships": null,
+      "key_observation": ""
+    },
+    "turn_20": {
+      "note": "Early game aggression patterns",
+      "mahdieh_ships": null,
+      "kovi_ships": null,
+      "planets_captured": [],
+      "key_observation": ""
+    },
+    "turn_50": {
+      "note": "FIRST COMET APPEARS - who captures it?",
+      "mahdieh_ships": null,
+      "kovi_ships": null,
+      "comet_captured_by": null,
+      "key_observation": ""
+    },
+    "turn_100": {
+      "note": "Mid-game inflection point",
+      "mahdieh_ships": null,
+      "kovi_ships": null,
+      "power_distribution": {},
+      "key_observation": ""
+    },
+    "turn_150": {
+      "note": "SECOND COMET - strategic momentum",
+      "mahdieh_ships": null,
+      "kovi_ships": null,
+      "comet_captured_by": null,
+      "key_observation": ""
+    },
+    "turn_200": {
+      "note": "End-game is visible - who's winning?",
+      "mahdieh_ships": null,
+      "kovi_ships": null,
+      "key_observation": ""
+    },
+    "turn_220": {
+      "note": "FINAL STATE - game over",
+      "mahdieh_ships": 737,
+      "kovi_ships": 2578,
+      "outcome": "Mahdieh WINS with 3.5× fewer ships"
+    }
+  },
+  "strategic_questions": {
+    "mahdieh_strategy": {
+      "first_planet_targeted": null,
+      "fleet_send_ratio_early": null,
+      "comet_strategy": "Which comets captured?",
+      "sun_avoidance": "Any special dodging observed?",
+      "key_insight": ""
+    },
+    "kovi_mistakes": {
+      "early_game_error": {
+        "turn": null,
+        "description": "",
+        "consequence": ""
+      },
+      "mid_game_error": {
+        "turn": null,
+        "description": "",
+        "consequence": ""
+      },
+      "critical_mistake": {
+        "turn": null,
+        "description": "THE decision that lost the game",
+        "consequence": ""
+      }
+    }
+  }
+}

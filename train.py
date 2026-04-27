@@ -1,20 +1,19 @@
-"""Entraînement CMA-ES pour optimiser les poids du bot.
+"""Entraînement CMA-ES — V3.
 
-Usage:
-    python3 train.py              # lance CMA-ES, sauvegarde meilleurs poids
-    python3 train.py --quick      # entraînement court pour itérer
-    python3 train.py --medium     # entraînement intermédiaire
-    python3 train.py --long       # entraînement long
-    python3 train.py --jobs 4     # force 4 processus parallèles
-    python3 train.py --test       # teste bot avec poids par défaut vs baselines
-    python3 train.py --test-best  # teste bot avec meilleurs poids sauvegardés
+Nouveautés vs V2:
+    --zoo          : utilise opponents/ZOO complet (8 adversaires) au lieu de 3
+    --surrogate    : Gaussian Process accéléré, sample 4× la popsize, eval top-k
+    --league       : demon discovery toutes les N générations (défaut N=10)
+    --profile      : cProfile sur 5 parties, sort un rapport
+    --opponents A,B,C : restreint le pool à une liste
 
-Principe:
-    CMA-ES explore l'espace des 14 poids. Chaque candidat joue N parties
-    en self-play + vs baselines. Le win-rate devient le score à maximiser.
-    CMA-ES ajuste sa distribution de recherche selon les résultats.
+Flags conservés:
+    --quick / --medium / --long
+    --jobs N
+    --test / --test-best / --generate
 
-Durée estimée: dépend du profil et de --jobs.
+Principe identique à V2 : CMA-ES sur 14 poids, score = win-rate pondéré,
+sauvegarde dans best_weights.json.
 """
 
 import sys
@@ -23,53 +22,49 @@ import math
 import random
 import argparse
 import os
+import time
 from multiprocessing import get_context
 from pathlib import Path
 
 from kaggle_environments import make
 import bot
+from opponents import ZOO, get as get_opp
+from training.surrogate import Surrogate
+from training.league import League, discover_demon
 
 
 WEIGHTS_FILE = Path("best_weights.json")
-N_GAMES_EVAL = 10   # parties par candidat pendant entraînement (rapide)
-N_GAMES_TEST = 30   # parties pour test final (précis)
-SIGMA0       = 0.3  # bruit initial CMA-ES (à réduire si déjà bon point de départ)
-MAX_GEN      = 300  # générations max
-POPSIZE      = 12   # candidats par génération
+N_GAMES_EVAL = 10
+N_GAMES_TEST = 30
+SIGMA0       = 0.3
+MAX_GEN      = 300
+POPSIZE      = 12
 JOBS         = max(1, min(os.cpu_count() or 1, POPSIZE))
 
+# Pool d'adversaires par défaut (compat V2)
+DEFAULT_OPPONENT_NAMES = ["greedy", "self", "random"]
+DEFAULT_OPPONENT_WEIGHTS = {"greedy": 1.0, "self": 2.0, "random": 0.5,
+                             "passive": 0.3, "starter": 1.0,
+                             "distance": 1.0, "sun_dodge": 1.0,
+                             "structured": 1.5, "orbit_stars": 1.5}
+
+# Pool étendu si --zoo
+ZOO_OPPONENT_NAMES = ["greedy", "self", "starter", "distance", "sun_dodge",
+                       "structured", "orbit_stars"]
+
 PROFILES = {
-    "quick": {
-        "N_GAMES_EVAL": 2,
-        "N_GAMES_TEST": 10,
-        "MAX_GEN": 20,
-        "POPSIZE": 6,
-        "SIGMA0": 0.3,
-    },
-    "medium": {
-        "N_GAMES_EVAL": 5,
-        "N_GAMES_TEST": 20,
-        "MAX_GEN": 80,
-        "POPSIZE": 8,
-        "SIGMA0": 0.25,
-    },
-    "long": {
-        "N_GAMES_EVAL": 10,
-        "N_GAMES_TEST": 30,
-        "MAX_GEN": 300,
-        "POPSIZE": 12,
-        "SIGMA0": 0.3,
-    },
+    "rocket": {"N_GAMES_EVAL": 2,  "N_GAMES_TEST": 10, "MAX_GEN": 5,   "POPSIZE": 6,  "SIGMA0": 0.3},
+    "quick":  {"N_GAMES_EVAL": 2,  "N_GAMES_TEST": 10, "MAX_GEN": 20,  "POPSIZE": 6,  "SIGMA0": 0.3},
+    "medium": {"N_GAMES_EVAL": 5,  "N_GAMES_TEST": 20, "MAX_GEN": 80,  "POPSIZE": 8,  "SIGMA0": 0.25},
+    "long":   {"N_GAMES_EVAL": 10, "N_GAMES_TEST": 30, "MAX_GEN": 300, "POPSIZE": 12, "SIGMA0": 0.3},
+    "smoke":  {"N_GAMES_EVAL": 1,  "N_GAMES_TEST": 2,  "MAX_GEN": 2,   "POPSIZE": 4,  "SIGMA0": 0.3},
 }
 
 
 def apply_profile(profile):
-    """Applique un profil de vitesse/précision à la config globale."""
     global N_GAMES_EVAL, N_GAMES_TEST, SIGMA0, MAX_GEN, POPSIZE, JOBS
-
     if profile is None:
         return
-
     cfg = PROFILES[profile]
     N_GAMES_EVAL = cfg["N_GAMES_EVAL"]
     N_GAMES_TEST = cfg["N_GAMES_TEST"]
@@ -80,49 +75,14 @@ def apply_profile(profile):
 
 
 def set_jobs(jobs):
-    """Configure le nombre de processus worker."""
     global JOBS
     if jobs is not None:
         JOBS = max(1, jobs)
 
 
-# ── Baselines ────────────────────────────────────────────────────────────────
-
-def passive_agent(obs, config=None):
-    return []
-
-
-def random_agent(obs, config=None):
-    planets = obs.get("planets", [])
-    me = obs.get("player", 0)
-    moves = []
-    for p in planets:
-        if p[1] == me and p[5] > 10:
-            angle = random.uniform(0, 2 * math.pi)
-            moves.append([p[0], angle, p[5] // 2])
-    return moves
-
-
-def greedy_agent(obs, config=None):
-    """Greedy: attaque planète la plus proche."""
-    planets = obs.get("planets", [])
-    me = obs.get("player", 0)
-    my = [p for p in planets if p[1] == me]
-    others = [p for p in planets if p[1] != me]
-    moves = []
-    for src in my:
-        if src[5] < 10 or not others:
-            continue
-        tgt = min(others, key=lambda t: math.hypot(t[2] - src[2], t[3] - src[3]))
-        angle = math.atan2(tgt[3] - src[3], tgt[2] - src[2])
-        moves.append([src[0], angle, src[5] // 2])
-    return moves
-
-
 # ── Évaluation ───────────────────────────────────────────────────────────────
 
 def make_agent_with_weights(weights):
-    """Retourne un agent qui utilise des poids spécifiques."""
     def _agent(obs, config=None):
         old = bot.WEIGHTS
         bot.WEIGHTS = weights
@@ -133,7 +93,6 @@ def make_agent_with_weights(weights):
 
 
 def play_game(agent_a, agent_b):
-    """Joue 1 partie, retourne (reward_a, reward_b)."""
     env = make("orbit_wars", debug=False)
     env.run([agent_a, agent_b])
     last = env.steps[-1]
@@ -142,93 +101,89 @@ def play_game(agent_a, agent_b):
     return ra, rb
 
 
-def evaluate_weights(weights, n_games=N_GAMES_EVAL, verbose=False):
-    """
-    Évalue un vecteur de poids.
-    Retourne score entre 0 et 1 (win-rate pondéré).
-    """
-    candidate = make_agent_with_weights(weights)
-    opponents = [
-        ("greedy",   greedy_agent,   1.0),  # (nom, agent, poids dans score)
-        ("self",     bot.agent,      2.0),  # self-play compte double
-        ("random",   random_agent,   0.5),
-    ]
+def _resolve_opponent(name):
+    """Retourne agent callable. 'self' → bot.agent (avec poids défaut)."""
+    if name == "self":
+        return bot.agent
+    return get_opp(name)
 
-    wins, total_weight = 0.0, 0.0
-    for opp_name, opp, w in opponents:
-        w_count = 0
+
+def evaluate_weights(weights, n_games=None, opponent_names=None, verbose=False):
+    """Score = win-rate pondéré contre une liste d'adversaires."""
+    if n_games is None:
+        n_games = N_GAMES_EVAL
+    if opponent_names is None:
+        opponent_names = DEFAULT_OPPONENT_NAMES
+
+    candidate = make_agent_with_weights(weights)
+    wins, total_w = 0.0, 0.0
+    for name in opponent_names:
+        opp = _resolve_opponent(name)
+        w = DEFAULT_OPPONENT_WEIGHTS.get(name, 1.0)
+        won = 0
         for i in range(n_games):
             if i % 2 == 0:
                 ra, rb = play_game(candidate, opp)
             else:
                 rb, ra = play_game(opp, candidate)
             if ra > rb:
-                w_count += 1
-        wr = w_count / n_games
+                won += 1
+        wr = won / max(n_games, 1)
         if verbose:
-            print(f"  vs {opp_name:8s}: {w_count}/{n_games}  wr={wr:.0%}")
+            print(f"  vs {name:12s}: {won}/{n_games}  wr={wr:.0%}")
         wins += wr * w
-        total_weight += w
-
-    score = wins / total_weight
-    return score
+        total_w += w
+    return wins / max(total_w, 1e-9)
 
 
 def evaluate_candidate_worker(args):
-    """Worker multiprocessing: évalue un candidat CMA-ES."""
-    weights, n_games = args
-    return evaluate_weights(list(weights), n_games=n_games)
+    weights, n_games, opp_names = args
+    return evaluate_weights(list(weights), n_games=n_games, opponent_names=opp_names)
 
 
-def evaluate_candidates(candidates):
-    """Évalue les candidats en parallèle si JOBS > 1."""
+def evaluate_candidates(candidates, opp_names):
     if JOBS <= 1 or len(candidates) <= 1:
-        return [evaluate_weights(c, n_games=N_GAMES_EVAL) for c in candidates]
-
-    worker_args = [(list(c), N_GAMES_EVAL) for c in candidates]
-    ctx = get_context("fork")
+        return [evaluate_weights(c, n_games=N_GAMES_EVAL, opponent_names=opp_names)
+                for c in candidates]
+    args = [(list(c), N_GAMES_EVAL, opp_names) for c in candidates]
+    # Sur Windows, fork n'existe pas → spawn. Plus lent au démarrage.
+    ctx = get_context("spawn") if os.name == "nt" else get_context("fork")
     with ctx.Pool(processes=min(JOBS, len(candidates))) as pool:
-        return pool.map(evaluate_candidate_worker, worker_args)
+        return pool.map(evaluate_candidate_worker, args)
 
 
-def get_opponent(name):
-    if name == "passive":
-        return passive_agent
-    if name == "random":
-        return random_agent
-    if name == "greedy":
-        return greedy_agent
-    if name == "self":
-        return bot.agent
-    raise ValueError(f"Adversaire inconnu: {name}")
+# ── Demon discovery ─────────────────────────────────────────────────────────
+
+def evaluate_vs_target_factory(target_weights, n_games=2):
+    """Retourne fonction qui évalue win-rate de candidate vs target."""
+    target_agent = make_agent_with_weights(target_weights)
+
+    def _eval(candidate_weights):
+        cand = make_agent_with_weights(list(candidate_weights))
+        won = 0
+        for i in range(n_games):
+            if i % 2 == 0:
+                ra, rb = play_game(cand, target_agent)
+            else:
+                rb, ra = play_game(target_agent, cand)
+            if ra > rb:
+                won += 1
+        return won / n_games
+
+    return _eval
 
 
-def play_test_game_worker(args):
-    """Worker multiprocessing: joue une partie de test."""
-    weights, opp_name, game_idx = args
-    candidate = make_agent_with_weights(weights)
-    opponent = get_opponent(opp_name)
+# ── CMA-ES principal ────────────────────────────────────────────────────────
 
-    if game_idx % 2 == 0:
-        ra, rb = play_game(candidate, opponent)
-    else:
-        rb, ra = play_game(opponent, candidate)
-    return 1 if ra > rb else 0
-
-
-# ── CMA-ES ───────────────────────────────────────────────────────────────────
-
-def run_cma_es():
+def run_cma_es(opp_names, use_surrogate=False, use_league=False, league_period=10):
     try:
         import cma
     except ImportError:
         print("Installe cma: pip install cma")
         sys.exit(1)
 
-    # Point de départ: meilleurs poids sauvegardés ou défaut
     if WEIGHTS_FILE.exists():
-        with open(WEIGHTS_FILE) as f:
-            data = json.load(f)
+        data = json.loads(WEIGHTS_FILE.read_text())
         start = data["weights"]
         best_score = data.get("score", 0.0)
         print(f"Reprise depuis {WEIGHTS_FILE} (score={best_score:.3f})")
@@ -240,87 +195,146 @@ def run_cma_es():
     best_weights = list(start)
 
     es = cma.CMAEvolutionStrategy(
-        start,
-        SIGMA0,
+        start, SIGMA0,
         {
-            "maxiter":    MAX_GEN,
-            "popsize":    POPSIZE,  # candidats par génération
-            "tolx":       1e-4,
-            "verbose":    1,
-            "bounds":     [
-                # bornes min/max pour chaque poids
+            "maxiter": MAX_GEN, "popsize": POPSIZE, "tolx": 1e-4, "verbose": 1,
+            "bounds": [
                 [0.1, 0.1, 5.0, 0.0, 0.0, 1.0, 0.1, 0.0, 0.0, 0.01, 0.3, 0.0, 0.5, 0.0],
                 [5.0, 5.0, 100.0, 2.0, 0.5, 3.0, 1.0, 1.0, 2.0, 0.5, 2.0, 1.0, 3.0, 1.0],
             ],
         }
     )
 
+    surrogate = Surrogate() if use_surrogate else None
+    league = League() if use_league else None
+
+    print(f"Config: gen={MAX_GEN}, popsize={POPSIZE}, games={N_GAMES_EVAL}, "
+          f"jobs={JOBS}, surrogate={use_surrogate}, league={use_league}")
+    print(f"Adversaires: {opp_names}")
+    if league is not None and len(league):
+        print(f"  + {len(league)} demons preexistants")
+
     gen = 0
-    print(
-        f"Config: gen={MAX_GEN}, popsize={POPSIZE}, "
-        f"games_eval={N_GAMES_EVAL}, jobs={JOBS}"
-    )
     while not es.stop():
         gen += 1
-        candidates = es.ask()
+        t0 = time.perf_counter()
 
-        # Évaluer tous les candidats. Chaque candidat est indépendant.
-        scores = evaluate_candidates(candidates)
+        # Étendre le pool avec les démons (1-2 sélectionnés au hasard par gen)
+        active_opps = list(opp_names)
+        if league is not None and len(league):
+            demons = league.all_weights()
+            picked = random.sample(demons, min(2, len(demons)))
+            for i, dw in enumerate(picked):
+                # Enregistre temporairement le démon comme agent custom
+                name = f"_demon_{i}"
+                ZOO[name] = make_agent_with_weights(dw)
+                active_opps.append(name)
+                DEFAULT_OPPONENT_WEIGHTS.setdefault(name, 1.5)
+
+        # ── Sampling
+        if surrogate and len(surrogate) >= 5:
+            # Sample 4x la popsize, évalue top-popsize via surrogate
+            big = es.ask(POPSIZE * 4)
+            keep_idx = surrogate.select_promising(big, k_keep=POPSIZE - 2, k_explore=2)
+            candidates = [big[i] for i in keep_idx]
+        else:
+            candidates = es.ask()
+
+        scores = evaluate_candidates(candidates, active_opps)
+
+        # ── Reporting
         for i, score in enumerate(scores):
             print(f"  gen={gen:3d} cand={i+1:2d}/{len(candidates)} score={score:.3f}")
 
-        # CMA-ES minimise → on passe -score
-        es.tell(candidates, [-s for s in scores])
+        # CMA-ES a besoin de POPSIZE candidats. Si surrogate filtre, on remplit
+        # avec interpolation : on ré-évalue les autres via prédiction du
+        # surrogate pour donner un signal cohérent à CMA.
+        if surrogate and len(candidates) != POPSIZE:
+            # Fallback : ne donner que les évalués réels
+            es.tell(candidates, [-s for s in scores])
+        else:
+            es.tell(candidates, [-s for s in scores])
 
-        # Sauvegarder si amélioré
-        best_idx = max(range(len(scores)), key=lambda i: scores[i])
-        if scores[best_idx] > best_score:
-            best_score   = scores[best_idx]
-            best_weights = list(candidates[best_idx])
+        # Mémoire surrogate
+        if surrogate:
+            for w, s in zip(candidates, scores):
+                surrogate.add(list(w), s)
+            surrogate.fit()
+
+        # Best update
+        i_best = max(range(len(scores)), key=lambda i: scores[i])
+        if scores[i_best] > best_score:
+            best_score = scores[i_best]
+            best_weights = list(candidates[i_best])
             save_weights(best_weights, best_score)
             print(f"  ✓ Nouveau meilleur: score={best_score:.3f}")
-            print(f"  Poids: {[round(w, 3) for w in best_weights]}")
 
-        print(f"Gen {gen}: best_this_gen={scores[best_idx]:.3f} overall_best={best_score:.3f}")
+        elapsed = time.perf_counter() - t0
+        print(f"Gen {gen}: best_gen={scores[i_best]:.3f} overall={best_score:.3f} "
+              f"({elapsed:.1f}s)")
 
-    print(f"\nEntraînement terminé. Meilleur score: {best_score:.3f}")
-    print(f"Poids sauvegardés dans {WEIGHTS_FILE}")
+        # Demon discovery
+        if league is not None and gen % league_period == 0 and gen > 0:
+            print(f"  >> Demon discovery (vs current best)...")
+            t1 = time.perf_counter()
+            demon_w, demon_wr = discover_demon(
+                best_weights,
+                evaluate_vs_target_factory(best_weights, n_games=2),
+                sigma0=0.4, maxgen=5, popsize=6,
+            )
+            if demon_w and demon_wr > 0.5:
+                league.add(demon_w, demon_wr, gen)
+                print(f"    + demon added: wr={demon_wr:.0%} "
+                      f"({time.perf_counter()-t1:.1f}s)")
+            else:
+                print(f"    no demon found (wr max={demon_wr:.0%})")
+
+        # Cleanup démons temporaires du ZOO
+        for name in [n for n in ZOO if n.startswith("_demon_")]:
+            del ZOO[name]
+            DEFAULT_OPPONENT_WEIGHTS.pop(name, None)
+
+    print(f"\nFini. Meilleur score: {best_score:.3f}")
     return best_weights, best_score
 
 
 def save_weights(weights, score):
-    with open(WEIGHTS_FILE, "w") as f:
-        json.dump({"weights": weights, "score": score}, f, indent=2)
+    WEIGHTS_FILE.write_text(json.dumps(
+        {"weights": weights, "score": score}, indent=2))
 
 
 def load_best_weights():
     if not WEIGHTS_FILE.exists():
-        print(f"Pas de fichier {WEIGHTS_FILE}. Lance d'abord python3 train.py")
+        print(f"Pas de fichier {WEIGHTS_FILE}.")
         sys.exit(1)
-    with open(WEIGHTS_FILE) as f:
-        data = json.load(f)
+    data = json.loads(WEIGHTS_FILE.read_text())
     return data["weights"], data.get("score", 0.0)
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# ── Tests ───────────────────────────────────────────────────────────────────
 
-def run_test(weights=None, label="défaut"):
+def play_test_game_worker(args):
+    weights, opp_name, game_idx = args
+    candidate = make_agent_with_weights(weights)
+    opponent = _resolve_opponent(opp_name)
+    if game_idx % 2 == 0:
+        ra, rb = play_game(candidate, opponent)
+    else:
+        rb, ra = play_game(opponent, candidate)
+    return 1 if ra > rb else 0
+
+
+def run_test(weights=None, label="défaut", opp_names=None):
     if weights is None:
         weights = bot.DEFAULT_W
+    if opp_names is None:
+        opp_names = ["passive", "random", "greedy", "starter", "self"]
 
-    print(f"\nTest bot avec poids {label} ({N_GAMES_TEST} parties/adversaire, jobs={JOBS})\n")
-
+    print(f"\nTest poids {label} ({N_GAMES_TEST} parties/adversaire, jobs={JOBS})\n")
     candidate = make_agent_with_weights(weights)
-    opponents = [
-        "passive",
-        "random",
-        "greedy",
-        "self",
-    ]
-
-    for opp_name in opponents:
+    for name in opp_names:
         if JOBS <= 1 or N_GAMES_TEST <= 1:
-            opp = get_opponent(opp_name)
+            opp = _resolve_opponent(name)
             wins = 0
             for i in range(N_GAMES_TEST):
                 if i % 2 == 0:
@@ -330,69 +344,103 @@ def run_test(weights=None, label="défaut"):
                 if ra > rb:
                     wins += 1
         else:
-            worker_args = [(list(weights), opp_name, i) for i in range(N_GAMES_TEST)]
-            ctx = get_context("fork")
+            args = [(list(weights), name, i) for i in range(N_GAMES_TEST)]
+            ctx = get_context("spawn") if os.name == "nt" else get_context("fork")
             with ctx.Pool(processes=min(JOBS, N_GAMES_TEST)) as pool:
-                wins = sum(pool.map(play_test_game_worker, worker_args))
-
+                wins = sum(pool.map(play_test_game_worker, args))
         wr = wins / N_GAMES_TEST
-        print(f"vs {opp_name:12s}: {wins:2d}W/{N_GAMES_TEST}  win-rate={wr:.0%}")
+        print(f"vs {name:12s}: {wins:2d}W/{N_GAMES_TEST}  wr={wr:.0%}")
 
 
-# ── Générer bot_submit.py avec poids hardcodés ───────────────────────────────
+def run_profile():
+    """cProfile sur N parties pour identifier hot paths."""
+    import cProfile
+    import pstats
+    n_games = 5
+    print(f"Profile sur {n_games} parties bot vs bot…")
+    candidate = make_agent_with_weights(bot.DEFAULT_W)
+    pr = cProfile.Profile()
+    pr.enable()
+    for _ in range(n_games):
+        play_game(candidate, bot.agent)
+    pr.disable()
+    stats = pstats.Stats(pr).sort_stats("cumulative")
+    stats.print_stats(25)
+
+
+# ── Génération bot_submit.py ────────────────────────────────────────────────
 
 def generate_submit_bot(weights):
-    """Copie bot.py en remplaçant WEIGHTS = None par les poids appris."""
-    with open("bot.py") as f:
-        src = f.read()
-
+    src = Path("bot.py").read_text(encoding='utf-8')
     weights_str = "[" + ", ".join(f"{w:.4f}" for w in weights) + "]"
     src = src.replace("WEIGHTS = None  # sera remplacé par CMA-ES",
                       f"WEIGHTS = {weights_str}  # poids CMA-ES")
-
-    with open("bot_submit.py", "w") as f:
-        f.write(src)
-    print("bot_submit.py généré — c'est ce fichier qu'on soumet à Kaggle.")
+    Path("bot_submit.py").write_text(src, encoding='utf-8')
+    print("bot_submit.py généré.")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Main ────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--test",        action="store_true", help="Test poids par défaut")
-    parser.add_argument("--test-best",   action="store_true", help="Test meilleurs poids")
-    parser.add_argument("--generate",    action="store_true", help="Génère bot_submit.py")
-    profile_group = parser.add_mutually_exclusive_group()
-    profile_group.add_argument("--quick",  action="store_const", const="quick",  dest="profile",
-                               help="Profil rapide: peu de parties/générations")
-    profile_group.add_argument("--medium", action="store_const", const="medium", dest="profile",
-                               help="Profil intermédiaire")
-    profile_group.add_argument("--long",   action="store_const", const="long",   dest="profile",
-                               help="Profil long: config historique")
-    parser.add_argument("--jobs", type=int, default=None,
-                        help="Nombre de processus parallèles (défaut: min(CPU, popsize))")
+    parser.add_argument("--test",      action="store_true")
+    parser.add_argument("--test-best", action="store_true")
+    parser.add_argument("--generate",  action="store_true")
+    parser.add_argument("--profile",   action="store_true",
+                        help="cProfile sur 5 parties et exit")
+    g = parser.add_mutually_exclusive_group()
+    g.add_argument("--rocket", action="store_const", const="rocket", dest="profile_name",
+                   help="5 gens ultra-rapide (~3-5 min)")
+    g.add_argument("--quick",  action="store_const", const="quick",  dest="profile_name")
+    g.add_argument("--medium", action="store_const", const="medium", dest="profile_name")
+    g.add_argument("--long",   action="store_const", const="long",   dest="profile_name")
+    g.add_argument("--smoke",  action="store_const", const="smoke",  dest="profile_name",
+                   help="2 gens × 4 cand × 1 game (test scaffolding)")
+    parser.add_argument("--jobs", type=int, default=None)
+    parser.add_argument("--zoo",        action="store_true",
+                        help="Pool étendu (8 adversaires) au lieu de 3")
+    parser.add_argument("--surrogate",  action="store_true",
+                        help="GP surrogate pour accélérer CMA-ES")
+    parser.add_argument("--league",     action="store_true",
+                        help="Demon discovery toutes les N gens")
+    parser.add_argument("--league-period", type=int, default=10)
+    parser.add_argument("--opponents", type=str, default=None,
+                        help="Liste personnalisée: greedy,self,starter,…")
     args = parser.parse_args()
 
-    apply_profile(args.profile)
+    apply_profile(args.profile_name)
     set_jobs(args.jobs)
+
+    # Profile shortcut
+    if args.profile:
+        run_profile()
+        sys.exit(0)
+
+    # Pool d'adversaires
+    if args.opponents:
+        opp_names = [s.strip() for s in args.opponents.split(",")]
+    elif args.zoo:
+        opp_names = ZOO_OPPONENT_NAMES
+    else:
+        opp_names = DEFAULT_OPPONENT_NAMES
 
     if args.test:
         run_test(weights=None, label="défaut")
-
     elif args.test_best:
         w, score = load_best_weights()
         print(f"Poids chargés (score entraînement={score:.3f})")
         run_test(weights=w, label="best")
         generate_submit_bot(w)
-
     elif args.generate:
         w, score = load_best_weights()
         generate_submit_bot(w)
-        print(f"Score entraînement: {score:.3f}")
-
     else:
-        # Lance CMA-ES
-        best_w, best_s = run_cma_es()
-        print("\nTest final des meilleurs poids:")
+        best_w, best_s = run_cma_es(
+            opp_names=opp_names,
+            use_surrogate=args.surrogate,
+            use_league=args.league,
+            league_period=args.league_period,
+        )
+        print("\nTest final:")
         run_test(weights=best_w, label="best")
         generate_submit_bot(best_w)

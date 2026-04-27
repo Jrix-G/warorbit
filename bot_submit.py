@@ -28,11 +28,11 @@ ROT_LIMIT    = 50.0   # orbital_radius + planet_radius < 50 → planète orbite
 WEIGHTS = [2.2152, 1.4289, 39.6571, 0.6839, 0.0042, 1.5462, 0.6053, 0.0002, 0.4233, 0.0101, 0.9059, 0.5291, 1.3091, 0.4176]  # poids CMA-ES
 
 DEFAULT_W = [
-    2.0,   # W[0]  neutral_priority   : bonus multiplicatif planètes neutres
-    1.5,   # W[1]  comet_bonus        : bonus multiplicatif comètes
-    40.0,  # W[2]  production_horizon : nb tours de production estimés dans gain
-    0.3,   # W[3]  distance_penalty   : coût par unité de distance
-    0.15,  # W[4]  defense_reserve    : fraction ships gardée si menacé
+    2.0,   # W[0]  neutral_priority   : bonus multiplicatif planètes neutres (✅ consensus)
+    12.0,  # W[1]  comet_bonus        : bonus multiplicatif comètes (⬆️ 1.5→12.0, match top players)
+    1.0,   # W[2]  production_horizon : nb tours de production estimés dans gain (⬇️ 40.0→1.0, short-term)
+    1.25,  # W[3]  distance_penalty   : coût par unité de distance (⬆️ 0.3→1.25, prioritize distance)
+    20.0,  # W[4]  defense_reserve    : fraction ships gardée si menacé (⬆️ 0.15→20.0, strong defense)
     1.3,   # W[5]  attack_ratio       : ships_needed × ce ratio avant d'attaquer
     0.6,   # W[6]  fleet_send_ratio   : fraction ships envoyée (après réserve)
     0.5,   # W[7]  leader_penalty     : pénalité si cible est le joueur dominant

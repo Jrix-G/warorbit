@@ -1,0 +1,10 @@
+- generic [ref=e2]:
+  - main [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.
+      - generic [ref=e7]:
+        - link "Learn more" [ref=e8] [cursor=pointer]:
+          - /url: /cookies
+          - generic [ref=e9]: Learn more
+        - generic [ref=e10] [cursor=pointer]: OK, Got it.
+  - alert [ref=e12]
