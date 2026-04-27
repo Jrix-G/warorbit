@@ -1,0 +1,578 @@
+- generic [ref=e2]:
+  - navigation "Main Kaggle page navigation" [ref=e3]:
+    - generic [ref=e5]:
+      - button "Navigation menu" [ref=e7] [cursor=pointer]: menu
+      - link "Skip to content" [ref=e8] [cursor=pointer]:
+        - /url: "#site-content"
+        - text: Skip to
+        - text: content
+      - link "Return to Kaggle home page" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img "Kaggle" [ref=e11]
+    - button "Create" [ref=e13] [cursor=pointer]:
+      - img [ref=e14]
+      - generic [ref=e19]: Create
+    - generic [ref=e20]:
+      - generic [ref=e22]:
+        - list [ref=e23]:
+          - listitem "Home List Item" [ref=e24]:
+            - link "Home" [ref=e26] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e27]:
+                - generic [ref=e30]: explore
+                - paragraph [ref=e32]: Home
+          - listitem "Competitions List Item" [ref=e33]:
+            - link "Competitions" [ref=e35] [cursor=pointer]:
+              - /url: /competitions
+              - generic [ref=e36]:
+                - generic [ref=e39]: emoji_events
+                - paragraph [ref=e41]: Competitions
+          - listitem "Benchmarks List Item" [ref=e43]:
+            - link "Benchmarks" [ref=e45] [cursor=pointer]:
+              - /url: /benchmarks
+              - generic [ref=e46]:
+                - generic [ref=e49]: leaderboard
+                - paragraph [ref=e51]: Benchmarks
+          - listitem "Game Arena List Item" [ref=e52]:
+            - link "Game Arena" [ref=e54] [cursor=pointer]:
+              - /url: /game-arena
+              - generic [ref=e55]:
+                - generic [ref=e58]: smart_toy
+                - paragraph [ref=e60]: Game Arena
+        - list [ref=e61]:
+          - listitem "Data Hub List Item" [ref=e62]:
+            - generic [ref=e63]:
+              - link "Data Hub" [ref=e64] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e65]:
+                  - generic [ref=e68]: code
+                  - paragraph [ref=e70]: Data Hub
+              - button "Expand" [ref=e72] [cursor=pointer]: expand_more
+        - list [ref=e73]:
+          - listitem "More on Kaggle List Item" [ref=e74]:
+            - generic [ref=e75]:
+              - link "More on Kaggle" [ref=e76] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e77]:
+                  - generic [ref=e80]: format_list_bulleted
+                  - paragraph [ref=e82]: More
+              - button "Expand" [ref=e84] [cursor=pointer]: expand_more
+      - button "View Active Events" [ref=e86] [cursor=pointer]:
+        - generic [ref=e88]: auto_awesome_motion
+        - paragraph [ref=e89]: View Active Events
+  - navigation "Main menu, search and your account" [ref=e90]:
+    - generic [ref=e91]:
+      - generic [ref=e95]:
+        - generic [ref=e96]: search
+        - textbox "Search" [ref=e97]
+        - group
+      - button "Jason Mourier" [ref=e102] [cursor=pointer]:
+        - generic "Jason Mourier" [ref=e103]
+        - img [ref=e104]
+  - main [ref=e107]:
+    - generic [ref=e109]:
+      - generic [ref=e110]: Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.
+      - generic [ref=e111]:
+        - link "Learn more" [ref=e112] [cursor=pointer]:
+          - /url: /cookies
+          - generic [ref=e113]: Learn more
+        - generic [ref=e114] [cursor=pointer]: OK, Got it.
+    - generic [ref=e117]:
+      - generic [ref=e119]:
+        - generic [ref=e120]:
+          - link "Kaggle's profile" [ref=e121] [cursor=pointer]:
+            - /url: /organizations/kaggle
+            - generic "Kaggle" [ref=e122]
+            - img [ref=e123]
+          - generic [ref=e126]:
+            - generic [ref=e128]: Kaggle
+            - generic [ref=e129]: · Featured Simulation Competition · 2 months to go
+          - generic [ref=e820]:
+            - button "Submit Agent" [ref=e822] [cursor=pointer]:
+              - generic [ref=e823]: Submit Agent
+            - button "Competition options menu collapsed" [ref=e825] [cursor=pointer]: more_horiz
+        - generic [ref=e131]:
+          - heading "Orbit Wars" [level=1] [ref=e132]
+          - paragraph [ref=e134]: Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.
+      - generic [ref=e138]:
+        - tablist [ref=e155]:
+          - tab "Overview, 1 of 9" [active] [selected] [ref=e156] [cursor=pointer]:
+            - generic [ref=e157]: Overview
+          - tab "Data, 2 of 9" [ref=e158] [cursor=pointer]:
+            - generic [ref=e159]: Data
+          - tab "Code, 3 of 9" [ref=e160] [cursor=pointer]:
+            - generic [ref=e161]: Code
+          - tab "Models, 4 of 9" [ref=e162] [cursor=pointer]:
+            - generic [ref=e163]: Models
+          - tab "Discussion, 5 of 9" [ref=e164] [cursor=pointer]:
+            - generic [ref=e165]: Discussion
+          - tab "Leaderboard, 6 of 9" [ref=e166] [cursor=pointer]:
+            - generic [ref=e167]: Leaderboard
+          - tab "Rules, 7 of 9" [ref=e168] [cursor=pointer]:
+            - generic [ref=e169]: Rules
+          - tab "Team, 8 of 9" [ref=e170] [cursor=pointer]:
+            - generic [ref=e171]: Team
+          - tab "Submissions, 9 of 9" [ref=e172] [cursor=pointer]:
+            - generic [ref=e173]: Submissions
+        - separator [ref=e175]
+      - generic [ref=e826]:
+        - generic [ref=e827]:
+          - generic [ref=e828]:
+            - heading "Overview" [level=2] [ref=e832]
+            - paragraph [ref=e835]: The goal of this competition is to create and/or train AI bots to play a novel multi-agent 1v1 or 4p FFA game against other submitted agents.
+          - generic [ref=e838]:
+            - generic [ref=e839]:
+              - generic [ref=e840]:
+                - paragraph [ref=e841]: Start
+                - generic [ref=e842]: 11 days ago
+              - generic [ref=e843]:
+                - paragraph [ref=e844]: Close
+                - generic [ref=e845]: 2 months to go
+            - generic [ref=e857]: Merger & Entry
+        - generic [ref=e858]:
+          - generic [ref=e860]:
+            - generic [ref=e861] [cursor=pointer]:
+              - generic [ref=e863]:
+                - heading "Description" [level=3] [ref=e866]
+                - button "Copy link" [ref=e867]: link
+              - button "Collapse" [expanded] [ref=e868]: keyboard_arrow_up
+            - generic [ref=e871]:
+              - paragraph [ref=e872]:
+                - strong [ref=e873]: Welcome to Orbit Wars!
+                - text: Command the fleet. Conquer the void. Orbit Wars resurrects the ruthless strategy of the 2010 Planet Wars challenge with fresh, exciting mechanics. Launch massive swarms of ships across the solar system, outmaneuver your enemies, and claim absolute orbital supremacy.
+              - paragraph [ref=e874]
+          - generic [ref=e876]:
+            - generic [ref=e877] [cursor=pointer]:
+              - generic [ref=e879]:
+                - heading "Evaluation" [level=3] [ref=e882]
+                - button "Copy link" [ref=e883]: link
+              - button "Collapse" [expanded] [ref=e884]: keyboard_arrow_up
+            - generic [ref=e887]:
+              - paragraph [ref=e888]: Each day your team is able to submit up to 5 agents (bots) to the competition. Each submission will play Episodes (games) against other bots on the ladder that have a similar skill rating. Over time skill ratings will go up with wins or down with losses and evened out with ties. To reduce the number of bots playing and increase the number of episodes each team participates in, we only track the latest 2 submissions and use those for final submissions.
+              - paragraph [ref=e889]: Every bot submitted will continue to play episodes until the end of the competition, with newer bots playing a much more frequent number of episodes. On the leaderboard, only your best scoring bot will be shown, but you can track the progress of all of your submissions on your Submissions page.
+              - paragraph [ref=e890]: Each Submission has an estimated Skill Rating which is modeled by a Gaussian N(μ,σ2) where μ is the estimated skill and σ represents the uncertainty of that estimate which will decrease over time.
+              - paragraph [ref=e891]: When you upload a Submission, we first play a Validation Episode where that Submission plays against copies of itself to make sure it works properly. If the Episode fails, the Submission is marked as Error and you can download the agent logs to help figure out why. Otherwise, we initialize the Submission with μ0=600 and it joins the pool of All Submissions for ongoing evaluation.
+              - paragraph [ref=e892]: We repeatedly run Episodes from the pool of All Submissions, and try to pick Submissions with similar ratings for fair matches. Newly submitted agents will be given an increased rate in the number of episodes run to give you faster feedback.
+              - paragraph [ref=e893]:
+                - strong [ref=e894]: Ranking System
+              - paragraph [ref=e895]: After an Episode finishes, we'll update the Rating estimate for all Submissions in that Episode. If one Submission won, we'll increase its μ and decrease its opponent's μ -- if the result was a draw, then we'll move the two μ values closer towards their mean. The updates will have magnitude relative to the deviation from the expected result based on the previous μ values, and also relative to each Submission's uncertainty σ. We also reduce the σ terms relative to the amount of information gained by the result. The score by which your bot wins or loses an Episode does not affect the skill rating updates.
+              - paragraph [ref=e896]:
+                - strong [ref=e897]: Final Evaluation
+                - text: At the submission deadline on June 23, 2026, additional submissions will be locked. From June 23, 2026 for approximately two weeks, we will continue to run games. At the conclusion of this period, the leaderboard is final.
+          - generic [ref=e899]:
+            - generic [ref=e900] [cursor=pointer]:
+              - generic [ref=e902]:
+                - heading "Timeline" [level=3] [ref=e905]
+                - button "Copy link" [ref=e906]: link
+              - button "Collapse" [expanded] [ref=e907]: keyboard_arrow_up
+            - generic [ref=e910]:
+              - list [ref=e911]:
+                - listitem [ref=e912]:
+                  - paragraph [ref=e913]:
+                    - strong [ref=e914]: April 16, 2026
+                    - text: "- Start Date."
+                - listitem [ref=e915]:
+                  - paragraph [ref=e916]:
+                    - strong [ref=e917]: June 16, 2026
+                    - text: "- Entry Deadline. You must accept the competition rules before this date in order to compete."
+                - listitem [ref=e918]:
+                  - paragraph [ref=e919]:
+                    - strong [ref=e920]: June 16, 2026
+                    - text: "- Team Merger Deadline. This is the last day participants may join or merge teams."
+                - listitem [ref=e921]:
+                  - paragraph [ref=e922]:
+                    - strong [ref=e923]: June 23, 2026
+                    - text: "- Final Submission Deadline."
+                - listitem [ref=e924]:
+                  - paragraph [ref=e925]:
+                    - strong [ref=e926]: June 24, 2026 to (approx) July 8, 2026
+                    - text: "- We will continue to run games, or until the leaderboard has reached convergence. At the conclusion of this period, the leaderboard is final."
+              - paragraph [ref=e927]:
+                - text: All deadlines are at 11:59 PM UTC on the corresponding day unless otherwise noted.
+                - emphasis [ref=e928]: The competition organizers reserve the right to update the contest timeline if they deem it necessary.
+          - generic [ref=e930]:
+            - generic [ref=e931] [cursor=pointer]:
+              - generic [ref=e933]:
+                - heading "Prizes" [level=3] [ref=e936]
+                - button "Copy link" [ref=e937]: link
+              - button "Collapse" [expanded] [ref=e938]: keyboard_arrow_up
+            - list [ref=e942]:
+              - listitem [ref=e943]: 1st Place - $5,000
+              - listitem [ref=e944]: 2nd Place - $5,000
+              - listitem [ref=e945]: 3rd Place - $5,000
+              - listitem [ref=e946]: 4th Place - $5,000
+              - listitem [ref=e947]: 5th Place - $5,000
+              - listitem [ref=e948]: 6th Place - $5,000
+              - listitem [ref=e949]: 7th Place - $5,000
+              - listitem [ref=e950]: 8th Place - $5,000
+              - listitem [ref=e951]: 9th Place - $5,000
+              - listitem [ref=e952]: 10th Place - $5,000
+          - generic [ref=e954]:
+            - generic [ref=e955] [cursor=pointer]:
+              - generic [ref=e957]:
+                - heading "Getting Started" [level=3] [ref=e960]
+                - button "Copy link" [ref=e961]: link
+              - button "Collapse" [expanded] [ref=e962]: keyboard_arrow_up
+            - generic [ref=e965]:
+              - paragraph [ref=e966]:
+                - text: All instructions in addition to the starter kits you need to start writing a bot and submit them to the competition are in the
+                - link "starter kit (opens in a new tab)" [ref=e967] [cursor=pointer]:
+                  - /url: https://kaggle.com/competitions/orbit-wars/code
+                  - text: starter kit
+                - text: .
+              - paragraph [ref=e968]: Make sure to also read the competition specs below to learn how this year’s design works!
+          - generic [ref=e970]:
+            - generic [ref=e971] [cursor=pointer]:
+              - generic [ref=e973]:
+                - heading "How to Play Orbit Wars" [level=3] [ref=e976]
+                - button "Copy link" [ref=e977]: link
+              - button "Collapse" [expanded] [ref=e978]: keyboard_arrow_up
+            - generic [ref=e981]:
+              - heading "Overview" [level=2] [ref=e982]
+              - paragraph [ref=e983]: Players start with a single home planet and compete to control the map by sending fleets to capture neutral and enemy planets. The board is a 100x100 continuous space with a sun at the center. Planets orbit the sun, comets fly through on elliptical trajectories, and fleets travel in straight lines. The game lasts 500 turns. The player with the most total ships (on planets + in fleets) at the end wins.
+              - heading "Board Layout" [level=2] [ref=e984]
+              - list [ref=e985]:
+                - listitem [ref=e986]:
+                  - strong [ref=e987]: Board
+                  - text: ": 100x100 continuous space, origin at top-left."
+                - listitem [ref=e988]:
+                  - strong [ref=e989]: Sun
+                  - text: ": Centered at (50, 50) with radius 10. Fleets that cross the sun are destroyed."
+                - listitem [ref=e990]:
+                  - strong [ref=e991]: Symmetry
+                  - text: ": All planets and comets are placed with 4-fold mirror symmetry around the center:"
+                  - code [ref=e992]: (x, y), (100-x, y), (x, 100-y), (100-x, 100-y)
+                  - text: . This ensures fairness regardless of starting position.
+              - heading "Planets" [level=2] [ref=e993]
+              - paragraph [ref=e994]:
+                - text: Each planet is represented as
+                - code [ref=e995]: "[id, owner, x, y, radius, ships, production]"
+                - text: .
+              - list [ref=e996]:
+                - listitem [ref=e997]:
+                  - strong [ref=e998]: owner
+                  - text: ": Player ID (0-3), or -1 for neutral."
+                - listitem [ref=e999]:
+                  - strong [ref=e1000]: radius
+                  - text: ": Determined by production:"
+                  - code [ref=e1001]: 1 + ln(production)
+                  - text: . Higher production planets are physically larger.
+                - listitem [ref=e1002]:
+                  - strong [ref=e1003]: production
+                  - text: ": Integer from 1 to 5. Each turn, an owned planet generates this many ships."
+                - listitem [ref=e1004]:
+                  - strong [ref=e1005]: ships
+                  - text: ": Current garrison. Starts between 5 and 99 (skewed toward lower values)."
+              - heading "Planet Types" [level=3] [ref=e1006]
+              - list [ref=e1007]:
+                - listitem [ref=e1008]:
+                  - strong [ref=e1009]: Orbiting planets
+                  - text: ": Planets whose"
+                  - code [ref=e1010]: orbital_radius + planet_radius < 50
+                  - text: rotate around the sun at a constant angular velocity (0.025-0.05 radians/turn, randomized per game). Use
+                  - code [ref=e1011]: initial_planets
+                  - text: and
+                  - code [ref=e1012]: angular_velocity
+                  - text: from the observation to predict their positions.
+                - listitem [ref=e1013]:
+                  - strong [ref=e1014]: Static planets
+                  - text: ": Planets further from the center do not rotate."
+              - paragraph [ref=e1015]: The map contains 20-40 planets (5-10 symmetric groups of 4). At least 3 groups are guaranteed to be static, and at least one group is guaranteed to be orbiting.
+              - heading "Home Planets" [level=3] [ref=e1016]
+              - paragraph [ref=e1017]: One symmetric group is randomly chosen as the starting planets. In a 2-player game, players start on diagonally opposite planets (Q1 and Q4). In a 4-player game, each player gets one planet from the group. Home planets start with 10 ships.
+              - heading "Fleets" [level=2] [ref=e1018]
+              - paragraph [ref=e1019]:
+                - text: Each fleet is represented as
+                - code [ref=e1020]: "[id, owner, x, y, angle, from_planet_id, ships]"
+                - text: .
+              - list [ref=e1021]:
+                - listitem [ref=e1022]:
+                  - strong [ref=e1023]: angle
+                  - text: ": Direction of travel in radians."
+                - listitem [ref=e1024]:
+                  - strong [ref=e1025]: ships
+                  - text: ": Number of ships in the fleet (does not change during travel)."
+              - heading "Fleet Speed" [level=3] [ref=e1026]
+              - paragraph [ref=e1027]: "Fleet speed scales with size on a logarithmic curve:"
+              - code [ref=e1029]: speed = 1.0 + (maxSpeed - 1.0) * (log(ships) / log(1000)) ^ 1.5
+              - list [ref=e1030]:
+                - listitem [ref=e1031]: 1 ship moves at 1.0 units/turn.
+                - listitem [ref=e1032]: Larger fleets move faster, approaching the maximum speed (default 6.0).
+                - listitem [ref=e1033]: A fleet of ~500 ships moves at ~5, and ~1000 ships reaches the max.
+              - heading "Fleet Movement" [level=3] [ref=e1034]
+              - paragraph [ref=e1035]: "Fleets travel in a straight line at their computed speed each turn. A fleet is removed if it:"
+              - list [ref=e1036]:
+                - listitem [ref=e1037]: Goes out of bounds (leaves the 100x100 playing field).
+                - listitem [ref=e1038]: Crosses the sun (path segment comes within the sun's radius).
+                - listitem [ref=e1039]: Collides with any planet (path segment comes within the planet's radius). This triggers combat.
+              - paragraph [ref=e1040]: Collision detection is continuous -- the entire path segment from old to new position is checked, not just the endpoint.
+              - heading "Fleet Launch" [level=3] [ref=e1041]
+              - paragraph [ref=e1042]:
+                - text: "Each turn, your agent returns a list of moves:"
+                - code [ref=e1043]: "[from_planet_id, direction_angle, num_ships]"
+                - text: .
+              - list [ref=e1044]:
+                - listitem [ref=e1045]: You can only launch from planets you own.
+                - listitem [ref=e1046]: You cannot launch more ships than the planet currently has.
+                - listitem [ref=e1047]: The fleet spawns just outside the planet's radius in the given direction.
+                - listitem [ref=e1048]: You can issue multiple launches from the same or different planets in a single turn.
+              - heading "Comets" [level=2] [ref=e1049]
+              - paragraph [ref=e1050]: Comets are temporary extra-solar objects that fly through the board on highly elliptical orbits around the sun. They spawn in groups of 4 (one per quadrant) at steps 50, 150, 250, 350, and 450.
+              - list [ref=e1051]:
+                - listitem [ref=e1052]:
+                  - strong [ref=e1053]: Radius
+                  - text: ": 1.0 (fixed)."
+                - listitem [ref=e1054]:
+                  - strong [ref=e1055]: Production
+                  - text: ": 1 ship/turn when owned."
+                - listitem [ref=e1056]:
+                  - strong [ref=e1057]: Starting ships
+                  - text: ": Random, skewed low (minimum of 4 rolls from 1-99). All 4 comets in a group share the same starting ship count."
+                - listitem [ref=e1058]:
+                  - strong [ref=e1059]: Speed
+                  - text: ": Configurable via"
+                  - code [ref=e1060]: cometSpeed
+                  - text: (default 4.0 units/turn).
+                - listitem [ref=e1061]:
+                  - strong [ref=e1062]: Identification
+                  - text: ": Check"
+                  - code [ref=e1063]: comet_planet_ids
+                  - text: in the observation to see which planet IDs are comets. Comets also appear in the
+                  - code [ref=e1064]: planets
+                  - text: array and follow all normal planet rules (capture, production, fleet launch, combat).
+              - paragraph [ref=e1065]: When a comet leaves the board, it is removed along with any ships garrisoned on it. Comets are removed before fleet launches each turn, so you cannot launch from a departing comet.
+              - paragraph [ref=e1066]:
+                - text: The
+                - code [ref=e1067]: comets
+                - text: observation field contains comet group data including
+                - code [ref=e1068]: paths
+                - text: (the full trajectory for each comet) and
+                - code [ref=e1069]: path_index
+                - text: (current position along the path), which can be used to predict future comet positions.
+              - heading "Turn Order" [level=2] [ref=e1070]
+              - paragraph [ref=e1071]: "Each turn executes in this order:"
+              - list [ref=e1072]:
+                - listitem [ref=e1073]:
+                  - strong [ref=e1074]: Comet expiration
+                  - text: ": Remove comets that have left the board."
+                - listitem [ref=e1075]:
+                  - strong [ref=e1076]: Comet spawning
+                  - text: ": Spawn new comet groups at designated steps."
+                - listitem [ref=e1077]:
+                  - strong [ref=e1078]: Fleet launch
+                  - text: ": Process all player actions, creating new fleets."
+                - listitem [ref=e1079]:
+                  - strong [ref=e1080]: Production
+                  - text: ": All owned planets (including comets) generate ships."
+                - listitem [ref=e1081]:
+                  - strong [ref=e1082]: Fleet movement
+                  - text: ": Move all fleets along their headings. Check for out-of-bounds, sun collision, and planet collision. Fleets that hit planets are queued for combat."
+                - listitem [ref=e1083]:
+                  - strong [ref=e1084]: Planet rotation & comet movement
+                  - text: ": Orbiting planets rotate, comets advance along their paths. Any fleet caught by a moving planet/comet is swept into combat with it."
+                - listitem [ref=e1085]:
+                  - strong [ref=e1086]: Combat resolution
+                  - text: ": Resolve all queued planet combats."
+              - heading "Combat" [level=2] [ref=e1087]
+              - paragraph [ref=e1088]: "When one or more fleets collide with a planet (either by flying into it or being swept by a moving planet), combat is resolved:"
+              - list [ref=e1089]:
+                - listitem [ref=e1090]: All arriving fleets are grouped by owner. Ships from the same owner are summed.
+                - listitem [ref=e1091]: The largest attacking force fights the second largest. The difference in ships survives.
+                - listitem [ref=e1092]:
+                  - text: "If there is a surviving attacker:"
+                  - list [ref=e1093]:
+                    - listitem [ref=e1094]: If the attacker is the same owner as the planet, the surviving ships are added to the garrison.
+                    - listitem [ref=e1095]: If the attacker is a different owner, the surviving ships fight the garrison. If the attackers exceed the garrison, the planet changes ownership and the garrison becomes the surplus.
+                - listitem [ref=e1096]: If two attackers tie, all attacking ships are destroyed (no survivors).
+              - heading "Scoring and Termination" [level=2] [ref=e1097]
+              - paragraph [ref=e1098]: "The game ends when:"
+              - list [ref=e1099]:
+                - listitem [ref=e1100]:
+                  - strong [ref=e1101]: Step limit reached
+                  - text: ": 500 turns."
+                - listitem [ref=e1102]:
+                  - strong [ref=e1103]: Elimination
+                  - text: ": Only one player (or zero) remains with any planets or fleets."
+              - paragraph [ref=e1104]: Final score = total ships on owned planets + total ships in owned fleets. Highest score wins.
+              - heading "Observation Reference" [level=2] [ref=e1105]
+              - table [ref=e1106]:
+                - rowgroup [ref=e1107]:
+                  - row "Field Type Description" [ref=e1108]:
+                    - columnheader "Field" [ref=e1109]
+                    - columnheader "Type" [ref=e1110]
+                    - columnheader "Description" [ref=e1111]
+                - rowgroup [ref=e1112]:
+                  - row "planets [[id, owner, x, y, radius, ships, production], ...] All planets including comets" [ref=e1113]:
+                    - cell "planets" [ref=e1114]:
+                      - code [ref=e1115]: planets
+                    - cell "[[id, owner, x, y, radius, ships, production], ...]" [ref=e1116]:
+                      - code [ref=e1117]: "[[id, owner, x, y, radius, ships, production], ...]"
+                    - cell "All planets including comets" [ref=e1118]
+                  - row "fleets [[id, owner, x, y, angle, from_planet_id, ships], ...] All active fleets" [ref=e1119]:
+                    - cell "fleets" [ref=e1120]:
+                      - code [ref=e1121]: fleets
+                    - cell "[[id, owner, x, y, angle, from_planet_id, ships], ...]" [ref=e1122]:
+                      - code [ref=e1123]: "[[id, owner, x, y, angle, from_planet_id, ships], ...]"
+                    - cell "All active fleets" [ref=e1124]
+                  - row "player int Your player ID (0-3)" [ref=e1125]:
+                    - cell "player" [ref=e1126]:
+                      - code [ref=e1127]: player
+                    - cell "int" [ref=e1128]:
+                      - code [ref=e1129]: int
+                    - cell "Your player ID (0-3)" [ref=e1130]
+                  - row "angular_velocity float Planet rotation speed (radians/turn)" [ref=e1131]:
+                    - cell "angular_velocity" [ref=e1132]:
+                      - code [ref=e1133]: angular_velocity
+                    - cell "float" [ref=e1134]:
+                      - code [ref=e1135]: float
+                    - cell "Planet rotation speed (radians/turn)" [ref=e1136]
+                  - row "initial_planets [[id, owner, x, y, radius, ships, production], ...] Planet positions at game start" [ref=e1137]:
+                    - cell "initial_planets" [ref=e1138]:
+                      - code [ref=e1139]: initial_planets
+                    - cell "[[id, owner, x, y, radius, ships, production], ...]" [ref=e1140]:
+                      - code [ref=e1141]: "[[id, owner, x, y, radius, ships, production], ...]"
+                    - cell "Planet positions at game start" [ref=e1142]
+                  - 'row "comets [{planet_ids, paths, path_index}, ...] Active comet group data" [ref=e1143]':
+                    - cell "comets" [ref=e1144]:
+                      - code [ref=e1145]: comets
+                    - 'cell "[{planet_ids, paths, path_index}, ...]" [ref=e1146]':
+                      - code [ref=e1147]: "[{planet_ids, paths, path_index}, ...]"
+                    - cell "Active comet group data" [ref=e1148]
+                  - row "comet_planet_ids [int, ...] Planet IDs that are comets" [ref=e1149]:
+                    - cell "comet_planet_ids" [ref=e1150]:
+                      - code [ref=e1151]: comet_planet_ids
+                    - cell "[int, ...]" [ref=e1152]:
+                      - code [ref=e1153]: "[int, ...]"
+                    - cell "Planet IDs that are comets" [ref=e1154]
+                  - row "remainingOverageTime float Remaining overage time budget (seconds)" [ref=e1155]:
+                    - cell "remainingOverageTime" [ref=e1156]:
+                      - code [ref=e1157]: remainingOverageTime
+                    - cell "float" [ref=e1158]:
+                      - code [ref=e1159]: float
+                    - cell "Remaining overage time budget (seconds)" [ref=e1160]
+              - heading "Action Format" [level=2] [ref=e1161]
+              - paragraph [ref=e1162]: "Return a list of moves:"
+              - code [ref=e1164]:
+                - generic [ref=e1165]: "[[from_planet_id, direction_angle, num_ships], ...]"
+              - list [ref=e1166]:
+                - listitem [ref=e1167]:
+                  - code [ref=e1168]: from_planet_id
+                  - text: ": ID of a planet you own."
+                - listitem [ref=e1169]:
+                  - code [ref=e1170]: direction_angle
+                  - text: ": Angle in radians (0 = right, pi/2 = down)."
+                - listitem [ref=e1171]:
+                  - code [ref=e1172]: num_ships
+                  - text: ": Integer number of ships to send."
+              - paragraph [ref=e1173]:
+                - text: Return an empty list
+                - code [ref=e1174]: "[]"
+                - text: to take no action.
+              - heading "Agent Convenience" [level=2] [ref=e1175]
+              - paragraph [ref=e1176]: "The module exports named tuples for easier field access:"
+              - code [ref=e1178]: "from kaggle_environments.envs.orbit_wars.orbit_wars import Planet, Fleet, CENTER, ROTATION_RADIUS_LIMIT def agent(obs): planets = [Planet(*p) for p in obs.get(\"planets\", [])] fleets = [Fleet(*f) for f in obs.get(\"fleets\", [])] player = obs.get(\"player\", 0) for p in planets: print(p.id, p.owner, p.x, p.y, p.radius, p.ships, p.production) return [] # list of [from_planet_id, angle, num_ships]"
+              - heading "Configuration" [level=2] [ref=e1179]
+              - table [ref=e1180]:
+                - rowgroup [ref=e1181]:
+                  - row "Parameter Default Description" [ref=e1182]:
+                    - columnheader "Parameter" [ref=e1183]
+                    - columnheader "Default" [ref=e1184]
+                    - columnheader "Description" [ref=e1185]
+                - rowgroup [ref=e1186]:
+                  - row "episodeSteps 500 Maximum number of turns" [ref=e1187]:
+                    - cell "episodeSteps" [ref=e1188]:
+                      - code [ref=e1189]: episodeSteps
+                    - cell "500" [ref=e1190]
+                    - cell "Maximum number of turns" [ref=e1191]
+                  - row "actTimeout 1 Seconds per turn" [ref=e1192]:
+                    - cell "actTimeout" [ref=e1193]:
+                      - code [ref=e1194]: actTimeout
+                    - cell "1" [ref=e1195]
+                    - cell "Seconds per turn" [ref=e1196]
+                  - row "shipSpeed 6.0 Maximum fleet speed" [ref=e1197]:
+                    - cell "shipSpeed" [ref=e1198]:
+                      - code [ref=e1199]: shipSpeed
+                    - cell "6.0" [ref=e1200]
+                    - cell "Maximum fleet speed" [ref=e1201]
+                  - row "sunRadius 10.0 Radius of the sun" [ref=e1202]:
+                    - cell "sunRadius" [ref=e1203]:
+                      - code [ref=e1204]: sunRadius
+                    - cell "10.0" [ref=e1205]
+                    - cell "Radius of the sun" [ref=e1206]
+                  - row "boardSize 100.0 Board dimensions" [ref=e1207]:
+                    - cell "boardSize" [ref=e1208]:
+                      - code [ref=e1209]: boardSize
+                    - cell "100.0" [ref=e1210]
+                    - cell "Board dimensions" [ref=e1211]
+                  - row "cometSpeed 4.0 Comet speed (units/turn)" [ref=e1212]:
+                    - cell "cometSpeed" [ref=e1213]:
+                      - code [ref=e1214]: cometSpeed
+                    - cell "4.0" [ref=e1215]
+                    - cell "Comet speed (units/turn)" [ref=e1216]
+          - generic [ref=e1218]:
+            - generic [ref=e1219] [cursor=pointer]:
+              - generic [ref=e1221]:
+                - heading "Citation" [level=3] [ref=e1224]
+                - button "Copy link" [ref=e1225]: link
+              - button "Collapse Citation" [expanded] [ref=e1226]: keyboard_arrow_up
+            - generic [ref=e1228]:
+              - paragraph [ref=e1229]: Bovard Doerschuk-Tiberi, Walter Reade, and Addison Howard. Orbit Wars. https://kaggle.com/competitions/orbit-wars, 2026. Kaggle.
+              - button "Cite" [ref=e1230] [cursor=pointer]:
+                - generic [ref=e1231]: Cite
+        - generic [ref=e1232]:
+          - generic [ref=e1233]:
+            - generic [ref=e1234]:
+              - generic [ref=e1235]:
+                - heading "Competition Host" [level=2] [ref=e1236]
+                - paragraph [ref=e1237]: Kaggle
+              - link "Kaggle's profile" [ref=e1239] [cursor=pointer]:
+                - /url: /organizations/kaggle
+                - generic "Kaggle" [ref=e1240]
+                - img [ref=e1241]
+            - generic [ref=e1245]:
+              - heading "Prizes & Awards" [level=2] [ref=e1246]
+              - generic [ref=e1247]:
+                - paragraph [ref=e1249]: $50,000
+                - paragraph [ref=e1250]: Awards Points & Medals
+            - generic [ref=e1252]:
+              - heading "Participation" [level=2] [ref=e1253]
+              - paragraph [ref=e1254]: 4,512 Entrants
+              - paragraph [ref=e1255]: 1,579 Participants
+              - paragraph [ref=e1256]: 1,504 Teams
+              - paragraph [ref=e1257]: 2,805 Submissions
+            - generic [ref=e1259]:
+              - heading "Tags" [level=2] [ref=e1260]
+              - group "Tags" [ref=e1262]:
+                - link "Games opens in new window" [ref=e1263] [cursor=pointer]:
+                  - /url: /competitions?tagIds=2500-Games
+                  - generic [ref=e1264]: Games
+                - link "Artificial Intelligence opens in new window" [ref=e1265] [cursor=pointer]:
+                  - /url: /competitions?tagIds=12101-Artificial+Intelligence
+                  - generic [ref=e1266]: Artificial Intelligence
+                - link "Reinforcement Learning opens in new window" [ref=e1267] [cursor=pointer]:
+                  - /url: /competitions?tagIds=13313-Reinforcement+Learning
+                  - generic [ref=e1268]: Reinforcement Learning
+                - generic "Custom Metric opens in new window" [ref=e1269] [cursor=pointer]:
+                  - generic [ref=e1270]: Custom Metric
+          - complementary [ref=e1271]:
+            - generic [ref=e1272]:
+              - generic [ref=e1273]: Table of Contents
+              - button "Collapse all sections" [ref=e1274] [cursor=pointer]: collapse_all
+            - tablist [ref=e1278]:
+              - tab "Overview, 1 of 8" [ref=e1279] [cursor=pointer]:
+                - generic [ref=e1280]: Overview
+              - tab "Description, 2 of 8" [ref=e1281] [cursor=pointer]:
+                - generic [ref=e1282]: Description
+              - tab "Evaluation, 3 of 8" [ref=e1283] [cursor=pointer]:
+                - generic [ref=e1284]: Evaluation
+              - tab "Timeline, 4 of 8" [ref=e1285] [cursor=pointer]:
+                - generic [ref=e1286]: Timeline
+              - tab "Prizes, 5 of 8" [ref=e1287] [cursor=pointer]:
+                - generic [ref=e1288]: Prizes
+              - tab "Getting Started, 6 of 8" [ref=e1289] [cursor=pointer]:
+                - generic [ref=e1290]: Getting Started
+              - tab "How to Play Orbit Wars, 7 of 8" [ref=e1291] [cursor=pointer]:
+                - generic [ref=e1292]: How to Play Orbit Wars
+              - tab "Citation, 8 of 8" [ref=e1293] [cursor=pointer]:
+                - generic [ref=e1294]: Citation
+  - alert [ref=e819]

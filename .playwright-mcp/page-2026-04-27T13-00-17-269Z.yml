@@ -1,0 +1,170 @@
+- generic [ref=e2]:
+  - navigation "Main Kaggle page navigation" [ref=e3]:
+    - generic [ref=e5]:
+      - button "Navigation menu" [ref=e7] [cursor=pointer]: menu
+      - link "Skip to content" [ref=e8] [cursor=pointer]:
+        - /url: "#site-content"
+        - text: Skip to
+        - text: content
+      - link "Return to Kaggle home page" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img "Kaggle" [ref=e11]
+    - button "Create" [ref=e13] [cursor=pointer]:
+      - img [ref=e14]
+      - generic [ref=e19]: Create
+    - generic [ref=e20]:
+      - generic [ref=e22]:
+        - list [ref=e23]:
+          - listitem "Home List Item" [ref=e24]:
+            - link "Home" [ref=e26] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e27]:
+                - generic [ref=e30]: explore
+                - paragraph [ref=e32]: Home
+          - listitem "Competitions List Item" [ref=e33]:
+            - link "Competitions" [ref=e35] [cursor=pointer]:
+              - /url: /competitions
+              - generic [ref=e36]:
+                - generic [ref=e39]: emoji_events
+                - paragraph [ref=e41]: Competitions
+          - listitem "Benchmarks List Item" [ref=e43]:
+            - link "Benchmarks" [ref=e45] [cursor=pointer]:
+              - /url: /benchmarks
+              - generic [ref=e46]:
+                - generic [ref=e49]: leaderboard
+                - paragraph [ref=e51]: Benchmarks
+          - listitem "Game Arena List Item" [ref=e52]:
+            - link "Game Arena" [ref=e54] [cursor=pointer]:
+              - /url: /game-arena
+              - generic [ref=e55]:
+                - generic [ref=e58]: smart_toy
+                - paragraph [ref=e60]: Game Arena
+        - list [ref=e61]:
+          - listitem "Data Hub List Item" [ref=e62]:
+            - generic [ref=e63]:
+              - link "Data Hub" [ref=e64] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e65]:
+                  - generic [ref=e68]: code
+                  - paragraph [ref=e70]: Data Hub
+              - button "Expand" [ref=e72] [cursor=pointer]: expand_more
+        - list [ref=e73]:
+          - listitem "More on Kaggle List Item" [ref=e74]:
+            - generic [ref=e75]:
+              - link "More on Kaggle" [ref=e76] [cursor=pointer]:
+                - /url: "#"
+                - generic [ref=e77]:
+                  - generic [ref=e80]: format_list_bulleted
+                  - paragraph [ref=e82]: More
+              - button "Expand" [ref=e84] [cursor=pointer]: expand_more
+      - button "View Active Events" [ref=e86] [cursor=pointer]:
+        - generic [ref=e88]: auto_awesome_motion
+        - paragraph [ref=e89]: View Active Events
+  - navigation "Main menu, search and your account" [ref=e90]:
+    - generic [ref=e91]:
+      - generic [ref=e95]:
+        - generic [ref=e96]: search
+        - textbox "Search" [ref=e97]
+        - group
+      - button "Jason Mourier" [ref=e102] [cursor=pointer]:
+        - generic "Jason Mourier" [ref=e103]
+        - img [ref=e104]
+  - main [ref=e107]:
+    - generic [ref=e109]:
+      - generic [ref=e110]: Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.
+      - generic [ref=e111]:
+        - link "Learn more" [ref=e112] [cursor=pointer]:
+          - /url: /cookies
+          - generic [ref=e113]: Learn more
+        - generic [ref=e114] [cursor=pointer]: OK, Got it.
+    - generic [ref=e117]:
+      - generic [ref=e119]:
+        - generic [ref=e120]:
+          - link "Kaggle's profile" [ref=e121] [cursor=pointer]:
+            - /url: /organizations/kaggle
+            - generic "Kaggle" [ref=e122]
+            - img [ref=e123]
+          - generic [ref=e126]:
+            - generic [ref=e128]: Kaggle
+            - generic [ref=e129]: · Featured Simulation Competition · 2 months to go
+          - generic [ref=e130]:
+            - button "Submit Agent" [ref=e132] [cursor=pointer]:
+              - generic [ref=e133]: Submit Agent
+            - button "Competition options menu collapsed" [ref=e135] [cursor=pointer]: more_horiz
+        - generic [ref=e137]:
+          - heading "Orbit Wars" [level=1] [ref=e138]
+          - paragraph [ref=e140]: Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.
+      - generic [ref=e144]:
+        - tablist [ref=e151]:
+          - tab "Overview, 1 of 9" [ref=e152] [cursor=pointer]:
+            - generic [ref=e153]: Overview
+          - tab "Data, 2 of 9" [ref=e154] [cursor=pointer]:
+            - generic [ref=e155]: Data
+          - tab "Code, 3 of 9" [selected] [ref=e156] [cursor=pointer]:
+            - generic [ref=e157]: Code
+          - tab "Models, 4 of 9" [ref=e158] [cursor=pointer]:
+            - generic [ref=e159]: Models
+          - tab "Discussion, 5 of 9" [ref=e160] [cursor=pointer]:
+            - generic [ref=e161]: Discussion
+          - tab "Leaderboard, 6 of 9" [ref=e162] [cursor=pointer]:
+            - generic [ref=e163]: Leaderboard
+          - tab "Rules, 7 of 9" [ref=e164] [cursor=pointer]:
+            - generic [ref=e165]: Rules
+          - tab "Team, 8 of 9" [ref=e166] [cursor=pointer]:
+            - generic [ref=e167]: Team
+          - tab "Submissions, 9 of 9" [ref=e168] [cursor=pointer]:
+            - generic [ref=e169]: Submissions
+        - separator [ref=e171]
+      - generic [ref=e173]:
+        - generic [ref=e174]:
+          - heading "Notebooks" [level=2] [ref=e177]
+          - button "New Notebook" [ref=e178] [cursor=pointer]:
+            - generic [ref=e179]: add
+            - generic [ref=e180]: New Notebook
+        - generic [ref=e181]:
+          - generic [ref=e184]:
+            - generic [ref=e185]: search
+            - textbox "Search notebooks" [ref=e186]
+            - generic "Filter is added" [ref=e188]:
+              - button "Filters" [ref=e189] [cursor=pointer]:
+                - generic [ref=e190]: filter_list
+                - generic [ref=e191]: Filters
+            - group
+          - tablist [ref=e196]:
+            - tab "All, 1 of 4" [selected] [ref=e197] [cursor=pointer]:
+              - generic [ref=e198]: All
+            - tab "Your Work, 2 of 4" [ref=e199] [cursor=pointer]:
+              - generic [ref=e200]: Your Work
+            - tab "Shared With You, 3 of 4" [ref=e201] [cursor=pointer]:
+              - generic [ref=e202]: Shared With You
+            - tab "Bookmarks, 4 of 4" [ref=e203] [cursor=pointer]:
+              - generic [ref=e204]: Bookmarks
+          - generic [ref=e208]:
+            - combobox "Select Sort. Most Votes currently selected." [ref=e209] [cursor=pointer]:
+              - generic [ref=e211]: Most Votes
+            - textbox: Most Votes
+            - img
+          - generic [ref=e212]:
+            - separator [ref=e213]
+            - list [ref=e215]:
+              - listitem "undefined List Item" [ref=e216]
+              - listitem "undefined List Item" [ref=e233]
+              - listitem "undefined List Item" [ref=e250]
+              - listitem "undefined List Item" [ref=e267]
+              - listitem "undefined List Item" [ref=e284]
+              - listitem "undefined List Item" [ref=e301]
+              - listitem "undefined List Item" [ref=e318]
+              - listitem "undefined List Item" [ref=e335]
+              - listitem "undefined List Item" [ref=e352]
+              - listitem "undefined List Item" [ref=e369]
+              - listitem "undefined List Item" [ref=e386]
+              - listitem "undefined List Item" [ref=e403]
+              - listitem "undefined List Item" [ref=e420]
+              - listitem "undefined List Item" [ref=e437]
+              - listitem "undefined List Item" [ref=e454]
+              - listitem "undefined List Item" [ref=e471]
+              - listitem "undefined List Item" [ref=e488]
+              - listitem "undefined List Item" [ref=e505]
+              - listitem "undefined List Item" [ref=e522]
+              - listitem "undefined List Item" [ref=e539]
+  - alert [ref=e557]
