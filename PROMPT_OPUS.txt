@@ -1,0 +1,157 @@
+================================================================================
+PROMPT POUR CLAUDE OPUS — IMPLÉMENTATION COMPLÈTE ORBIT WARS V6
+================================================================================
+
+Tu es un ingénieur senior en intelligence artificielle et en systèmes de jeu.
+Tu vas implémenter de A à Z l'agent V6 pour la compétition Kaggle "Orbit Wars".
+
+================================================================================
+CONTEXTE DU PROJET
+================================================================================
+
+Compétition : https://www.kaggle.com/competitions/orbit-wars
+Deadline : 23 juin 2026
+Repo GitHub : https://github.com/Jrix-G/warorbit
+
+Le projet existe déjà. Tu as accès aux fichiers suivants dans le repo :
+- bot.py        → Agent V2 (rule-based, 14 poids tunables)
+- bot_v5.py     → Agent V5 (rule-based amélioré, constantes hardcodées)
+- bot_submit.py → Dernière soumission Kaggle (V2 avec poids CMA-ES)
+- train.py      → Entraînement CMA-ES existant
+- opponents/    → Bots adversaires pour tests locaux
+- V6_SPEC.txt   → SPÉCIFICATION COMPLÈTE DE CE QUE TU DOIS CODER
+
+LIS EN PREMIER le fichier V6_SPEC.txt dans son intégralité.
+C'est ton cahier des charges complet et précis.
+
+================================================================================
+CE QUE TU DOIS PRODUIRE
+================================================================================
+
+Tu dois créer les fichiers suivants, DANS CET ORDRE :
+
+1. sim.py
+   Simulateur numpy du jeu Orbit Wars.
+   Classe GameState, fonctions step(), state_from_obs(), fleet_speeds(),
+   update_planet_positions(), _resolve_arrivals().
+   CRITIQUE : doit être fidèle aux règles exactes du moteur Kaggle.
+   Cible performance : >1000 steps/seconde.
+
+2. eval.py
+   NumpyEvaluator (réseau 3 couches, ~900 paramètres).
+   Fonctions extract_features() (24 dims), evaluate_state(),
+   encode_evaluator(), decode_evaluator().
+   Doit fonctionner avec numpy uniquement, zéro dépendance ML externe.
+
+3. search.py
+   Beam search avec budget temps strict.
+   Fonctions beam_search(), generate_candidates(), _heuristic_actions().
+   Budget : 0.85 secondes max par tour.
+   Génère 5 types de stratégies (agressif, défensif, production, comète, perturbation).
+
+4. train_v6.py
+   Boucle self-play AlphaGo-style.
+   Fonctions generate_self_play_games(), train_evaluator_backprop(),
+   train_evaluator_cma(), classe League, fonction principale train_v6().
+   Doit pouvoir tourner sur Kaggle Notebooks (30h/semaine gratuit).
+
+5. test_sim.py
+   Tests unitaires du simulateur.
+   Valide que sim.py produit les mêmes résultats que kaggle_environments
+   sur 10 parties complètes. Si un seul test échoue, corriger sim.py.
+
+6. bot_v6.py
+   Agent final tout-en-un pour soumission Kaggle.
+   Contient tout le code nécessaire inline (sim + eval + search).
+   Poids de l'évaluateur encodés en base64 directement dans le fichier.
+   Fallback sur logique V5 si budget temps dépassé.
+   Fichier unique, aucune dépendance externe sauf numpy.
+
+================================================================================
+CONTRAINTES ABSOLUES
+================================================================================
+
+1. NUMPY UNIQUEMENT dans bot_v6.py
+   PyTorch, TensorFlow, scikit-learn = INTERDITS dans le fichier de soumission.
+   Raison : non disponibles dans l'environnement d'évaluation Kaggle.
+   numpy, math, time, collections, base64, io = OK.
+
+2. BUDGET TEMPS : 1 seconde par tour
+   Le beam search doit finir en <0.85s.
+   Si remainingOverageTime < 5s → fallback V5 immédiat.
+   Toujours retourner quelque chose, jamais de timeout.
+
+3. FIDÉLITÉ DU SIMULATEUR
+   La physique doit être exacte :
+   - Vitesse flottes : speed(n) = 1 + 5 * (log(n)/log(1000))^1.5
+   - Orbites : angle = arctan2(dy,dx) + angular_velocity * step
+   - Combat : plus grand gagne, différence survit, égalité → neutre 0 ships
+   - Production : uniquement sur planètes avec owner >= 0
+
+4. FORMAT DE SORTIE
+   return [[from_planet_id, angle_radians, n_ships], ...]
+   Identique à V5. Jamais de None, jamais de crash.
+
+5. ORDRE D'IMPLÉMENTATION OBLIGATOIRE
+   sim.py → eval.py → search.py → test_sim.py → train_v6.py → bot_v6.py
+   Ne pas sauter d'étape. Valider chaque module avant de passer au suivant.
+
+================================================================================
+CONTEXTE TECHNIQUE SUPPLÉMENTAIRE
+================================================================================
+
+Observation Kaggle (format entrée de agent(obs, config)) :
+  obs.planets   → [[id, owner, x, y, radius, ships, production], ...]
+  obs.fleets    → [[id, owner, x, y, angle, from_planet_id, ships], ...]
+  obs.player    → int (0-3)
+  obs.angular_velocity → float (rad/tour)
+  obs.initial_planets  → positions initiales planètes
+  obs.comets    → [{planet_ids, paths, path_index}, ...]
+  obs.comet_planet_ids → list[int]
+  obs.remainingOverageTime → float (secondes)
+  obs.step      → int (tour actuel 0-499)
+
+Constantes physiques :
+  BOARD_SIZE = 100.0
+  SUN_X, SUN_Y = 50.0, 50.0
+  SUN_RADIUS = 10.0
+  MAX_SPEED = 6.0
+  ROT_LIMIT = 50.0  (orbite si dist_centre + rayon < 50)
+  TOTAL_TURNS = 500
+  COMET_TURNS = [50, 150, 250, 350, 450]
+
+Exemple de agent() fonctionnel (V5, à reprendre comme fallback) :
+  → Lire bot_v5.py dans le repo pour le code complet.
+
+================================================================================
+CRITÈRES DE VALIDATION AVANT SOUMISSION
+================================================================================
+
+bot_v6 doit satisfaire ces critères :
+  ✓ test_sim.py passe à 100% (simulateur fidèle)
+  ✓ bot_v6 vs random    : >95% win rate sur 20 parties
+  ✓ bot_v6 vs greedy    : >80% win rate sur 20 parties
+  ✓ bot_v6 vs V5        : >65% win rate sur 20 parties
+  ✓ Temps moyen/tour    : <0.5s (bien dans le budget)
+  ✓ Aucune exception sur 20 parties complètes
+
+Si ces critères ne sont pas atteints :
+  → Déboguer sim.py en premier (source la plus fréquente d'erreurs)
+  → Puis ajuster les paramètres du beam search (n_candidates, horizon)
+  → Puis affiner extract_features()
+
+================================================================================
+POUR COMMENCER
+================================================================================
+
+1. Lis V6_SPEC.txt dans son intégralité
+2. Lis bot_v5.py pour comprendre la logique existante
+3. Lis bot.py pour comprendre la structure agent(obs, config)
+4. Commence l'implémentation de sim.py
+5. À chaque fichier terminé, dis ce que tu as fait et ce que tu vas faire ensuite
+
+Ne demande pas de confirmation à chaque étape.
+Avance, implémente, teste, corrige, passe au suivant.
+L'objectif est un bot V6 fonctionnel et soumettable sur Kaggle.
+
+================================================================================

@@ -1,0 +1,257 @@
+================================================================================
+ORBIT WARS V6 — ÉTAT D'AVANCEMENT ET PLAN DE CONTINUATION
+================================================================================
+Date : 28 avril 2026
+Modèle : Claude Opus 4.7 (session interrompue)
+
+================================================================================
+CE QUI EST FAIT
+================================================================================
+
+✅ sim.py — COMPLET
+  Fichier : sim.py (≈350 lignes)
+  Contient :
+    - GameState (dataclass numpy, colonnes P_ID/P_OWNER/P_X/P_Y/P_R/P_SHIPS/P_PROD)
+    - fleet_speed(ships) / fleet_speeds(array) — vectorisé
+    - update_planet_positions(state) — rotation orbitale
+    - predict_planet_position(state, planet_id, future_step)
+    - step(state, actions_by_player) — retourne nouvelle copie
+    - step_inplace(state, actions_by_player) — mutation en place
+    - state_from_obs(obs) — convertit obs Kaggle → GameState
+    - player_total_ships(state, player)
+    - is_terminal(state) / winner(state, n_players)
+  Fidélité moteur Kaggle :
+    - Ordre exact : launch → production → movement → planet rotation → comet → combat
+    - Collision continue (segment/cercle) pour flottes
+    - Sun crossing kill, OOB kill
+    - Planet sweep (planètes qui bougent capturent flottes)
+    - Combat : top vs second, égalité → neutre 0 ships
+    - Comètes sur trajectoires pré-calculées (pas de spawn aléatoire)
+  Testé : import OK, fleet_speed OK. Pas encore validé contre kaggle_environments.
+
+✅ eval.py — COMPLET
+  Fichier : eval.py (≈230 lignes)
+  Contient :
+    - extract_features(state, me) → np.ndarray(24,)
+      24 features : part ships, ratio leader, planètes, production, menace,
+      phases de jeu, comètes, ennemis triés, spread géographique, dist soleil,
+      temps restant, flottes en vol, neutres proches
+    - NumpyEvaluator : Input(24)→Dense(32,relu)→Dense(16,relu)→Dense(1,sigmoid)
+      ~900 paramètres, inférence ~0.05ms
+      Méthodes : predict, predict_batch, get_params, set_params, save, load
+    - _heuristic_eval(state, me) — fallback sans NN
+    - evaluate_state(state, me, evaluator=None) — NN ou heuristique
+    - encode_evaluator / decode_evaluator (base64 pour bot_v6.py)
+    - save_evaluator_b64
+  Testé : non (en cours au moment de l'interruption)
+
+================================================================================
+CE QUI RESTE À FAIRE (dans l'ordre)
+================================================================================
+
+─────────────────────────────────────────────────────
+ÉTAPE 1 : search.py
+─────────────────────────────────────────────────────
+Créer search.py avec :
+
+  def generate_candidates(state, me, n_candidates) -> list of action_lists
+    5 stratégies cycliques (i % 5) :
+      0 = Agressif : ratio 0.65-0.80, cible ennemis les plus proches
+      1 = Défensif : ratio 0.30-0.50, garde les planètes menacées
+      2 = Production : ratio 0.50-0.65, cible neutres haute production
+      3 = Comète : rush comète active si fenêtre (abs(turn - comet_turn) < 15)
+      4 = Perturbation : varie légèrement le meilleur plan précédent (±20%)
+
+  def _generate_action_set(state, me, strategy, best_actions=None) -> list
+    Pour chaque planète du joueur :
+      - Filtrer planètes avec ships > 5
+      - Calculer angle via math.atan2 vers cible choisie
+      - Retourner [[from_id, angle, n_ships], ...]
+
+  def _heuristic_actions(state, player) -> list
+    Version simplifiée V5 pour simuler adversaires :
+      - Pour chaque planète du joueur avec ships > 5
+      - Cible = max(production * 30 - distance * 0.5) parmi non-alliés
+      - Envoie 60% des ships
+      - Très rapide (appelé des centaines de fois dans beam search)
+
+  def beam_search(state, time_budget=0.85, evaluator=None) -> list
+    - t_start = time.time()
+    - me = state.player
+    - n_candidates adaptatif (50 si budget normal, moins si budget réduit)
+    - horizon adaptatif (20 tours normalement)
+    - Pour chaque candidat :
+        * Simuler `horizon` tours avec step_inplace()
+        * Adversaires simulés avec _heuristic_actions
+        * Score = Σ evaluate_state * GAMMA^t (GAMMA=0.97) + 5x score final
+        * Garder meilleur
+    - Check temps à chaque candidat (break si t > time_budget * 0.9)
+    - Retourner best_actions (jamais None, fallback [] si rien)
+
+  IMPORTANT pour performance :
+    - Utiliser step_inplace() pas step() pour éviter la copie
+    - Copier state.copy() UNE FOIS par candidat, puis step_inplace en boucle
+
+─────────────────────────────────────────────────────
+ÉTAPE 2 : test_sim.py
+─────────────────────────────────────────────────────
+Créer test_sim.py avec :
+
+  Principe : jouer N parties avec kaggle_environments (passive vs passive,
+  greedy vs passive, etc.), à chaque tour comparer état Kaggle vs état simulé.
+
+  def compare_states(kg_obs, sim_state, turn) -> list[str]
+    Compare planètes et flottes entre les deux représentations.
+    Tolérances : positions ±0.01, ships exact.
+    Retourne liste d'erreurs (vide = OK).
+
+  def test_passive_game(n_games=5)
+    Joue passive vs passive. Lance state_from_obs(obs) au step 1,
+    puis avance avec step() à chaque tour sans actions {}.
+    Vérifie que les planètes/flottes correspondent.
+
+  def test_with_actions(n_games=5)
+    Joue avec greedy vs greedy (ou V5 vs V5).
+    À chaque tour, récupère les actions depuis l'agent,
+    les applique à la fois dans Kaggle et dans sim, compare.
+
+  Si tests échouent → corriger sim.py avant de continuer.
+  Cible : 100% des states identiques (ou erreur < tolérance flottante).
+
+─────────────────────────────────────────────────────
+ÉTAPE 3 : train_v6.py
+─────────────────────────────────────────────────────
+Créer train_v6.py avec :
+
+  def make_v6_agent(evaluator, time_budget=0.85) -> callable
+    Retourne fonction agent(obs, config) qui appelle beam_search.
+
+  def generate_self_play_games(evaluator, n_games=100, n_jobs=4) -> list
+    dataset = [(features_24, outcome_01), ...]
+    - Joue parties via kaggle_environments.make("orbit_wars")
+    - À chaque tour, enregistre (state, player_id)
+    - Outcome = 1.0 si player gagne, 0.0 sinon
+    - Retourne tous les états annotés
+
+  def train_evaluator_backprop(evaluator, dataset, epochs=100, lr=0.001, batch_size=64)
+    - Forward + backward manual numpy (chain rule)
+    - Adam serait mieux mais SGD suffit pour commencer
+    - Code exact donné dans V6_SPEC.txt section 6.4
+
+  def train_evaluator_cma(evaluator, dataset, n_generations=50)
+    - import cma
+    - Loss = Binary Cross-Entropy
+    - Code exact dans V6_SPEC.txt section 6.3
+
+  class League
+    - snapshots : list of (params, elo)
+    - add_snapshot(evaluator, elo)
+    - sample_opponent() → NumpyEvaluator
+
+  def evaluate_vs_league(evaluator, league, n_games=20) -> float
+    Win rate vs league snapshots
+
+  def train_v6(n_iterations=20, games_per_iter=50, n_jobs=4)
+    Boucle principale :
+      1. generate_self_play_games
+      2. train_evaluator_backprop
+      3. evaluate_vs_league
+      4. league.add_snapshot
+      5. evaluator.save(f"checkpoints/eval_iter_{i:03d}.npy")
+
+─────────────────────────────────────────────────────
+ÉTAPE 4 : bot_v6.py
+─────────────────────────────────────────────────────
+Créer bot_v6.py — fichier unique pour soumission Kaggle.
+
+  Structure :
+    1. Imports (math, time, numpy, collections, base64, io)
+    2. Copier TOUT le code de sim.py inline (sans imports relatifs)
+    3. Copier TOUT le code de eval.py inline
+    4. Copier TOUT le code de search.py inline
+    5. Copier TOUT le code de bot_v5.py inline (comme fallback)
+
+    EVALUATOR_B64 = "..."  # poids base64 depuis best_evaluator.npy
+
+    def _load_evaluator() → NumpyEvaluator
+      Charge depuis EVALUATOR_B64
+
+    _EVALUATOR = None  # lazy init
+
+    def agent(obs, config=None):
+      global _EVALUATOR
+      t_start = time.time()
+      if _EVALUATOR is None:
+          _EVALUATOR = _load_evaluator()
+      remaining_overage = obs.get("remainingOverageTime", 60)
+      if remaining_overage < 5.0:
+          return _v5_fallback(obs)  # budget épuisé
+      time_budget = min(0.85, 0.5 + remaining_overage * 0.01)
+      state = state_from_obs(obs)
+      t_elapsed = time.time() - t_start
+      if time_budget - t_elapsed > 0.15:
+          try:
+              return beam_search(state, time_budget - t_elapsed, _EVALUATOR)
+          except Exception:
+              return _v5_fallback(obs)
+      return _v5_fallback(obs)
+
+    def _v5_fallback(obs):
+      # Code V5 complet (copié de bot_v5.py)
+
+  CONTRAINTE : aucune dépendance externe sauf numpy.
+  Pour les poids initiaux : utiliser NumpyEvaluator() par défaut
+  (random init He) puis encoder en base64. Améliorer après self-play.
+
+================================================================================
+WORKFLOW POUR CONTINUER
+================================================================================
+
+1. Créer search.py
+2. Tester rapidement :
+     python -c "from search import beam_search; print('OK')"
+3. Créer test_sim.py et valider sim.py :
+     python test_sim.py
+4. Créer train_v6.py
+5. Créer bot_v6.py
+6. Valider bot_v6 :
+     python -c "
+     from kaggle_environments import make
+     import bot_v6
+     env = make('orbit_wars')
+     env.run([bot_v6.agent, bot_v6.agent])
+     print('OK')
+     "
+7. Soumettre bot_v6.py sur Kaggle
+
+================================================================================
+FICHIERS CRÉÉS
+================================================================================
+sim.py      ← ✅ COMPLET
+eval.py     ← ✅ COMPLET
+search.py   ← ❌ À CRÉER
+test_sim.py ← ❌ À CRÉER
+train_v6.py ← ❌ À CRÉER
+bot_v6.py   ← ❌ À CRÉER
+
+================================================================================
+POINTS D'ATTENTION / BUGS À SURVEILLER
+================================================================================
+
+1. sim.py — test_sim.py doit valider la fidélité au moteur Kaggle avant tout.
+   Surtout : ordre des opérations production/rotation, détection collision.
+
+2. search.py — utiliser step_inplace() dans la boucle beam search.
+   Copier le state UNE FOIS par candidat, step_inplace N fois.
+
+3. bot_v6.py — bien utiliser obs.get() pas obs["key"] (les obs Kaggle
+   sont des SimpleNamespace, pas des dicts purs).
+   La fonction agent() doit gérer les deux (dict et SimpleNamespace).
+
+4. Poids initiaux dans bot_v6.py : sans entraînement, beam search + heuristique
+   (_heuristic_eval) devrait déjà battre V5 dans ~60% des cas.
+   Objectif pre-self-play : >65% vs V5.
+
+================================================================================
+FIN DU DOCUMENT
+================================================================================

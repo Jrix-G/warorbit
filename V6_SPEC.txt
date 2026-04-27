@@ -1,0 +1,1129 @@
+================================================================================
+ORBIT WARS — AGENT V6 : SPÉCIFICATION TECHNIQUE COMPLÈTE
+Architecture AlphaGo/Stockfish adaptée pour Orbit Wars (numpy only)
+================================================================================
+
+Auteur de la spec : Claude Sonnet 4.6
+Destinataire : Claude Opus (implémentation complète)
+Date : Avril 2026
+Compétition : https://www.kaggle.com/competitions/orbit-wars
+Deadline compétition : 23 juin 2026
+
+================================================================================
+SECTION 0 — CONTEXTE ET OBJECTIF
+================================================================================
+
+Le bot actuel (V5) est un agent rule-based avec constantes hardcodées. Il prend
+des décisions locales sans anticiper le futur. Les bots top-100 Kaggle utilisent
+des approches plus sophistiquées (search, simulation locale, self-play).
+
+L'objectif V6 est de construire un agent capable de :
+1. Simuler le futur du jeu en numpy (sans kaggle_environments)
+2. Évaluer des milliers de plans candidats par tour (beam search)
+3. S'auto-améliorer via self-play (AlphaGo-style)
+4. Rester dans le budget de 1 seconde/tour imposé par la compétition
+
+Contrainte critique : PyTorch NON DISPONIBLE dans l'environnement d'évaluation.
+Tout doit fonctionner avec numpy + stdlib uniquement.
+
+ELO cible : 1400-1800 (top 3-5%)
+
+================================================================================
+SECTION 1 — RÈGLES DU JEU (référence pour le simulateur)
+================================================================================
+
+1.1 TERRAIN
+- Plateau 100×100, soleil au centre (50,50), rayon 10
+- 2 ou 4 joueurs (en compétition : 4 joueurs)
+- 500 tours maximum
+- Victoire : joueur avec le plus de ships TOTAL (planètes + flottes en vol)
+
+1.2 PLANÈTES
+- Statiques ou en orbite autour du soleil
+- Orbite si : distance_centre + rayon < 50 (ROT_LIMIT)
+- Position orbitale : angle_initial + angular_velocity * tour
+- Production : 1-5 ships/tour si propriétaire != -1 (neutre = 0)
+- owner = -1 → neutre, owner = 0..3 → joueur
+
+1.3 FLOTTES
+- Déplacement en ligne droite vers angle donné
+- Vitesse logarithmique : speed(n) = 1 + 5 * (log(n)/log(1000))^1.5
+  → 1 ship = 1 u/tour, 1000 ships ≈ 6 u/tour
+- Capture de planète : flotte arrive si distance < rayon_planète
+- Combat à l'arrivée :
+  * Si même owner → renfort (addition)
+  * Si owner différent :
+    - attaquant > défenseur → planète capturée, ships = attaquant - défenseur
+    - attaquant < défenseur → défense tient, ships = défenseur - attaquant
+    - égalité → planète neutre, 0 ships
+
+1.4 COMÈTES
+- Apparaissent aux tours 50, 150, 250, 350, 450
+- Restent 50 tours
+- Se déplacent à 4 u/tour sur une trajectoire fixe
+- Capturables comme une planète mobile
+- Production pendant la durée de possession
+
+1.5 ACTIONS PAR TOUR
+- Format : [[planet_id, angle_radians, n_ships], ...]
+- Un ordre par planète source maximum
+- n_ships doit être <= ships disponibles sur la planète
+
+1.6 BUDGET TEMPS
+- 1 seconde par tour (actTimeout)
+- remainingOverageTime : budget supplémentaire global (s'épuise)
+- Il faut rendre la réponse en <0.9s pour sécurité
+
+================================================================================
+SECTION 2 — ARCHITECTURE GLOBALE V6
+================================================================================
+
+V6 se compose de 5 modules indépendants :
+
+┌─────────────────────────────────────────────────────┐
+│                    AGENT V6 (bot_v6.py)             │
+│                                                     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
+│  │Simulator │  │ Beam     │  │  Evaluator       │  │
+│  │(sim.py)  │→ │ Search   │→ │  (eval.py)       │  │
+│  │          │  │(search.py│  │  numpy NN ~500p  │  │
+│  └──────────┘  └──────────┘  └──────────────────┘  │
+│                                                     │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  V5 Fallback (si temps insuffisant)          │   │
+│  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│              ENTRAÎNEMENT (local, offline)           │
+│                                                     │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
+│  │Self-play │→ │ Dataset  │→ │  Train Evaluator │  │
+│  │League    │  │(states,  │  │  (numpy backprop │  │
+│  │          │  │ outcomes)│  │  ou CMA-ES)      │  │
+│  └──────────┘  └──────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────┘
+
+Fichiers à créer :
+- sim.py           : simulateur numpy rapide
+- search.py        : beam search + rollout
+- eval.py          : réseau d'évaluation numpy
+- train_v6.py      : boucle self-play + entraînement
+- bot_v6.py        : agent principal (soumission)
+
+================================================================================
+SECTION 3 — SIMULATEUR NUMPY (sim.py)
+================================================================================
+
+C'est LA pièce centrale. Tout repose dessus.
+
+3.1 REPRÉSENTATION DE L'ÉTAT
+
+class GameState:
+    """
+    Représentation compacte de l'état du jeu.
+    Tout en numpy pour vectorisation maximale.
+    """
+    # Planètes : array shape (N_planets, 7)
+    # Colonnes : [id, owner, x, y, radius, ships, production]
+    planets : np.ndarray  # float32
+
+    # Flottes : array shape (N_fleets, 8)
+    # Colonnes : [id, owner, x, y, angle, from_planet_id, ships, progress]
+    # progress = distance parcourue / distance totale [0,1]
+    fleets : np.ndarray   # float32
+
+    # Positions initiales des planètes (pour orbites)
+    # Shape (N_planets, 2) : [x_init, y_init]
+    init_positions : np.ndarray
+
+    # Vitesse angulaire globale (scalaire)
+    angular_velocity : float
+
+    # IDs des planètes-comètes actives
+    comet_ids : set
+
+    # Tour actuel
+    step : int
+
+    # Joueur local (pour self-play)
+    player : int
+
+NOTE IMPLÉMENTATION :
+- Utiliser float32 partout (2× plus rapide que float64 sur numpy)
+- Pré-allouer les arrays au maximum (max 20 planètes, max 200 flottes)
+- Éviter les allocations dynamiques dans la boucle de simulation
+
+3.2 FONCTION DE MISE À JOUR ORBITALE
+
+def update_planet_positions(state: GameState) -> None:
+    """
+    Met à jour x,y des planètes en orbite.
+    Vectorisé numpy, O(N_planets).
+    """
+    dx = state.init_positions[:, 0] - 50.0
+    dy = state.init_positions[:, 1] - 50.0
+    r = np.hypot(dx, dy)
+
+    # Masque : planètes en orbite
+    in_orbit = r + state.planets[:, 4] < 50.0  # radius col
+
+    angle_init = np.arctan2(dy, dx)
+    angle_now = angle_init + state.angular_velocity * state.step
+
+    state.planets[in_orbit, 2] = 50.0 + r[in_orbit] * np.cos(angle_now[in_orbit])
+    state.planets[in_orbit, 3] = 50.0 + r[in_orbit] * np.sin(angle_now[in_orbit])
+
+3.3 FONCTION DE VITESSE (vectorisée)
+
+def fleet_speeds(ships_array: np.ndarray) -> np.ndarray:
+    """Vitesse log pour array de flottes. Vectorisé."""
+    speeds = np.ones_like(ships_array, dtype=np.float32)
+    mask = ships_array > 1
+    log_ships = np.log(np.maximum(ships_array[mask], 1.0))
+    speeds[mask] = 1.0 + 5.0 * (log_ships / np.log(1000.0)) ** 1.5
+    return speeds
+
+3.4 FONCTION DE STEP PRINCIPAL
+
+def step(state: GameState, actions_by_player: dict) -> GameState:
+    """
+    Simule 1 tour complet. Retourne nouvel état (copie).
+
+    actions_by_player : {player_id: [[from_id, angle, ships], ...]}
+
+    Ordre des opérations (conforme au moteur Kaggle) :
+    1. Production sur planètes possédées
+    2. Lancement des nouvelles flottes (depuis les actions)
+    3. Déplacement de toutes les flottes
+    4. Résolution des combats (flottes arrivées)
+    5. Mise à jour positions orbitales
+    6. Gestion comètes (si tour = 50/150/250/350/450)
+    """
+    new_state = state.copy()  # copie shallow + arrays copiés
+    new_state.step += 1
+
+    # 1. Production
+    owned = new_state.planets[:, 1] >= 0
+    new_state.planets[owned, 5] += new_state.planets[owned, 6]
+
+    # 2. Lancement flottes
+    new_fleets = []
+    for player_id, actions in actions_by_player.items():
+        for from_id, angle, n_ships in actions:
+            planet_idx = np.where(new_state.planets[:, 0] == from_id)[0]
+            if len(planet_idx) == 0:
+                continue
+            pidx = planet_idx[0]
+            available = int(new_state.planets[pidx, 5])
+            n = min(n_ships, available)
+            if n <= 0:
+                continue
+            new_state.planets[pidx, 5] -= n
+            # Ajouter flotte : [id, owner, x, y, angle, from_id, ships, 0]
+            px, py = new_state.planets[pidx, 2], new_state.planets[pidx, 3]
+            new_fleets.append([len(new_state.fleets) + len(new_fleets),
+                               player_id, px, py, angle, from_id, n, 0.0])
+
+    if new_fleets:
+        new_state.fleets = np.vstack([new_state.fleets,
+                                       np.array(new_fleets, dtype=np.float32)])
+
+    # 3. Déplacement flottes (vectorisé)
+    if len(new_state.fleets) > 0:
+        speeds = fleet_speeds(new_state.fleets[:, 6])
+        new_state.fleets[:, 2] += np.cos(new_state.fleets[:, 4]) * speeds
+        new_state.fleets[:, 3] += np.sin(new_state.fleets[:, 4]) * speeds
+
+    # 4. Résolution combats (flottes arrivées sur planètes)
+    _resolve_arrivals(new_state)
+
+    # 5. Positions orbitales
+    update_planet_positions(new_state)
+
+    return new_state
+
+3.5 RÉSOLUTION DES ARRIVÉES
+
+def _resolve_arrivals(state: GameState) -> None:
+    """
+    Pour chaque planète, vérifie les flottes arrivées.
+    Résout les combats. Supprime les flottes résolues.
+    """
+    if len(state.fleets) == 0:
+        return
+
+    to_remove = []
+
+    for pidx in range(len(state.planets)):
+        px, py, pradius = state.planets[pidx, 2], state.planets[pidx, 3], state.planets[pidx, 4]
+        planet_owner = int(state.planets[pidx, 1])
+
+        # Flottes arrivées sur cette planète
+        dists = np.hypot(state.fleets[:, 2] - px, state.fleets[:, 3] - py)
+        arrived_mask = dists < pradius
+        arrived_indices = np.where(arrived_mask)[0]
+
+        if len(arrived_indices) == 0:
+            continue
+
+        # Grouper par owner
+        for fidx in arrived_indices:
+            fleet_owner = int(state.fleets[fidx, 1])
+            fleet_ships = int(state.fleets[fidx, 6])
+
+            if fleet_owner == planet_owner:
+                # Renfort
+                state.planets[pidx, 5] += fleet_ships
+            else:
+                # Combat
+                planet_ships = int(state.planets[pidx, 5])
+                if fleet_ships > planet_ships:
+                    state.planets[pidx, 1] = fleet_owner
+                    state.planets[pidx, 5] = fleet_ships - planet_ships
+                elif fleet_ships < planet_ships:
+                    state.planets[pidx, 5] = planet_ships - fleet_ships
+                else:
+                    state.planets[pidx, 1] = -1
+                    state.planets[pidx, 5] = 0
+                planet_owner = int(state.planets[pidx, 1])
+
+            to_remove.append(fidx)
+
+    if to_remove:
+        mask = np.ones(len(state.fleets), dtype=bool)
+        mask[to_remove] = False
+        state.fleets = state.fleets[mask]
+
+3.6 FONCTION UTILITAIRE : ÉTAT DEPUIS OBSERVATION
+
+def state_from_obs(obs) -> GameState:
+    """
+    Convertit l'observation Kaggle en GameState numpy.
+    Appelé 1 fois par tour au début.
+    """
+    planets = np.array(obs.get("planets", []), dtype=np.float32)
+    fleets_raw = obs.get("fleets", [])
+
+    if fleets_raw:
+        fleets = np.array(fleets_raw, dtype=np.float32)
+        # Ajouter colonne progress (=0 pour flottes en vol)
+        progress = np.zeros((len(fleets), 1), dtype=np.float32)
+        fleets = np.hstack([fleets, progress])
+    else:
+        fleets = np.zeros((0, 8), dtype=np.float32)
+
+    init_planets = np.array(obs.get("initial_planets", []), dtype=np.float32)
+    init_positions = init_planets[:, 2:4] if len(init_planets) > 0 else planets[:, 2:4].copy()
+
+    return GameState(
+        planets=planets,
+        fleets=fleets,
+        init_positions=init_positions,
+        angular_velocity=obs.get("angular_velocity", 0.0),
+        comet_ids=set(obs.get("comet_planet_ids", [])),
+        step=obs.get("step", 0),
+        player=obs.get("player", 0)
+    )
+
+3.7 PERFORMANCE CIBLE
+
+Le simulateur doit atteindre :
+- 1 step de simulation : < 0.5ms
+- 50 steps (horizon beam search) : < 25ms
+- 100 candidats × 20 steps : < 500ms (dans le budget 1s)
+
+Pour atteindre cela :
+- Vectoriser toutes les opérations sur les arrays
+- Éviter les boucles Python internes (sauf résolution combats)
+- Utiliser np.float32 partout
+- Pré-calculer les cosinus/sinus des angles si répétés
+
+================================================================================
+SECTION 4 — BEAM SEARCH (search.py)
+================================================================================
+
+4.1 PRINCIPE
+
+Au lieu de choisir 1 action, on génère K candidats, on simule N tours
+pour chacun, et on retourne l'action du meilleur candidat.
+
+Budget temps : 0.85 secondes max (laisser 0.15s de marge)
+K candidats : 50-100 (selon temps disponible)
+N horizon : 15-25 tours (selon complexité)
+
+4.2 GÉNÉRATION DES CANDIDATS
+
+def generate_candidates(state: GameState, me: int, n_candidates: int) -> list:
+    """
+    Génère n_candidates plans d'action différents.
+
+    Stratégies de génération (diversité essentielle) :
+    - 20% : plans agressifs (envoyer 70-80% vers planètes ennemies proches)
+    - 20% : plans défensifs (garder 50%, renforcer planètes menacées)
+    - 20% : plans production (cibler neutrales haute production)
+    - 20% : plans comète (rush comète si fenêtre active)
+    - 20% : perturbations aléatoires du meilleur plan précédent
+    """
+    candidates = []
+    my_planets = state.planets[state.planets[:, 1] == me]
+
+    for i in range(n_candidates):
+        strategy = i % 5
+        actions = _generate_action_set(state, me, strategy)
+        candidates.append(actions)
+
+    return candidates
+
+def _generate_action_set(state, me, strategy):
+    """Génère un ensemble d'actions selon une stratégie."""
+    actions = []
+    my_planets = state.planets[state.planets[:, 1] == me]
+
+    if strategy == 0:  # Agressif
+        ratio = np.random.uniform(0.65, 0.80)
+        # Cibler ennemis proches
+        ...
+    elif strategy == 1:  # Défensif
+        ratio = np.random.uniform(0.30, 0.50)
+        # Renforcer planètes menacées
+        ...
+    elif strategy == 2:  # Production
+        ratio = np.random.uniform(0.50, 0.65)
+        # Cibler neutrales haute production
+        ...
+    elif strategy == 3:  # Comète
+        # Rush comète avec ratio élevé
+        ...
+    else:  # Perturbation
+        # Varier légèrement le meilleur plan connu
+        ...
+
+    return actions
+
+4.3 SIMULATION ET SCORING
+
+def beam_search(state: GameState, time_budget: float = 0.85) -> list:
+    """
+    Algorithme principal de beam search.
+
+    Returns: liste d'actions [[from_id, angle, ships], ...]
+    """
+    import time
+    t_start = time.time()
+    me = state.player
+
+    # Génération adaptative selon temps disponible
+    t_elapsed = time.time() - t_start
+    n_candidates = min(100, max(20, int(50 * time_budget / 0.85)))
+    horizon = min(25, max(10, int(20 * time_budget / 0.85)))
+
+    candidates = generate_candidates(state, me, n_candidates)
+
+    best_score = -np.inf
+    best_actions = []
+
+    # Adversaire simulé : utilise heuristique V5 pour les autres joueurs
+    other_players = [p for p in range(4) if p != me and
+                     np.any(state.planets[:, 1] == p)]
+
+    for i, my_actions in enumerate(candidates):
+        if time.time() - t_start > time_budget * 0.9:
+            break  # Sécurité temps
+
+        sim_state = state.copy()
+        score = 0.0
+        discount = 1.0
+        GAMMA = 0.97  # Discount futur
+
+        for t in range(horizon):
+            # Actions de tous les joueurs
+            all_actions = {me: my_actions}
+            for opp in other_players:
+                all_actions[opp] = _heuristic_actions(sim_state, opp)
+
+            sim_state = step(sim_state, all_actions)
+
+            # Score intermédiaire à chaque tour (avec discount)
+            turn_score = evaluate_state(sim_state, me) * discount
+            score += turn_score
+            discount *= GAMMA
+
+            # Early termination si victoire/défaite claire
+            if _is_terminal(sim_state):
+                break
+
+        # Score final
+        score += evaluate_state(sim_state, me) * discount * 5.0  # Bonus état final
+
+        if score > best_score:
+            best_score = score
+            best_actions = my_actions
+
+    return best_actions
+
+4.4 SIMULATION DES ADVERSAIRES (heuristique V5)
+
+def _heuristic_actions(state: GameState, player: int) -> list:
+    """
+    Simule les actions des adversaires avec heuristique simple.
+    Doit être très rapide (appelé des centaines de fois).
+    Version simplifiée de V5 : cibler le meilleur ratio valeur/distance.
+    """
+    my_planets = state.planets[state.planets[:, 1] == player]
+    if len(my_planets) == 0:
+        return []
+
+    actions = []
+    targets = state.planets[state.planets[:, 1] != player]
+    if len(targets) == 0:
+        return []
+
+    for planet in my_planets:
+        ships = int(planet[5])
+        if ships < 5:
+            continue
+
+        # Trouver meilleure cible par valeur/distance
+        px, py = planet[2], planet[3]
+        dists = np.hypot(targets[:, 2] - px, targets[:, 3] - py)
+        values = targets[:, 6] * 30 - dists * 0.5  # production * horizon - coût distance
+        best_idx = np.argmax(values)
+
+        target = targets[best_idx]
+        angle = np.arctan2(target[3] - py, target[2] - px)
+        n_send = int(ships * 0.6)
+        actions.append([int(planet[0]), angle, n_send])
+
+    return actions
+
+================================================================================
+SECTION 5 — ÉVALUATEUR (eval.py)
+================================================================================
+
+5.1 PRINCIPE
+
+Un petit réseau de neurones numpy qui prédit la probabilité de victoire
+depuis un état de jeu. Entraîné par self-play.
+
+Architecture : Input(24) → Dense(32, relu) → Dense(16, relu) → Dense(1, sigmoid)
+Paramètres totaux : ~900 (très léger, inférence en <0.1ms)
+
+5.2 FEATURES D'ENTRÉE (24 dimensions)
+
+def extract_features(state: GameState, me: int) -> np.ndarray:
+    """
+    Extrait 24 features normalisées depuis un GameState.
+    Invariant au nombre de planètes/flottes.
+    """
+    features = np.zeros(24, dtype=np.float32)
+
+    # Ships totaux par joueur (normalisés)
+    total_ships = np.zeros(4)
+    for p in range(4):
+        planet_ships = np.sum(state.planets[state.planets[:, 1] == p, 5])
+        fleet_ships = np.sum(state.fleets[state.fleets[:, 1] == p, 6]) if len(state.fleets) > 0 else 0
+        total_ships[p] = planet_ships + fleet_ships
+
+    my_ships = total_ships[me]
+    total = total_ships.sum() + 1e-8
+
+    features[0] = my_ships / total                          # Part de ships
+    features[1] = my_ships / (max(total_ships) + 1e-8)     # Ratio vs leader
+
+    # Planètes
+    my_planets = state.planets[state.planets[:, 1] == me]
+    all_planets = len(state.planets)
+
+    features[2] = len(my_planets) / max(all_planets, 1)    # Part planètes
+    features[3] = np.sum(my_planets[:, 6]) / max(all_planets * 3, 1)  # Production relative
+
+    # Menaces entrantes
+    incoming_threat = 0
+    if len(state.fleets) > 0:
+        enemy_fleets = state.fleets[state.fleets[:, 1] != me]
+        for ef in enemy_fleets:
+            for mp in my_planets:
+                d = np.hypot(ef[2] - mp[2], ef[3] - mp[3])
+                if d < 30:
+                    incoming_threat += ef[6]
+
+    features[4] = incoming_threat / (my_ships + 1e-8)      # Niveau de menace
+
+    # Phase de jeu
+    features[5] = state.step / 500.0                       # Progression temporelle
+    features[6] = 1.0 if state.step < 40 else 0.0         # Early game
+    features[7] = 1.0 if 40 <= state.step < 150 else 0.0  # Mid game
+    features[8] = 1.0 if state.step >= 150 else 0.0       # Late game
+
+    # Comètes
+    features[9] = 1.0 if len(state.comet_ids) > 0 else 0.0
+    comet_owned = sum(1 for cid in state.comet_ids
+                      if np.any((state.planets[:, 0] == cid) & (state.planets[:, 1] == me)))
+    features[10] = comet_owned / max(len(state.comet_ids), 1)
+
+    # Position relative des adversaires
+    enemy_ships_sorted = sorted([total_ships[p] for p in range(4) if p != me], reverse=True)
+    for i, s in enumerate(enemy_ships_sorted[:3]):
+        features[11 + i] = s / total  # Ships des 3 adversaires triés
+
+    # Concentration géographique (défense vs expansion)
+    if len(my_planets) > 1:
+        centroid_x = np.mean(my_planets[:, 2])
+        centroid_y = np.mean(my_planets[:, 3])
+        spread = np.mean(np.hypot(my_planets[:, 2] - centroid_x,
+                                   my_planets[:, 3] - centroid_y))
+        features[14] = spread / 70.0  # Normaliser par demi-diagonale
+
+    # Distance au soleil (vulnérabilité trajectoires)
+    if len(my_planets) > 0:
+        sun_dists = np.hypot(my_planets[:, 2] - 50, my_planets[:, 3] - 50)
+        features[15] = np.min(sun_dists) / 70.0
+
+    # Tours restants features
+    remaining = (500 - state.step) / 500.0
+    features[16] = remaining
+    features[17] = 1.0 if remaining < 0.1 else 0.0  # Endgame
+
+    # Ratio ships en vol vs total
+    my_fleet_ships = np.sum(state.fleets[state.fleets[:, 1] == me, 6]) if len(state.fleets) > 0 else 0
+    features[18] = my_fleet_ships / (my_ships + 1e-8)
+
+    # Production potentielle (si on capture toutes les neutres proches)
+    neutral_planets = state.planets[state.planets[:, 1] == -1]
+    if len(neutral_planets) > 0 and len(my_planets) > 0:
+        centroid_x = np.mean(my_planets[:, 2])
+        centroid_y = np.mean(my_planets[:, 3])
+        neutral_dists = np.hypot(neutral_planets[:, 2] - centroid_x,
+                                  neutral_planets[:, 3] - centroid_y)
+        close_neutral_prod = np.sum(neutral_planets[neutral_dists < 40, 6])
+        features[19] = close_neutral_prod / 20.0
+
+    # Features 20-23 : réservées pour extensions futures
+
+    return features
+
+5.3 ARCHITECTURE DU RÉSEAU
+
+class NumpyEvaluator:
+    """
+    Réseau numpy 3 couches. Inférence en ~0.05ms.
+    """
+    def __init__(self, input_dim=24, hidden1=32, hidden2=16):
+        # Initialisation He
+        self.W1 = np.random.randn(input_dim, hidden1).astype(np.float32) * np.sqrt(2/input_dim)
+        self.b1 = np.zeros(hidden1, dtype=np.float32)
+        self.W2 = np.random.randn(hidden1, hidden2).astype(np.float32) * np.sqrt(2/hidden1)
+        self.b2 = np.zeros(hidden2, dtype=np.float32)
+        self.W3 = np.random.randn(hidden2, 1).astype(np.float32) * np.sqrt(2/hidden2)
+        self.b3 = np.zeros(1, dtype=np.float32)
+
+    def predict(self, features: np.ndarray) -> float:
+        """Forward pass. Features shape (24,). Retourne probabilité [0,1]."""
+        h1 = np.maximum(0, features @ self.W1 + self.b1)  # ReLU
+        h2 = np.maximum(0, h1 @ self.W2 + self.b2)        # ReLU
+        out = h2 @ self.W3 + self.b3                       # Linear
+        return float(1.0 / (1.0 + np.exp(-out[0])))        # Sigmoid
+
+    def predict_batch(self, features_batch: np.ndarray) -> np.ndarray:
+        """Inférence batch. Shape (N, 24) → (N,)."""
+        h1 = np.maximum(0, features_batch @ self.W1 + self.b1)
+        h2 = np.maximum(0, h1 @ self.W2 + self.b2)
+        out = h2 @ self.W3 + self.b3
+        return 1.0 / (1.0 + np.exp(-out[:, 0]))
+
+    def get_params(self) -> np.ndarray:
+        """Flatten tous les paramètres (pour CMA-ES)."""
+        return np.concatenate([self.W1.ravel(), self.b1, self.W2.ravel(),
+                                self.b2, self.W3.ravel(), self.b3])
+
+    def set_params(self, params: np.ndarray) -> None:
+        """Restore depuis vecteur flat (pour CMA-ES)."""
+        i = 0
+        s = self.W1.size; self.W1 = params[i:i+s].reshape(self.W1.shape); i+=s
+        s = self.b1.size; self.b1 = params[i:i+s]; i+=s
+        s = self.W2.size; self.W2 = params[i:i+s].reshape(self.W2.shape); i+=s
+        s = self.b2.size; self.b2 = params[i:i+s]; i+=s
+        s = self.W3.size; self.W3 = params[i:i+s].reshape(self.W3.shape); i+=s
+        s = self.b3.size; self.b3 = params[i:i+s]; i+=s
+
+    def save(self, path: str) -> None:
+        np.save(path, self.get_params())
+
+    def load(self, path: str) -> None:
+        self.set_params(np.load(path))
+
+def evaluate_state(state: GameState, me: int, evaluator: NumpyEvaluator = None) -> float:
+    """
+    Score un état de jeu pour le joueur `me`.
+    Si evaluator=None, utilise heuristique rapide.
+    """
+    if evaluator is not None:
+        features = extract_features(state, me)
+        return evaluator.predict(features)
+    else:
+        return _heuristic_eval(state, me)
+
+def _heuristic_eval(state: GameState, me: int) -> float:
+    """
+    Évaluation heuristique de fallback (sans NN).
+    Rapide, moins précise.
+    """
+    total_ships = 0
+    my_ships = 0
+    my_production = 0
+    total_production = 0
+
+    for p in state.planets:
+        ships = p[5]
+        prod = p[6]
+        total_ships += ships
+        total_production += prod
+        if p[1] == me:
+            my_ships += ships
+            my_production += prod
+
+    if len(state.fleets) > 0:
+        for f in state.fleets:
+            total_ships += f[6]
+            if f[1] == me:
+                my_ships += f[6]
+
+    if total_ships == 0:
+        return 0.5
+
+    ship_ratio = my_ships / total_ships
+    prod_ratio = my_production / max(total_production, 1)
+
+    # Pondération : ships comptent plus en endgame, production en early
+    t = state.step / 500.0
+    return (1 - t) * 0.4 * prod_ratio + t * 0.6 * ship_ratio + (1-t) * 0.6 * ship_ratio + t * 0.4 * prod_ratio
+
+================================================================================
+SECTION 6 — SELF-PLAY ET ENTRAÎNEMENT (train_v6.py)
+================================================================================
+
+6.1 PRINCIPE (AlphaGo simplifié)
+
+AlphaGo utilise :
+1. MCTS guidé par un réseau de politique (policy network)
+2. Évaluation par un réseau de valeur (value network)
+3. Self-play pour générer des données d'entraînement
+
+Notre version simplifiée (contrainte numpy) :
+1. Beam search guidé par NumpyEvaluator (value network)
+2. Self-play V6 vs V6 pour générer (état → victoire/défaite)
+3. Entraînement du NumpyEvaluator par CMA-ES ou backprop numpy
+4. League : garder snapshots historiques comme adversaires
+
+6.2 BOUCLE SELF-PLAY
+
+def generate_self_play_games(evaluator: NumpyEvaluator,
+                              n_games: int = 100,
+                              n_jobs: int = 4) -> list:
+    """
+    Joue n_games parties V6 vs V6 (ou V6 vs snapshots).
+    Retourne liste de (features_list, outcome) par partie.
+
+    outcome = 1.0 si joueur 0 gagne, 0.0 sinon.
+    """
+    dataset = []
+
+    for game_idx in range(n_games):
+        # Initialiser env Kaggle
+        env = make("orbit_wars", debug=False)
+
+        # Créer agent V6 avec evaluator courant
+        agent = make_v6_agent(evaluator)
+
+        # Jouer la partie
+        env.run([agent, agent])  # 2 joueurs pour commencer
+
+        # Extraire outcome
+        last = env.steps[-1]
+        winner = 0 if last[0]["reward"] > last[1]["reward"] else 1
+
+        # Stocker (features, outcome) pour chaque état observé
+        # (extraits depuis les observations enregistrées pendant la partie)
+        for step_data in recorded_steps:
+            state, player = step_data
+            features = extract_features(state, player)
+            outcome = 1.0 if winner == player else 0.0
+            dataset.append((features, outcome))
+
+    return dataset
+
+6.3 ENTRAÎNEMENT PAR CMA-ES (option 1, plus simple)
+
+def train_evaluator_cma(evaluator: NumpyEvaluator,
+                         dataset: list,
+                         n_generations: int = 50) -> NumpyEvaluator:
+    """
+    Entraîne l'évaluateur via CMA-ES sur le dataset self-play.
+
+    Loss = Binary Cross-Entropy entre prédiction et outcome réel.
+    """
+    import cma
+
+    X = np.array([d[0] for d in dataset], dtype=np.float32)
+    y = np.array([d[1] for d in dataset], dtype=np.float32)
+
+    def loss(params):
+        evaluator.set_params(np.array(params, dtype=np.float32))
+        preds = evaluator.predict_batch(X)
+        # Binary cross-entropy
+        bce = -np.mean(y * np.log(preds + 1e-8) + (1-y) * np.log(1-preds + 1e-8))
+        return float(bce)
+
+    init_params = evaluator.get_params().tolist()
+    es = cma.CMAEvolutionStrategy(init_params, sigma0=0.1,
+                                    {'maxiter': n_generations, 'verbose': -9})
+    es.optimize(loss)
+    evaluator.set_params(np.array(es.result.xbest, dtype=np.float32))
+    return evaluator
+
+6.4 ENTRAÎNEMENT PAR BACKPROP NUMPY (option 2, plus rapide)
+
+def train_evaluator_backprop(evaluator: NumpyEvaluator,
+                              dataset: list,
+                              epochs: int = 100,
+                              lr: float = 0.001,
+                              batch_size: int = 64) -> NumpyEvaluator:
+    """
+    Entraîne par gradient descent (backprop numpy manuel).
+    Plus rapide que CMA-ES pour de gros datasets.
+    """
+    X = np.array([d[0] for d in dataset], dtype=np.float32)
+    y = np.array([d[1] for d in dataset], dtype=np.float32)
+
+    for epoch in range(epochs):
+        # Shuffle
+        idx = np.random.permutation(len(X))
+        X, y = X[idx], y[idx]
+
+        total_loss = 0
+        for i in range(0, len(X), batch_size):
+            xb = X[i:i+batch_size]
+            yb = y[i:i+batch_size]
+
+            # Forward
+            h1 = np.maximum(0, xb @ evaluator.W1 + evaluator.b1)
+            h2 = np.maximum(0, h1 @ evaluator.W2 + evaluator.b2)
+            logit = h2 @ evaluator.W3 + evaluator.b3
+            pred = 1.0 / (1.0 + np.exp(-logit[:, 0]))
+
+            # Loss BCE
+            loss = -np.mean(yb * np.log(pred + 1e-8) + (1-yb) * np.log(1-pred + 1e-8))
+            total_loss += loss
+
+            # Backward (chain rule manuel)
+            d_pred = -(yb / (pred + 1e-8) - (1-yb) / (1-pred + 1e-8)) / len(xb)
+            d_logit = d_pred * pred * (1 - pred)
+
+            d_W3 = h2.T @ d_logit[:, np.newaxis]
+            d_b3 = d_logit.sum(axis=0)
+            d_h2 = d_logit[:, np.newaxis] @ evaluator.W3.T
+
+            d_h2_relu = d_h2 * (h2 > 0)
+            d_W2 = h1.T @ d_h2_relu
+            d_b2 = d_h2_relu.sum(axis=0)
+            d_h1 = d_h2_relu @ evaluator.W2.T
+
+            d_h1_relu = d_h1 * (h1 > 0)
+            d_W1 = xb.T @ d_h1_relu
+            d_b1 = d_h1_relu.sum(axis=0)
+
+            # Update (Adam serait mieux mais SGD suffit pour commencer)
+            evaluator.W1 -= lr * d_W1
+            evaluator.b1 -= lr * d_b1
+            evaluator.W2 -= lr * d_W2
+            evaluator.b2 -= lr * d_b2
+            evaluator.W3 -= lr * d_W3
+            evaluator.b3 -= lr * d_b3
+
+        if epoch % 10 == 0:
+            print(f"Epoch {epoch}: loss={total_loss:.4f}")
+
+    return evaluator
+
+6.5 LEAGUE (self-play diversifiée)
+
+class League:
+    """
+    Garde des snapshots historiques du bot pour éviter l'overfitting.
+    Inspiré de AlphaStar league.
+    """
+    def __init__(self, max_size: int = 10):
+        self.snapshots = []  # List of (evaluator_params, elo_estimate)
+        self.max_size = max_size
+
+    def add_snapshot(self, evaluator: NumpyEvaluator, elo: float = 1000):
+        params = evaluator.get_params().copy()
+        self.snapshots.append((params, elo))
+        if len(self.snapshots) > self.max_size:
+            # Garder les plus forts + quelques anciens pour diversité
+            self.snapshots.sort(key=lambda x: -x[1])
+            self.snapshots = self.snapshots[:self.max_size]
+
+    def sample_opponent(self) -> NumpyEvaluator:
+        """Échantillonne un adversaire de la league."""
+        if not self.snapshots:
+            return None
+        params, _ = self.snapshots[np.random.randint(len(self.snapshots))]
+        opp = NumpyEvaluator()
+        opp.set_params(params)
+        return opp
+
+6.6 BOUCLE D'ENTRAÎNEMENT COMPLÈTE
+
+def train_v6(n_iterations: int = 20,
+              games_per_iter: int = 50,
+              n_jobs: int = 4):
+    """
+    Boucle principale d'entraînement AlphaGo-style.
+
+    1 iteration = générer des parties + entraîner évaluateur
+    """
+    evaluator = NumpyEvaluator()
+    league = League()
+
+    for iteration in range(n_iterations):
+        print(f"\n=== Iteration {iteration+1}/{n_iterations} ===")
+
+        # 1. Self-play
+        print("Génération des parties self-play...")
+        dataset = generate_self_play_games(evaluator, games_per_iter, n_jobs)
+        print(f"  {len(dataset)} états collectés")
+
+        # 2. Entraînement
+        print("Entraînement évaluateur...")
+        evaluator = train_evaluator_backprop(evaluator, dataset, epochs=50)
+
+        # 3. Évaluation vs league
+        win_rate = evaluate_vs_league(evaluator, league, n_games=20)
+        print(f"  Win rate vs league: {win_rate:.1%}")
+
+        # 4. Sauvegarder si amélioration
+        elo_estimate = 800 + win_rate * 800  # rough estimate
+        league.add_snapshot(evaluator, elo_estimate)
+        evaluator.save(f"checkpoints/eval_iter_{iteration:03d}.npy")
+
+        # 5. Sauvegarder meilleur
+        if win_rate > 0.6:
+            evaluator.save("best_evaluator.npy")
+            print(f"  ✅ Nouveau meilleur sauvegardé (win_rate={win_rate:.1%})")
+
+================================================================================
+SECTION 7 — AGENT PRINCIPAL (bot_v6.py)
+================================================================================
+
+7.1 STRUCTURE GÉNÉRALE
+
+"""
+bot_v6.py — Agent Orbit Wars V6
+
+À soumettre sur Kaggle : ce fichier seul.
+Contient tout le code nécessaire (sim, search, eval inline).
+best_evaluator.npy doit être encodé en base64 dans le fichier.
+"""
+
+import math, time, numpy as np
+from collections import defaultdict
+
+# [Insérer ici le code de sim.py, search.py, eval.py inline]
+# [Insérer les poids du meilleur évaluateur encodés en base64]
+
+EVALUATOR_B64 = "..."  # np.save → base64 string
+
+def _load_evaluator():
+    import base64, io
+    data = base64.b64decode(EVALUATOR_B64)
+    params = np.load(io.BytesIO(data))
+    ev = NumpyEvaluator()
+    ev.set_params(params)
+    return ev
+
+_EVALUATOR = None
+
+def agent(obs, config=None):
+    global _EVALUATOR
+
+    t_start = time.time()
+
+    # Chargement lazy de l'évaluateur
+    if _EVALUATOR is None:
+        _EVALUATOR = _load_evaluator()
+
+    # Budget temps
+    remaining_overage = obs.get("remainingOverageTime", 60)
+    time_budget = min(0.85, 0.5 + remaining_overage * 0.01)
+
+    # Convertir obs en GameState
+    state = state_from_obs(obs)
+
+    # Beam search si temps suffisant, sinon fallback V5
+    t_elapsed = time.time() - t_start
+    if time_budget - t_elapsed > 0.2:
+        try:
+            actions = beam_search(state, time_budget - t_elapsed, _EVALUATOR)
+        except Exception:
+            actions = _v5_fallback(obs)  # Sécurité
+    else:
+        actions = _v5_fallback(obs)
+
+    return actions
+
+7.2 GESTION DU TEMPS
+
+Stratégie de time management :
+- Tour 1-10 : beam search complet (30 candidats, horizon 20)
+- Tours normaux : beam search adaptatif selon remainingOverageTime
+- Si remainingOverageTime < 5s : fallback V5 immédiat
+- Toujours laisser 0.15s de marge avant la deadline
+
+7.3 FALLBACK V5
+
+def _v5_fallback(obs):
+    """
+    Reprend la logique V5 exactement.
+    Utilisé si beam search dépasse le budget.
+    Garantit qu'on retourne toujours quelque chose.
+    """
+    # [Code V5 complet ici]
+    pass
+
+================================================================================
+SECTION 8 — PLAN D'IMPLÉMENTATION
+================================================================================
+
+8.1 ORDRE DE DÉVELOPPEMENT
+
+Phase 1 (J1-J2) : Simulateur
+  ✓ Implémenter GameState
+  ✓ Implémenter step()
+  ✓ Valider contre kaggle_environments (même résultat)
+  ✓ Benchmark performance (cible : 1000 steps/sec)
+
+Phase 2 (J3) : Évaluateur heuristique + Beam Search
+  ✓ Implémenter _heuristic_eval()
+  ✓ Implémenter generate_candidates()
+  ✓ Implémenter beam_search()
+  ✓ Tester bot_v6 vs V5 : doit gagner >60%
+
+Phase 3 (J4-J5) : NumpyEvaluator
+  ✓ Implémenter extract_features()
+  ✓ Implémenter NumpyEvaluator
+  ✓ Initialiser avec heuristique (supervised learning sur états V5)
+  ✓ Tester : beam search + NN vs beam search + heuristique
+
+Phase 4 (J6-J10) : Self-play
+  ✓ Implémenter generate_self_play_games()
+  ✓ Implémenter train_evaluator_backprop()
+  ✓ Implémenter League
+  ✓ Lancer 20 itérations sur Kaggle (30h/semaine gratuit)
+
+Phase 5 (J11+) : Optimisation
+  ✓ Profiler les goulots d'étranglement
+  ✓ Augmenter candidats si simulateur assez rapide
+  ✓ Explorer MCTS si beam search plafonne
+
+8.2 TESTS DE VALIDATION
+
+À chaque phase, tester :
+- bot_v6 vs random → doit gagner >95%
+- bot_v6 vs greedy → doit gagner >80%
+- bot_v6 vs notebook_tactical → doit gagner >55%
+- bot_v6 vs V5 → doit gagner >65%
+
+8.3 CRITÈRES DE SOUMISSION
+
+Soumettre V6 uniquement si :
+- Gagne >65% vs V5
+- Temps par tour <0.9s en moyenne
+- Pas d'erreurs sur 100 parties test
+
+================================================================================
+SECTION 9 — CONSIDÉRATIONS TECHNIQUES AVANCÉES
+================================================================================
+
+9.1 POURQUOI PAS MCTS ?
+
+MCTS (Monte Carlo Tree Search) nécessite :
+- Espace d'action discret et borné → difficile (angles continus)
+- Beaucoup de simulations (10000+/tour) → trop lent sans C extension
+- Implémentation complexe
+
+Beam search est préférable ici car :
+- Espace d'action naturellement continu
+- Plus simple à implémenter correctement
+- Plus rapide à itérer
+- Suffisant pour 1400-1600 ELO
+
+9.2 POURQUOI CMA-ES POUR L'ÉVALUATEUR ?
+
+Alternative à backprop manuel :
+- Backprop numpy = gradient exact mais fragile (learning rate sensible)
+- CMA-ES = gradient-free, robuste, converge bien sur <1000 params
+- Pour NumpyEvaluator (~900 params) : CMA-ES peut suffire
+- Recommandation : utiliser backprop pour datasets > 10000 exemples
+
+9.3 OPTIMISATIONS FUTURES
+
+Si beam search atteint un plafond (~1400 ELO) :
+1. Augmenter horizon de 20 à 50 tours (nécessite sim 5× plus rapide)
+2. Implémenter opponent modeling (mémoriser patterns adverses)
+3. Ajouter policy network (guider génération de candidats)
+4. Porter le simulateur critique en Cython ou ctypes (10-100× plus rapide)
+5. Implémenter PUCT (AlphaGo Zero style) si sim assez rapide
+
+9.4 ENCODAGE POUR SOUMISSION KAGGLE
+
+Les poids de l'évaluateur (~900 floats32 = ~3.6KB) sont encodés en base64
+directement dans bot_v6.py, qui est un fichier unique soumis à Kaggle.
+
+import base64, io, numpy as np
+
+def encode_evaluator(evaluator, path="evaluator_b64.txt"):
+    buf = io.BytesIO()
+    np.save(buf, evaluator.get_params())
+    b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+    with open(path, 'w') as f:
+        f.write(b64)
+    print(f"Encodé : {len(b64)} caractères")
+
+def decode_evaluator(b64_string):
+    data = base64.b64decode(b64_string)
+    params = np.load(io.BytesIO(data))
+    ev = NumpyEvaluator()
+    ev.set_params(params)
+    return ev
+
+================================================================================
+SECTION 10 — RÉSUMÉ POUR IMPLÉMENTATION
+================================================================================
+
+FICHIERS À CRÉER (dans cet ordre) :
+1. sim.py          → GameState, step(), state_from_obs(), fleet_speeds()
+2. eval.py         → NumpyEvaluator, extract_features(), evaluate_state()
+3. search.py       → beam_search(), generate_candidates(), _heuristic_actions()
+4. train_v6.py     → generate_self_play_games(), train_evaluator_*, League, train_v6()
+5. test_sim.py     → Tests unitaires du simulateur vs kaggle_environments
+6. bot_v6.py       → Agent final (tout inline) + poids encodés base64
+
+DÉPENDANCES :
+- numpy (disponible partout)
+- cma (pip install cma, pour entraînement)
+- kaggle-environments (pour validation et self-play)
+- math, time, collections, base64, io (stdlib)
+
+AUCUNE dépendance PyTorch, TensorFlow, ou autre ML framework.
+
+ELO ATTENDU PAR PHASE :
+- V6 Phase 2 (beam search + heuristique) : ~1000-1200 ELO
+- V6 Phase 3 (beam search + NN initialisé) : ~1200-1400 ELO
+- V6 Phase 4 (beam search + NN self-play 10 iter) : ~1400-1600 ELO
+- V6 Phase 5 (optimisé) : ~1600-1800 ELO
+
+================================================================================
+FIN DU DOCUMENT
+================================================================================

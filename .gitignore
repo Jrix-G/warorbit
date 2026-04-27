@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+
+.venv/
+.venv-win/
+node_modules/
+
+checkpoints/
+*.npy
+*_b64.txt
+evaluator_b64.txt
+bot_v6_trained.py
+
+.codex/
+.playwright-mcp/
