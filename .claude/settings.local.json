@@ -44,7 +44,8 @@
       "Bash(kaggle datasets *)",
       "Bash(kaggle kernels *)",
       "Bash(dir *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git -C /home/jason/Documents/warorbit log --oneline -10)"
     ]
   }
 }
