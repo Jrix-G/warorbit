@@ -133,7 +133,35 @@ def extract_features(state: GameState, me: int) -> np.ndarray:
         close_prod = float(np.sum(neutral_planets[nd < 40.0, P_PROD]))
         features[19] = close_prod / 20.0
 
-    # features 20-23 reserved
+    # --- Expansion headroom: how many close neutrals are currently affordable
+    if len(neutral_planets) > 0 and len(my_planets) > 0:
+        affordable = 0
+        anchor = my_planets[np.argmax(my_planets[:, P_SHIPS])]
+        for n in neutral_planets:
+            d = math.hypot(float(n[P_X]) - float(anchor[P_X]), float(n[P_Y]) - float(anchor[P_Y]))
+            if d < 45.0 and float(anchor[P_SHIPS]) > float(n[P_SHIPS]) + 3.0:
+                affordable += 1
+        features[20] = affordable / max(len(neutral_planets), 1)
+
+    # --- Concentration risk: too many ships stuck on a single planet
+    if len(my_planets) > 0:
+        my_planet_ships = float(np.sum(my_planets[:, P_SHIPS])) + 1e-8
+        features[21] = float(np.max(my_planets[:, P_SHIPS])) / my_planet_ships
+
+    # --- Production pressure: production per ship (low means stagnation risk)
+    if len(my_planets) > 0:
+        my_prod = float(np.sum(my_planets[:, P_PROD]))
+        my_planet_ships = float(np.sum(my_planets[:, P_SHIPS])) + 1e-8
+        features[22] = my_prod / my_planet_ships
+
+    # --- Survival fragility: very low planet count is a collapse precursor
+    if len(my_planets) <= 1:
+        features[23] = 1.0
+    elif len(my_planets) == 2:
+        features[23] = 0.5
+    else:
+        features[23] = 0.0
+
     return features
 
 

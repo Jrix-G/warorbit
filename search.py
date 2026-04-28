@@ -254,6 +254,35 @@ def _active_players(state, me):
     return sorted(players)
 
 
+def _action_commitment_penalty(state, me, my_actions):
+    """Penalty for leaving planets too exposed after first-turn launches."""
+    if len(my_actions) == 0 or len(state.planets) == 0:
+        return 0.0
+
+    my_planets = _planet_rows(state, me)
+    if len(my_planets) == 0:
+        return 0.0
+
+    ships_by_pid = {int(p[sim.P_ID]): float(p[sim.P_SHIPS]) for p in my_planets}
+    sent_by_pid = {}
+    for from_id, _, ships in my_actions:
+        pid = int(from_id)
+        sent_by_pid[pid] = sent_by_pid.get(pid, 0.0) + float(max(0, ships))
+
+    penalty = 0.0
+    for pid, sent in sent_by_pid.items():
+        before = ships_by_pid.get(pid, 0.0)
+        if before <= 0.0:
+            continue
+        remain = max(0.0, before - sent)
+        remain_ratio = remain / max(before, 1.0)
+        if remain_ratio < 0.22:
+            penalty += (0.22 - remain_ratio) * 2.8
+        if remain < 6.0:
+            penalty += 0.35
+    return penalty
+
+
 def beam_search(state, time_budget=0.85, evaluator=None):
     """Search the best immediate action plan under a strict time budget."""
     t_start = time.time()
@@ -274,22 +303,32 @@ def beam_search(state, time_budget=0.85, evaluator=None):
         sim_state = state.copy()
         score = 0.0
         discount = 1.0
+        commit_penalty = _action_commitment_penalty(state, me, my_actions)
+        base_planets = len(_planet_rows(sim_state, me))
+        early_growth = 0.0
+        curr_actions = my_actions
 
-        for _ in range(horizon):
-            all_actions = {me: my_actions}
+        for h in range(horizon):
+            all_actions = {me: curr_actions}
             for opp in other_players:
                 all_actions[opp] = _heuristic_actions(sim_state, opp)
 
             sim.step_inplace(sim_state, all_actions)
             score += eval.evaluate_state(sim_state, me, evaluator) * discount
+            if h < 6:
+                now_planets = len(_planet_rows(sim_state, me))
+                early_growth += max(0, now_planets - base_planets) * (0.10 / (1 + h))
             discount *= gamma
 
             if sim.is_terminal(sim_state):
                 break
             if time.time() - t_start > float(time_budget) * 0.90:
                 break
+            curr_actions = _heuristic_actions(sim_state, me)
 
         score += eval.evaluate_state(sim_state, me, evaluator) * discount * 5.0
+        score += early_growth
+        score -= commit_penalty
         if score > best_score:
             best_score = score
             best_actions = my_actions

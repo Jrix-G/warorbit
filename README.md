@@ -4,7 +4,7 @@
 
 - `bot.py` — agent principal (à soumettre)
 - `train.py` — tests locaux contre baselines
-- `stratégie.md` — analyse compétitive
+- `docs/analysis/stratégie.md` — analyse compétitive
 - `CLAUDE.md` — config Playwright MCP
 
 ## Setup

@@ -45,7 +45,12 @@
       "Bash(kaggle kernels *)",
       "Bash(dir *)",
       "Bash(git commit *)",
-      "Bash(git -C /home/jason/Documents/warorbit log --oneline -10)"
+      "Bash(git -C /home/jason/Documents/warorbit log --oneline -10)",
+      "Read(//home/jason/.config/google-chrome/Default/**)",
+      "Read(//home/jason/.mozilla/**)",
+      "Bash(.venv/bin/python *)",
+      "Bash(wait)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

@@ -58,139 +58,230 @@ obs.remainingOverageTime  # budget temps restant (s)
 return [[from_planet_id, direction_angle_radians, num_ships], ...]
 ```
 
-### État compétition (27 avril 2026)
+### État compétition (28 avril 2026)
 
 - #1 kovi: 2577 ELO (énorme écart sur #2 à 1623)
 - Top 10: 1313–2577 ELO
 - 1504 équipes, deadline 23 juin 2026
 - ELO 1500 = top 5 actuellement (très ambitieux)
-- ELO 800-1100 = objectif V1/V2 réaliste
+- ELO ~600-800 = état actuel estimé (bot V6 0/30 vs notebooks forts)
 
 ---
 
-## Architecture du code
+## Architecture du code (état 28 avril 2026)
 
-### Fichiers
+### Fichiers actifs
 
 | Fichier | Rôle | Soumettre ? |
 |---------|------|-------------|
-| `bot.py` | Agent principal avec 14 poids tunables | Oui (avec WEIGHTS=None) |
-| `bot_submit.py` | bot.py avec poids CMA-ES hardcodés | **Oui (celui-là en priorité)** |
-| `train.py` | CMA-ES + tests vs baselines | Non |
-| `best_weights.json` | Meilleurs poids sauvegardés | Non |
-| `stratégie.md` | Analyse compétitive détaillée | Non |
+| `submission.py` | **Bot actif à soumettre** | **OUI** |
+| `bot_v7.py` | **Source principale V7 — WorldModel + arrival ledger** | Dev |
+| `bot_v6.py` | Source V6 (beam_search + NumpyEvaluator) | Référence |
+| `bot_v6_submited.py` | Sauvegarde de la version soumise V6 | Référence |
+| `SimGame.py` | Simulateur local rapide (~5s/partie V7 vs notebook) | Non |
+| `opponents/` | Zoo de 12 bots adversaires | Non |
+| `replay_observer.py` | Capture JSON replay depuis Kaggle via Playwright | Non |
+| `evaluations/` | Évaluateurs numpy sauvegardés | Non |
 
-### bot.py — Fonctionnalités V2
+### bot_v7 — Architecture V7 (état 28 avril 2026)
 
-- **14 poids tunables** via `WEIGHTS` global (None = poids défaut `DEFAULT_W`)
-- **Coordination globale** via dict `committed[target_id]` (pas de doublons)
-- **Stratégie 4P**: pénalise attaque du leader (`W[7]`), bonus ennemi faible (`W[8]`)
-- **Sun-dodging**: waypoint latéral autour soleil, puis fallback angle dévié
-- **Prédiction orbite continue**: `predict_pos()` avec tours flottants
-- **Threat ETA**: urgence = `1 / (1 + eta × W[11])` → menaces proches prioritaires
-- **Mode dominant**: si `my_ships > max_enemy × W[10]`, défense conservative
-- **Comet bonus**: `W[1]` multiplicateur si cible est comète
+**Changement clé vs V6**: WorldModel avec arrival ledger. Toutes les décisions basées sur état futur projeté, pas état courant.
 
-### Poids DEFAULT_W[14]
+Composants:
+
+- **`WorldModel`**: construit chaque tour — arrival_ledger, timelines par planète, réserve défensive
+- **`build_arrival_ledger`**: mappe chaque flotte en transit vers sa planète cible + ETA
+- **`simulate_planet_timeline`**: simule état futur d'une planète sur HORIZON=80 tours (production + arrivées de flottes)
+- **`ships_needed_to_capture(planet, eta)`**: ships nécessaires basé sur état projeté à l'arrivée
+- **`keep_needed`**: garrison minimum calculé par binary search sur timeline (remplace `prod*eta` approximatif)
+- **`plan_moves`**: planning global avec `planned_commitments` — évite double-comptage entre missions
+- **Multi-source swarms**: coordonne 2/3 sources sur même cible avec tolérance ETA
+- **Reinforcement missions**: détecte planètes menacées, envoie renforts
+- **Rear staging**: transfère ships des planètes arrière vers le front
+- **Tuning 2-joueurs**: `TWO_PLAYER_HOSTILE_AGGRESSION_BOOST=1.35`, `TWO_PLAYER_NEUTRAL_MARGIN_BASE=1`, `TWO_PLAYER_OPENING_TURN_LIMIT=60`
+- **`NumpyEvaluator`**: MLP 24→32→16→1 conservé — sera utilisé pour REINFORCE (étape suivante)
+
+Optimisations performance:
+- `_seg_hits_sun`: comparaison dist² (évite sqrt)
+- `_cos_sin`: cache trig avec dict (évite math.cos/sin répétés)
+- Early-exit timeline si aucune arrivée ennemie (skip binary search)
+- HORIZON=80 (vs 150 dans notebook_physics_accurate)
+
+---
+
+## Résultats benchmark
+
+### V7 vs V6 vs notebooks (5 parties chacun, 28 avril 2026)
+
+| Adversaire | V6 | V7 |
+|-----------|:--:|:--:|
+| notebook_orbitbotnext | 0/5 | 1/5 |
+| notebook_distance_prioritized | 0/5 | 1/5 |
+| notebook_physics_accurate | 0/5 | 2/5 |
+
+**V7 > V6 sur tous les notebooks.** Gap restant = scoring policy pas encore entraîné.
+
+### V6 vs Zoo local (10 parties chacun, référence)
+
+| Adversaire | V6 |
+|-----------|:--:|
+| passive/random/starter | 10/10 |
+| greedy | 6/10 |
+| distance/structured/orbit_stars/sun_dodge | 5-6/10 |
+| notebooks forts | 0/10 |
+
+### Root cause gap vs notebooks
+
+- V6: décisions sur état courant → sous-estime défenseurs à l'arrivée
+- V7: décisions sur état projeté → correct, mais scoring policy encore heuristique
+- Objectif 4/5: scoring policy entraîné par REINFORCE
+
+---
+
+## Plan REINFORCE (prochaine étape)
+
+### Objectif
+
+Remplacer `_target_value()` dans `bot_v7.py` par un MLP appris. Le MLP apprend les comportements émergents (agressivité 2p en early, timing d'attaque, priorité missions) sans qu'on les code à la main.
+
+### Architecture MLP mission scorer
 
 ```python
-W[0]  = 2.0   # neutral_priority   : bonus neutres vs ennemis
-W[1]  = 1.5   # comet_bonus        : bonus comètes
-W[2]  = 40.0  # production_horizon : tours futurs estimés dans gain
-W[3]  = 0.3   # distance_penalty   : coût par unité de distance
-W[4]  = 0.15  # defense_reserve    : fraction ships gardée si menacé
-W[5]  = 1.3   # attack_ratio       : ships_needed × ce ratio
-W[6]  = 0.6   # fleet_send_ratio   : fraction ships envoyée
-W[7]  = 0.5   # leader_penalty     : pénalité attaque joueur dominant
-W[8]  = 0.4   # weak_enemy_bonus   : bonus si ennemi <30% de nos ships
-W[9]  = 0.05  # sun_waypoint_dist  : distance waypoint (× SUN_RADIUS)
-W[10] = 0.8   # endgame_threshold  : ratio ships pour mode défense
-W[11] = 0.25  # threat_eta_factor  : poids ETA dans urgence menace
-W[12] = 1.2   # reinforce_ratio    : seuil renforts défense
-W[13] = 0.5   # neutral_ships_cap  : max ships neutres / nos ships
+# Features par mission (input au MLP):
+features = [
+    target_production / 5.0,          # valeur économique normalisée
+    eta / 100.0,                       # temps de trajet
+    ships_needed / 500.0,             # coût de capture
+    remaining_turns / 500.0,          # urgence temporelle
+    is_two_player,                     # mode 2p vs 4p
+    domination_score,                  # avance/retard économique
+    target_is_enemy,                   # attaque vs neutre
+    target_is_static,                  # planète statique vs orbitale
+    indirect_wealth_normalized,        # valeur indirecte du territoire
+    my_prod_ratio,                     # ratio production totale
+    # ~10-15 features total
+]
+# Output: scalar log-multiplier sur le score heuristique de base
+# score_final = base_heuristic_score * exp(mlp(features))
+# Warm-start: poids=0 → mlp(x)=0 → exp(0)=1 → comportement V7 pur au départ
 ```
 
----
+### Algorithme REINFORCE
 
-## Entraînement CMA-ES
+```
+for episode in range(N):
+    # Jouer une partie V7-trained vs V7-trained (self-play)
+    # À chaque tour, pour chaque mission candidate:
+    #   score_noisy = base_score * exp(mlp(features) + noise)  # exploration
+    #   choisir missions par score_noisy (greedy)
+    #   enregistrer (features, noise_used) pour chaque mission exécutée
+    
+    reward = +1 si victoire, -1 si défaite, 0 si nul
+    
+    # Mise à jour REINFORCE:
+    for each (features, noise) recorded this episode:
+        gradient = reward * noise  # REINFORCE policy gradient
+        mlp_weights += lr * gradient * features  # backprop simplifié
+```
 
-### Commandes
+### Comment lancer (quand 8 cores disponibles)
 
 ```bash
-# Setup
-pip install kaggle-environments numpy cma --break-system-packages
+# Lancer training REINFORCE (à créer: train_reinforce.py)
+python3 train_reinforce.py \
+    --episodes 5000 \
+    --workers 8 \
+    --lr 0.001 \
+    --save-every 500 \
+    --out evaluations/mlp_v7_reinforce.npy
 
-# Tests
-python3 train.py --test          # poids défaut, 30 parties/adversaire
-python3 train.py --test-best     # meilleurs poids + génère bot_submit.py
-
-# Entraînement (choisir profil)
-python3 train.py --quick         # ~15 min, 20 générations, 6 candidats, 2 parties
-python3 train.py --medium        # ~1-2h, 80 générations, 8 candidats, 5 parties
-python3 train.py --long          # ~4-6h, 300 générations, 12 candidats, 10 parties
-python3 train.py --jobs 4        # forcer 4 processus parallèles (1 par CPU)
-
-# Générer bot_submit.py sans relancer les tests
-python3 train.py --generate
-
-# Reprendre un entraînement interrompu (lit best_weights.json automatiquement)
-python3 train.py --medium
+# Benchmark intermédiaire pendant training
+python3 -c "
+from SimGame import run_match
+import bot_v7
+from opponents import ZOO
+# charger weights intermédiaires dans bot_v7._SCORER
+wins = sum(run_match([bot_v7.agent, ZOO['notebook_physics_accurate']], seed=i)['winner']==0 for i in range(10))
+print(f'{wins}/10')
+"
 ```
 
-### Profils CMA-ES
+### Fichier à créer: `train_reinforce.py`
 
-| Profil | Générations | Candidats | Parties/cand | Durée est. |
-|--------|-------------|-----------|--------------|------------|
-| quick  | 20          | 6         | 2            | ~15 min    |
-| medium | 80          | 8         | 5            | ~1-2h      |
-| long   | 300         | 12        | 10           | ~4-6h      |
+Structure:
+1. `collect_episode(agent_fn, opponent_fn, seed)` → liste de (features, actions_taken, reward)
+2. `update_weights(episodes_batch, lr)` → gradient REINFORCE
+3. `parallel_collect(n_workers, n_episodes)` → multiprocessing.Pool
+4. Boucle principale: collect → update → benchmark every 500 eps → save weights
 
-### Score CMA-ES
+### Critères de succès
 
-Score = win-rate pondéré:
-- vs greedy × 1.0
-- vs self × 2.0 (self-play compte double)
-- vs random × 0.5
+| Étape | Métrique |
+|-------|---------|
+| Warm-start OK | V7+MLP = V7 pur (0 écart) |
+| Learning signal | loss décroît sur 500 épisodes |
+| Amélioration locale | V7+MLP > V7 pur vs notebooks |
+| Objectif | 4/5 vs notebook_physics_accurate |
 
-Score 0.0 = perd tout, 1.0 = gagne tout. Cible: >0.65
+### Conseils pour éviter les pièges REINFORCE
 
-### Workflow complet
-
-```
-1. python3 train.py --quick   # validation rapide
-2. python3 train.py --medium  # entraînement sérieux
-3. python3 train.py --test-best  # voir résultats + génère bot_submit.py
-4. Soumettre bot_submit.py sur Kaggle
-5. Analyser replays → identifier bugs → améliorer bot.py
-6. Recommencer depuis 1
-```
+- **Variance haute**: utiliser baseline = moyenne mobile des rewards (soustrait reward moyen)
+- **Self-play instable**: alterner self-play et vs ZOO (50/50) pour éviter overfitting circulaire
+- **Exploration**: commencer avec noise_std=0.3, décroître vers 0.05 en fin de training
+- **Batch size**: ne pas updater après chaque épisode — batcher 32-64 épisodes
+- **Learning rate**: 1e-3 max, decay × 0.5 si loss diverge
 
 ---
 
-## Résultats connus
+## Système replay Kaggle
 
-| Version | Poids | vs greedy | vs self | ELO estimé |
-|---------|-------|-----------|---------|------------|
-| V1 défaut | DEFAULT_W V1 | 95% | 60% | ~900-1100 |
-| V2 défaut | DEFAULT_W V2 | 57% | 50% | ~800-1000 |
-| V2 post-CMA-ES | à tuner | ~75-85% cible | - | ~1200-1500 |
+### Comment ça marche
 
-V2 défaut < V1 car plus de paramètres → besoin tuning CMA-ES.
+Les replays Kaggle ne sont pas des fichiers locaux. Ils sont servis par l'API Kaggle:
+- `EpisodeService/GetEpisodeReplay` → JSON complet (config, steps, observations, actions)
+- URL format: `https://www.kaggle.com/competitions/orbit-wars/submissions?submissionId=X&episodeId=Y`
+
+### Extraction via Playwright
+
+```bash
+pip install playwright --break-system-packages
+playwright install chromium
+python3 replay_observer.py <submissionId> <episodeId>
+# ex: python3 replay_observer.py 52128366 75588964
+```
+
+Flow: browser s'ouvre → login manuel → script capture `GetEpisodeReplay` → sauvegarde `replays/episode_<id>.json`
+
+### Soumission connue
+
+- submissionId: `52128366`
+- 13 épisodes disponibles via `ListEpisodes`
 
 ---
 
-## Prochaines améliorations identifiées (V3+)
+## Benchmark rapide
 
-Pour dépasser 1500 ELO:
+```bash
+# V7 vs un adversaire, N parties
+.venv/bin/python -c "
+from SimGame import run_match
+import bot_v7
+from opponents import ZOO
+opp = ZOO['notebook_physics_accurate']
+wins = 0
+for i in range(10):
+    if i % 2 == 0:
+        r = run_match([bot_v7.agent, opp], seed=42+i)
+        wins += 1 if r['winner'] == 0 else 0
+    else:
+        r = run_match([opp, bot_v7.agent], seed=42+i)
+        wins += 1 if r['winner'] == 1 else 0
+print(f'{wins}/10')
+"
 
-1. **Simulateur numpy vectorisé local** — simuler N tours en <100ms → beam search à l'inférence
-2. **Beam search / MPC** — evaluer K plans candidats par tour, picker le meilleur
-3. **Opponent modeling** — télécharger replays top-10 via `kaggle 2.0.2`, apprendre patterns
-4. **League self-play** — garder snapshots historiques pour éviter overfitting
-5. **Endgame solver** — last ~50 tours: search exhaustif possible (espace réduit)
-6. **4P kingmaker logic** — attaquer #2, laisser #1 et #3 se bagarrer
-
-Pour télécharger replays: voir discussion Kaggle "kaggle 2.0.2 is now available" (pinned).
+# Voir contenu zoo
+.venv/bin/python -c "from opponents import ZOO; print(list(ZOO.keys()))"
+```
 
 ---
 
