@@ -1,4 +1,4 @@
-"""Orbit Wars V6 single-file Kaggle agent."""
+"""Orbit Wars V6.5 single-file Kaggle agent."""
 
 import math
 import time
@@ -487,8 +487,88 @@ def _planet_rows(state, owner):
     return state.planets[m] if np.any(m) else np.zeros((0, 7), dtype=np.float32)
 
 
-def _angle_to(src, target):
-    return math.atan2(float(target[P_Y]) - float(src[P_Y]), float(target[P_X]) - float(src[P_X]))
+def _planet_future_position(state, planet, turns):
+    pid = int(planet[P_ID])
+    if pid in state.comet_ids:
+        for g in state.comet_groups:
+            if pid not in g["planet_ids"]:
+                continue
+            ci = g["planet_ids"].index(pid)
+            path = g["paths"][ci] if ci < len(g["paths"]) else None
+            if not path:
+                break
+            idx = int(g["path_index"]) + int(round(turns))
+            if idx < 0:
+                idx = 0
+            if idx >= len(path):
+                idx = len(path) - 1
+            return float(path[idx][0]), float(path[idx][1])
+        return float(planet[P_X]), float(planet[P_Y])
+    for i in range(len(state.init_planet_ids)):
+        if int(state.init_planet_ids[i]) != pid:
+            continue
+        ix = float(state.init_positions[i, 0])
+        iy = float(state.init_positions[i, 1])
+        r = math.hypot(ix - CENTER, iy - CENTER)
+        if r + float(planet[P_R]) < ROTATION_RADIUS_LIMIT:
+            a = math.atan2(iy - CENTER, ix - CENTER) + state.angular_velocity * (state.step + turns)
+            return CENTER + r * math.cos(a), CENTER + r * math.sin(a)
+        break
+    return float(planet[P_X]), float(planet[P_Y])
+
+
+def _line_clears_sun(sx, sy, tx, ty, margin=1.25):
+    return _segment_min_dist_to_sun(sx, sy, tx, ty) > SUN_RADIUS + margin
+
+
+def _intercept_aim(state, src, target, ships):
+    sx = float(src[P_X])
+    sy = float(src[P_Y])
+    src_r = float(src[P_R])
+    tgt_r = float(target[P_R])
+    speed = fleet_speed(max(1, int(ships)))
+    tx = float(target[P_X])
+    ty = float(target[P_Y])
+    eff_offset = src_r + 0.1 + tgt_r
+    turns = max(0.0, _dist(sx, sy, tx, ty) - eff_offset) / max(speed, 1e-6)
+
+    best = None
+    for _ in range(8):
+        tx, ty = _planet_future_position(state, target, turns)
+        d = max(0.0, _dist(sx, sy, tx, ty) - eff_offset)
+        new_turns = d / max(speed, 1e-6)
+        if abs(new_turns - turns) < 0.05:
+            turns = new_turns
+            break
+        turns = 0.55 * turns + 0.45 * new_turns
+
+    for dt in (0.0, -1.0, 1.0, -2.0, 2.0, -4.0, 4.0, -7.0, 7.0, -11.0, 11.0, -18.0, 18.0):
+        cand_turns = max(0.0, turns + dt)
+        tx, ty = _planet_future_position(state, target, cand_turns)
+        if not (0.0 <= tx <= BOARD_SIZE and 0.0 <= ty <= BOARD_SIZE):
+            continue
+        if not _line_clears_sun(sx, sy, tx, ty):
+            continue
+        angle = math.atan2(ty - sy, tx - sx)
+        eta = max(0.0, _dist(sx, sy, tx, ty) - eff_offset) / max(speed, 1e-6)
+        err = abs(eta - cand_turns)
+        if best is None or err < best[0]:
+            best = (err, angle)
+
+    if best is not None:
+        return best[1]
+
+    tgx, tgy = float(target[P_X]), float(target[P_Y])
+    direct = math.atan2(tgy - sy, tgx - sx)
+    d = _dist(sx, sy, tgx, tgy)
+    if _segment_min_dist_to_sun(sx, sy, sx + math.cos(direct) * d, sy + math.sin(direct) * d) > SUN_RADIUS + 1.5:
+        return direct
+    for delta in (0.3, 0.6, 0.9, 1.2):
+        for sign in (1, -1):
+            a = direct + sign * delta
+            if _segment_min_dist_to_sun(sx, sy, sx + math.cos(a) * d, sy + math.sin(a) * d) > SUN_RADIUS + 1.0:
+                return a
+    return None
 
 
 def _heuristic_actions(state, player):
@@ -497,14 +577,29 @@ def _heuristic_actions(state, player):
     if len(my_planets) == 0 or len(targets) == 0:
         return []
     actions = []
+    committed = {}
     for src in my_planets:
         ships = int(src[P_SHIPS])
         if ships <= 5:
             continue
         d = np.hypot(targets[:, P_X] - src[P_X], targets[:, P_Y] - src[P_Y])
-        score = targets[:, P_PROD] * 30.0 - d * 0.5
-        target = targets[int(np.argmax(score))]
-        actions.append([int(src[P_ID]), _angle_to(src, target), int(ships * 0.6)])
+        score = targets[:, P_PROD] * 30.0 - targets[:, P_SHIPS] * 0.5 - d * 0.5
+        order = np.argsort(-score)
+        for idx in order:
+            target = targets[int(idx)]
+            tid = int(target[P_ID])
+            already = committed.get(tid, 0)
+            eta = float(d[int(idx)]) / 4.0
+            need = max(1, int(math.ceil(float(target[P_SHIPS]) + float(target[P_PROD]) * eta + 1 - already)))
+            send = min(ships - 1, max(need + 2, int(ships * 0.5)))
+            if send < need:
+                continue
+            angle = _intercept_aim(state, src, target, send)
+            if angle is None:
+                continue
+            actions.append([int(src[P_ID]), angle, send])
+            committed[tid] = already + send
+            break
     return actions
 
 
@@ -544,23 +639,38 @@ def _generate_action_set(state, me, strategy, best_actions=None):
             return out
         strategy = 0
     actions = []
+    committed = {}
     for src in my_planets:
         ships = int(src[P_SHIPS])
         if ships <= 5:
             continue
         if strategy == 0:
-            ratio = float(np.random.uniform(0.65, 0.80))
+            ratio_max = float(np.random.uniform(0.70, 0.85))
         elif strategy == 1:
-            ratio = float(np.random.uniform(0.30, 0.50))
+            ratio_max = float(np.random.uniform(0.35, 0.55))
         elif strategy == 2:
-            ratio = float(np.random.uniform(0.50, 0.65))
+            ratio_max = float(np.random.uniform(0.55, 0.70))
         elif strategy == 3:
-            ratio = 0.78 if any(abs(state.step - ct) < 15 for ct in COMET_TURNS) else 0.60
+            ratio_max = 0.85 if any(abs(state.step - ct) < 15 for ct in COMET_TURNS) else 0.70
         else:
-            ratio = 0.65
+            ratio_max = 0.70
         target = _best_target(state, src, me, strategy)
-        if target is not None:
-            actions.append([int(src[P_ID]), _angle_to(src, target), int(ships * ratio)])
+        if target is None:
+            continue
+        tid = int(target[P_ID])
+        already = committed.get(tid, 0)
+        d = math.hypot(float(target[P_X]) - float(src[P_X]), float(target[P_Y]) - float(src[P_Y]))
+        eta = d / 4.0
+        need = max(1, int(math.ceil(float(target[P_SHIPS]) + float(target[P_PROD]) * eta + 1 - already)))
+        send = min(ships - 1, max(need + 2, int(ships * ratio_max * 0.5)))
+        send = min(send, int(ships * ratio_max))
+        if send < need or send < 1:
+            continue
+        angle = _intercept_aim(state, src, target, send)
+        if angle is None:
+            continue
+        actions.append([int(src[P_ID]), angle, send])
+        committed[tid] = already + send
     return actions
 
 
@@ -651,6 +761,79 @@ def _safe_angle(sx, sy, tx, ty):
     return direct
 
 
+def _obs_planet_future_position(obs, planet, turns):
+    pid = int(planet[0])
+    comet_ids = set(_get(obs, "comet_planet_ids", []) or [])
+    if pid in comet_ids:
+        for g in (_get(obs, "comets", []) or []):
+            pids = list(_get(g, "planet_ids", []) or [])
+            if pid not in pids:
+                continue
+            ci = pids.index(pid)
+            paths = _get(g, "paths", []) or []
+            if ci >= len(paths) or not paths[ci]:
+                break
+            path = paths[ci]
+            base = int(_get(g, "path_index", 0) or 0)
+            idx = base + int(round(turns))
+            if idx < 0:
+                idx = 0
+            if idx >= len(path):
+                idx = len(path) - 1
+            return float(path[idx][0]), float(path[idx][1])
+        return float(planet[2]), float(planet[3])
+    step = int(_get(obs, "step", 0) or 0)
+    ang_vel = float(_get(obs, "angular_velocity", 0.0) or 0.0)
+    for init in (_get(obs, "initial_planets", []) or []):
+        if int(init[0]) != pid:
+            continue
+        ix = float(init[2])
+        iy = float(init[3])
+        r = math.hypot(ix - SUN_X, iy - SUN_Y)
+        if r + float(planet[4]) < ROT_LIMIT:
+            a = math.atan2(iy - SUN_Y, ix - SUN_X) + ang_vel * (step + turns)
+            return SUN_X + r * math.cos(a), SUN_Y + r * math.sin(a)
+        break
+    return float(planet[2]), float(planet[3])
+
+
+def _obs_intercept_angle(obs, src, target, ships):
+    sx = float(src[2])
+    sy = float(src[3])
+    src_r = float(src[4])
+    tgt_r = float(target[4])
+    eff_offset = src_r + 0.1 + tgt_r
+    speed = fleet_speed(max(1, int(ships)))
+    turns = max(0.0, _dist(sx, sy, float(target[2]), float(target[3])) - eff_offset) / max(speed, 1e-6)
+    best = None
+
+    for _ in range(8):
+        tx, ty = _obs_planet_future_position(obs, target, turns)
+        new_turns = max(0.0, _dist(sx, sy, tx, ty) - eff_offset) / max(speed, 1e-6)
+        if abs(new_turns - turns) < 0.05:
+            turns = new_turns
+            break
+        turns = 0.55 * turns + 0.45 * new_turns
+
+    for dt in (0.0, -1.0, 1.0, -2.0, 2.0, -4.0, 4.0, -7.0, 7.0, -11.0, 11.0, -18.0, 18.0):
+        cand_turns = max(0.0, turns + dt)
+        tx, ty = _obs_planet_future_position(obs, target, cand_turns)
+        if not (0.0 <= tx <= BOARD_SIZE and 0.0 <= ty <= BOARD_SIZE):
+            continue
+        if _segment_min_dist_to_sun(sx, sy, tx, ty) <= SUN_RADIUS + 1.25:
+            continue
+        eta = max(0.0, _dist(sx, sy, tx, ty) - eff_offset) / max(speed, 1e-6)
+        err = abs(eta - cand_turns)
+        if best is None or err < best[0]:
+            best = (err, math.atan2(ty - sy, tx - sx))
+
+    if best is not None:
+        return best[1]
+    if _segment_min_dist_to_sun(sx, sy, float(target[2]), float(target[3])) > SUN_RADIUS + 2.0:
+        return math.atan2(float(target[3]) - sy, float(target[2]) - sx)
+    return None
+
+
 def _v5_fallback(obs):
     planets = _get(obs, "planets", []) or []
     fleets = _get(obs, "fleets", []) or []
@@ -690,20 +873,39 @@ def _v5_fallback(obs):
         if value > 0:
             target_values.append((value, p))
     target_values.sort(key=lambda x: -x[0])
-    orders, committed = [], 0
+    orders, committed_total = [], 0
+    target_committed = {}
     for src in my_planets:
-        if committed >= available or float(src[5]) <= 1:
+        if committed_total >= available or float(src[5]) <= 1:
             continue
         for _, target in target_values:
-            ships_available = min(float(src[5]), available - committed)
+            tid = int(target[0])
+            already = target_committed.get(tid, 0)
+            ships_available = min(float(src[5]) - 1, available - committed_total)
             if ships_available <= 1:
                 break
-            ratio = 0.70 if int(target[0]) in comet_ids and in_comet_window else FLEET_SEND_RATIO
-            ships = int(ships_available * ratio)
-            if ships >= 1:
-                orders.append([int(src[0]), _safe_angle(float(src[2]), float(src[3]), float(target[2]), float(target[3])), ships])
-                committed += ships
-                break
+            d = _dist(float(src[2]), float(src[3]), float(target[2]), float(target[3]))
+            eta = d / 4.0
+            enemy_ships = float(target[5])
+            enemy_prod = float(target[6]) if int(target[1]) >= 0 else 0.0
+            need = max(1, int(math.ceil(enemy_ships + enemy_prod * eta + 1 - already)))
+            ratio_cap = 0.85 if tid in comet_ids and in_comet_window else FLEET_SEND_RATIO
+            cap = int(ships_available * ratio_cap)
+            ships = min(cap, max(need + 2, min(int(ships_available * 0.4), cap)))
+            if ships < need or ships < 1:
+                continue
+            angle = _obs_intercept_angle(obs, src, target, ships)
+            if angle is None:
+                sx, sy = float(src[2]), float(src[3])
+                tx, ty = float(target[2]), float(target[3])
+                if _dist(sx, sy, SUN_X, SUN_Y) > SUN_RADIUS + 1.0 and _dist(tx, ty, SUN_X, SUN_Y) > SUN_RADIUS + 1.0:
+                    angle = _safe_angle(sx, sy, tx, ty)
+                else:
+                    continue
+            orders.append([int(src[0]), angle, ships])
+            committed_total += ships
+            target_committed[tid] = already + ships
+            break
     return orders
 
 
@@ -734,4 +936,3 @@ def agent(obs, config=None):
     except Exception:
         pass
     return _v5_fallback(obs)
-
