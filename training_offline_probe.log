@@ -1,0 +1,55 @@
+Warm-start: zero weights (offline fixed-teacher mode)
+
+Method: offline fixed-teacher plan ranking + value head
+Config: lr=0.03  value_lr=0.02  l2=0.0001  batch=64  dataset_states=36  oracle_horizon=40
+Starting training...
+
+Collecting offline snapshots...
+  harvested 36 snapshots
+  labeled    7/36 snapshots | examples=8 | gap=0.0000
+  labeled   14/36 snapshots | examples=18 | gap=0.0105
+  labeled   21/36 snapshots | examples=26 | gap=0.0046
+  labeled   28/36 snapshots | examples=35 | gap=0.0000
+  labeled   35/36 snapshots | examples=45 | gap=0.0088
+  labeled   36/36 snapshots | examples=46 | gap=0.0000
+Saved offline dataset to evaluations\v8_policy_offline_dataset.pkl
+  gap stats: mean=0.0157 median=0.0001 min=0.0000
+Dataset: train=36  val=10
+[ep     1 |   0.0min]  loss=2.197  rank=2.313  acc=0.36  val=2.187  |w|=0.0332
+  [Benchmark @ ep 1]
+  Benchmarking vs notebook_physics_accurate...
+  Benchmarking vs notebook_orbitbotnext...
+  Benchmarking vs notebook_distance_prioritized...
+  Benchmarking vs orbit_stars...
+    notebook_physics_accurate: 0/5
+    notebook_orbitbotnext: 0/5
+    notebook_distance_prioritized: 0/5
+    orbit_stars (holdout): 5/5
+    global          : 0.250
+    min             : 0.000
+    mean            : 0.250
+    score           : 0.163
+    New best saved  : evaluations\v8_policy_best.npz
+
+Done. 1 episodes in 2.3min
+Saved final: evaluations\v8_policy.npz
+Saved state: evaluations\v8_policy_offline_state.pkl
+  Benchmarking vs notebook_physics_accurate...
+  Benchmarking vs notebook_orbitbotnext...
+  Benchmarking vs notebook_distance_prioritized...
+  Benchmarking vs orbit_stars...
+  Benchmarking vs notebook_physics_accurate...
+  Benchmarking vs notebook_orbitbotnext...
+  Benchmarking vs notebook_distance_prioritized...
+  Benchmarking vs orbit_stars...
+Saved best : evaluations\v8_policy_best.npz  score=0.163
+
+[Final benchmark]
+  notebook_physics_accurate: 0/5
+  notebook_orbitbotnext: 0/5
+  notebook_distance_prioritized: 0/5
+  orbit_stars (holdout): 5/5
+  global: 0.250
+  min   : 0.000
+  mean  : 0.250
+  score : 0.163

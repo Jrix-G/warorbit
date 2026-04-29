@@ -1,0 +1,17 @@
+Resumed from .\evaluations\v8_policy.npz
+
+Method: DAgger + hard-negative plan ranking + value head
+Config: lr=0.05  value_lr=0.03  l2=0.0001  batch=64  buffer=2000  sample_stride=8
+Starting training...
+
+[ep     1 |   0.6min]  value=-0.996  beta=0.85  loss=0.000  rank=0.000  acc=0.00  |w|=1.0137
+[ep     2 |   1.1min]  value=-0.996  beta=0.84  loss=3.165  rank=5.021  acc=0.00  |w|=0.8547
+  Saved: evaluations\v8_policy.npz
+[ep     3 |   1.6min]  value=-0.996  beta=0.82  loss=2.081  rank=2.825  acc=0.00  |w|=0.8226
+[ep     4 |   2.0min]  value=-0.996  beta=0.81  loss=1.749  rank=2.231  acc=0.20  |w|=0.8283
+[ep     5 |   2.8min]  value=-0.996  beta=0.80  loss=1.842  rank=2.288  acc=0.14  |w|=0.8326
+  Saved: evaluations\v8_policy.npz
+[ep     6 |   3.3min]  value=-0.996  beta=0.78  loss=1.802  rank=2.216  acc=0.33  |w|=0.8368
+[ep     7 |   4.1min]  value=+0.996  beta=0.77  loss=1.940  rank=2.320  acc=0.20  |w|=0.8367
+  Saved: evaluations\v8_policy.npz
+[ep     8 |   4.7min]  value=-0.996  beta=0.76  loss=1.914  rank=2.285  acc=0.18  |w|=0.8404

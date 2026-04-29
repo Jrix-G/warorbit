@@ -1,0 +1,38 @@
+Resumed from .\evaluations\v8_policy.npz
+
+Method: DAgger + hard-negative plan ranking + value head
+Config: lr=0.05  value_lr=0.03  l2=0.0001  batch=64  buffer=2000  sample_stride=8
+Starting training...
+
+[ep     1 |   1.7min]  value=-0.996  beta=0.85  loss=2.197  rank=2.313  acc=0.43  |w|=0.0763
+  Saved: evaluations\v8_policy.npz
+[ep     2 |   2.9min]  value=+0.996  beta=0.84  loss=2.159  rank=2.278  acc=0.78  |w|=0.1235
+  Saved: evaluations\v8_policy.npz
+[ep     3 |   3.7min]  value=+0.996  beta=0.82  loss=2.182  rank=2.349  acc=0.26  |w|=0.1224
+[ep     4 |   4.7min]  value=-0.996  beta=0.81  loss=2.181  rank=2.350  acc=0.19  |w|=0.1198
+  Saved: evaluations\v8_policy.npz
+[ep     5 |   5.9min]  value=+0.996  beta=0.80  loss=2.174  rank=2.334  acc=0.22  |w|=0.1237
+  Saved: evaluations\v8_policy.npz
+[ep     6 |   6.4min]  value=-0.996  beta=0.78  loss=2.166  rank=2.322  acc=0.22  |w|=0.1340
+[ep     7 |   6.8min]  value=-0.996  beta=0.77  loss=2.162  rank=2.327  acc=0.16  |w|=0.1446
+[ep     8 |   7.2min]  value=-0.996  beta=0.76  loss=2.150  rank=2.326  acc=0.16  |w|=0.1582
+  Saved: evaluations\v8_policy.npz
+[ep     9 |   7.7min]  value=-0.996  beta=0.74  loss=2.131  rank=2.303  acc=0.22  |w|=0.1810
+[ep    10 |   8.3min]  value=-0.996  beta=0.73  loss=2.117  rank=2.288  acc=0.22  |w|=0.2064
+  Saved: evaluations\v8_policy.npz
+[ep    11 |   8.7min]  value=-0.996  beta=0.72  loss=2.134  rank=2.344  acc=0.19  |w|=0.2131
+[ep    12 |   9.1min]  value=-0.996  beta=0.71  loss=2.117  rank=2.329  acc=0.12  |w|=0.2250
+[ep    13 |   9.6min]  value=-0.996  beta=0.70  loss=2.106  rank=2.291  acc=0.19  |w|=0.2456
+  Saved: evaluations\v8_policy.npz
+[ep    14 |  10.1min]  value=-0.996  beta=0.68  loss=2.109  rank=2.330  acc=0.12  |w|=0.2554
+[ep    15 |  10.7min]  value=-0.996  beta=0.67  loss=2.070  rank=2.281  acc=0.25  |w|=0.2788
+  Saved: evaluations\v8_policy.npz
+[ep    16 |  11.1min]  value=-0.996  beta=0.66  loss=2.107  rank=2.352  acc=0.12  |w|=0.2844
+[ep    17 |  11.6min]  value=-0.996  beta=0.65  loss=2.144  rank=2.423  acc=0.09  |w|=0.2745
+[ep    18 |  12.1min]  value=-0.996  beta=0.64  loss=2.054  rank=2.267  acc=0.19  |w|=0.3012
+  Saved: evaluations\v8_policy.npz
+[ep    19 |  12.8min]  value=-0.996  beta=0.63  loss=2.123  rank=2.404  acc=0.06  |w|=0.2984
+[ep    20 |  13.2min]  value=-0.996  beta=0.62  loss=2.136  rank=2.393  acc=0.12  |w|=0.2949
+  Saved: evaluations\v8_policy.npz
+[ep    21 |  13.7min]  value=-0.996  beta=0.61  loss=2.061  rank=2.312  acc=0.12  |w|=0.3108
+[ep    22 |  14.1min]  value=-0.996  beta=0.60  loss=2.055  rank=2.277  acc=0.12  |w|=0.3311

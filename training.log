@@ -1,0 +1,44 @@
+Warm-start: zero weights (pure V7 behavior)
+
+Method: DAgger + hard-negative plan ranking + value head
+Config: lr=0.05  value_lr=0.03  l2=0.0001  batch=64  buffer=2000  sample_stride=8
+Starting training...
+
+[ep     1 |   0.4min]  value=+0.996  beta=0.70  loss=2.197  rank=2.313  acc=0.00  |w|=0.1642
+[ep     2 |   0.8min]  value=-0.996  beta=0.66  loss=1.980  rank=2.145  acc=0.00  |w|=0.2624
+[ep     3 |   1.2min]  value=-0.996  beta=0.63  loss=1.840  rank=2.006  acc=0.14  |w|=0.3593
+[ep     4 |   1.8min]  value=-0.996  beta=0.59  loss=1.740  rank=1.900  acc=0.33  |w|=0.4454
+[ep     5 |   2.5min]  value=-0.996  beta=0.56  loss=1.812  rank=2.039  acc=0.38  |w|=0.4953
+[ep     6 |   2.9min]  value=-0.996  beta=0.53  loss=1.749  rank=1.965  acc=0.41  |w|=0.5466
+[ep     7 |   3.3min]  value=-0.996  beta=0.50  loss=1.711  rank=1.931  acc=0.35  |w|=0.5955
+[ep     8 |   3.8min]  value=-0.996  beta=0.47  loss=1.678  rank=1.902  acc=0.35  |w|=0.6415
+[ep     9 |   4.3min]  value=-0.996  beta=0.45  loss=1.614  rank=1.823  acc=0.39  |w|=0.6895
+[ep    10 |   4.7min]  value=-0.996  beta=0.42  loss=1.643  rank=1.886  acc=0.35  |w|=0.7276
+[ep    11 |   5.1min]  value=-0.996  beta=0.40  loss=1.584  rank=1.807  acc=0.35  |w|=0.7686
+[ep    12 |   5.6min]  value=-0.996  beta=0.38  loss=1.539  rank=1.754  acc=0.38  |w|=0.8095
+[ep    13 |   5.9min]  value=-0.996  beta=0.36  loss=1.494  rank=1.703  acc=0.40  |w|=0.8499
+[ep    14 |   6.4min]  value=-0.996  beta=0.34  loss=1.473  rank=1.683  acc=0.40  |w|=0.8882
+[ep    15 |   6.9min]  value=-0.996  beta=0.32  loss=1.512  rank=1.784  acc=0.39  |w|=0.9166
+[ep    16 |   7.4min]  value=-0.996  beta=0.30  loss=1.570  rank=1.882  acc=0.34  |w|=0.9378
+[ep    17 |   8.1min]  value=-0.996  beta=0.29  loss=1.656  rank=2.083  acc=0.34  |w|=0.9442
+[ep    18 |   8.4min]  value=-0.996  beta=0.27  loss=1.710  rank=2.167  acc=0.28  |w|=0.9460
+[ep    19 |   8.9min]  value=-0.996  beta=0.26  loss=1.609  rank=2.008  acc=0.38  |w|=0.9563
+[ep    20 |   9.4min]  value=-0.996  beta=0.24  loss=1.622  rank=1.997  acc=0.38  |w|=0.9686
+[ep    21 |   9.8min]  value=-0.996  beta=0.23  loss=1.655  rank=2.100  acc=0.31  |w|=0.9742
+[ep    22 |  10.2min]  value=-0.996  beta=0.22  loss=1.609  rank=1.995  acc=0.38  |w|=0.9870
+  Saved: evaluations\v8_policy.npz
+[ep    23 |  10.5min]  value=-0.996  beta=0.21  loss=1.659  rank=2.123  acc=0.34  |w|=0.9909
+[ep    24 |  10.8min]  value=-0.996  beta=0.20  loss=1.634  rank=2.043  acc=0.41  |w|=1.0004
+[ep    25 |  11.1min]  value=-0.996  beta=0.18  loss=1.712  rank=2.211  acc=0.28  |w|=0.9998
+[ep    26 |  11.6min]  value=-0.996  beta=0.17  loss=1.707  rank=2.244  acc=0.25  |w|=0.9953
+[ep    27 |  12.1min]  value=-0.996  beta=0.17  loss=1.582  rank=1.963  acc=0.38  |w|=1.0097
+[ep    28 |  12.5min]  value=-0.996  beta=0.16  loss=1.709  rank=2.204  acc=0.22  |w|=1.0097
+[ep    29 |  12.9min]  value=-0.996  beta=0.15  loss=1.637  rank=2.107  acc=0.41  |w|=1.0139
+[ep    30 |  13.4min]  value=-0.996  beta=0.15  loss=1.621  rank=2.034  acc=0.31  |w|=1.0235
+[ep    31 |  13.8min]  value=-0.996  beta=0.15  loss=1.727  rank=2.268  acc=0.38  |w|=1.0194
+[ep    32 |  14.4min]  value=-0.996  beta=0.15  loss=1.716  rank=2.284  acc=0.34  |w|=1.0131
+[ep    33 |  15.1min]  value=+0.996  beta=0.15  loss=1.798  rank=2.374  acc=0.22  |w|=1.0049
+[ep    34 |  15.5min]  value=-0.996  beta=0.15  loss=1.895  rank=2.533  acc=0.25  |w|=0.9886
+[ep    35 |  16.0min]  value=-0.996  beta=0.15  loss=1.700  rank=2.145  acc=0.31  |w|=0.9956
+[ep    36 |  16.4min]  value=-0.996  beta=0.15  loss=1.761  rank=2.328  acc=0.28  |w|=0.9895
+[ep    37 |  17.0min]  value=-0.996  beta=0.15  loss=1.667  rank=2.083  acc=0.34  |w|=1.0002

@@ -1,0 +1,44 @@
+Warm-start: zero weights (pure V7 behavior)
+
+Method: DAgger + hard-negative plan ranking + value head
+Config: lr=0.05  value_lr=0.03  l2=0.0001  batch=64  buffer=2000  sample_stride=8
+Starting training...
+
+[ep     1 |   0.5min]  value=+0.996  beta=0.85  loss=2.197  rank=2.313  acc=0.00  |w|=0.1697
+[ep     2 |   1.3min]  value=-0.996  beta=0.84  loss=2.001  rank=2.159  acc=0.40  |w|=0.2569
+[ep     3 |   1.8min]  value=-0.996  beta=0.82  loss=1.919  rank=2.088  acc=0.45  |w|=0.3337
+[ep     4 |   2.2min]  value=-0.996  beta=0.81  loss=1.920  rank=2.151  acc=0.38  |w|=0.3826
+[ep     5 |   2.6min]  value=-0.996  beta=0.80  loss=1.913  rank=2.184  acc=0.33  |w|=0.4213
+[ep     6 |   3.1min]  value=-0.996  beta=0.78  loss=1.970  rank=2.341  acc=0.23  |w|=0.4328
+[ep     7 |   3.5min]  value=-0.996  beta=0.77  loss=1.955  rank=2.316  acc=0.26  |w|=0.4468
+[ep     8 |   3.9min]  value=-0.996  beta=0.76  loss=1.936  rank=2.285  acc=0.27  |w|=0.4645
+[ep     9 |   4.5min]  value=-0.996  beta=0.74  loss=1.936  rank=2.305  acc=0.25  |w|=0.4795
+[ep    10 |   5.2min]  value=-0.996  beta=0.73  loss=1.906  rank=2.266  acc=0.28  |w|=0.4989
+  Saved: evaluations\v8_policy.npz
+[ep    11 |   5.7min]  value=-0.996  beta=0.72  loss=1.888  rank=2.269  acc=0.25  |w|=0.5160
+[ep    12 |   6.2min]  value=-0.996  beta=0.71  loss=1.861  rank=2.224  acc=0.28  |w|=0.5369
+[ep    13 |   6.7min]  value=-0.996  beta=0.70  loss=1.874  rank=2.274  acc=0.22  |w|=0.5511
+[ep    14 |   7.2min]  value=-0.996  beta=0.68  loss=1.865  rank=2.243  acc=0.28  |w|=0.5687
+[ep    15 |   7.9min]  value=-0.996  beta=0.67  loss=1.971  rank=2.447  acc=0.22  |w|=0.5642
+[ep    16 |   8.3min]  value=-0.996  beta=0.66  loss=1.926  rank=2.357  acc=0.34  |w|=0.5687
+[ep    17 |   8.8min]  value=-0.996  beta=0.65  loss=1.842  rank=2.243  acc=0.22  |w|=0.5855
+[ep    18 |   9.6min]  value=-0.996  beta=0.64  loss=1.819  rank=2.218  acc=0.22  |w|=0.6013
+[ep    19 |  10.3min]  value=-0.996  beta=0.63  loss=1.891  rank=2.303  acc=0.28  |w|=0.6118
+  Saved: evaluations\v8_policy.npz
+  [Benchmark @ ep 19]
+  Benchmarking vs notebook_physics_accurate...
+  Benchmarking vs notebook_orbitbotnext...
+  Benchmarking vs notebook_distance_prioritized...
+  Benchmarking vs orbit_stars...
+    notebook_physics_accurate: 0/10
+    notebook_orbitbotnext: 0/10
+    notebook_distance_prioritized: 0/10
+    orbit_stars (holdout): 8/10
+    global          : 0.200
+    min             : 0.000
+    mean            : 0.200
+    score           : 0.130
+    New best saved  : evaluations\v8_policy_best.npz
+[ep    20 |  15.3min]  value=-0.996  beta=0.62  loss=1.988  rank=2.488  acc=0.22  |w|=0.6025
+[ep    21 |  15.9min]  value=-0.996  beta=0.61  loss=1.989  rank=2.477  acc=0.19  |w|=0.5934
+  Saved: evaluations\v8_policy.npz

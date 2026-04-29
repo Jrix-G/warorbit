@@ -181,6 +181,37 @@ TWO_PLAYER_OPENING_TURN_LIMIT = 60           # exit cautious opening mode faster
 TWO_PLAYER_NEUTRAL_VALUE_MULT = 1.35         # neutrals more valuable (faster scaling)
 TWO_PLAYER_SAFE_NEUTRAL_BOOST = 1.30         # chase safe neutrals aggressively
 
+# --- Art of War rules (derived from 95-game leader analysis) ---
+# Rule 1: opening — opening filter already exits at t60 in 2p; tighten early prod filter
+AOW_OPENING_MIN_PROD = 2              # skip prod=1 neutrals during full opening
+# Rule 2: alarm if < 8 planets at t035-t050 in 2p
+AOW_ALARM_START = 35
+AOW_ALARM_END = 50
+AOW_ALARM_PLANET_THRESHOLD = 8
+AOW_ALARM_NEUTRAL_BOOST = 1.55        # panic expansion multiplier
+AOW_ALARM_MARGIN_BASE = 0             # drop garrison requirement completely
+# Rule 3: conversion push — neutral bonus while below 15 planets and step < 80
+AOW_CONVERSION_THRESHOLD = 15
+AOW_CONVERSION_TURN_LIMIT = 80
+AOW_CONVERSION_NEUTRAL_BOOST = 1.40
+# Rule 4: anti-hoarding — force staging from idle planets
+AOW_HOARD_PROD_RATIO = 35             # ships > prod * this → considered hoarding
+AOW_HOARD_SEND_RATIO = 0.35           # fraction to push toward front
+# Rule 5: production priority — penalize capturing prod=1 during opening/early
+AOW_LOW_PROD_THRESHOLD = 2
+AOW_LOW_PROD_PENALTY = 0.72
+# Rule 6: abandon peripheral defense when badly behind
+AOW_RETREAT_PLANET_DEFICIT = 3        # enemy_planets - my_planets to trigger
+AOW_RETREAT_MAX_PROD = 2              # only skip defense of prod ≤ this
+# Rule 7: 4p single-enemy focus
+AOW_4P_WEAKEST_FOCUS_BOOST = 2.10    # stronger focus on weakest enemy
+AOW_4P_NON_WEAKEST_PENALTY = 0.62    # penalise attacking non-weakest in 4p
+# Rule 8: decisive window t040-t080 when ahead on planets
+AOW_DECISIVE_START = 40
+AOW_DECISIVE_END = 80
+AOW_DECISIVE_LEAD = 2                 # planet lead required
+AOW_DECISIVE_NEUTRAL_BOOST = 1.30    # push expansion harder during this window
+
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -846,6 +877,34 @@ def _build_modes(world):
     if is_finishing:
         attack_margin_mult += FINISHING_ATTACK_MARGIN_BONUS
 
+    n_my = len(world.my_planets)
+    n_enemy = len(world.enemy_planets)
+
+    # Rule 2: panic expansion if dangerously few planets in 2p mid-opening
+    is_alarm = (
+        not world.is_four_player
+        and AOW_ALARM_START < world.step < AOW_ALARM_END
+        and n_my < AOW_ALARM_PLANET_THRESHOLD
+    )
+    # Rule 3: push neutral expansion until conversion threshold is crossed
+    is_conversion_push = (
+        world.step < AOW_CONVERSION_TURN_LIMIT
+        and n_my < AOW_CONVERSION_THRESHOLD
+    )
+    # Rule 6: abandon soft defense of low-prod planets when badly behind
+    planet_deficit = n_enemy - n_my
+    is_retreat_mode = (
+        not world.is_four_player
+        and planet_deficit >= AOW_RETREAT_PLANET_DEFICIT
+        and world.step < 200
+    )
+    # Rule 8: decisive window — we're ahead, finish it
+    is_decisive_window = (
+        not world.is_four_player
+        and AOW_DECISIVE_START < world.step < AOW_DECISIVE_END
+        and (n_my - n_enemy) >= AOW_DECISIVE_LEAD
+    )
+
     return {
         "domination": domination,
         "is_behind": is_behind,
@@ -853,6 +912,10 @@ def _build_modes(world):
         "is_dominating": is_dominating,
         "is_finishing": is_finishing,
         "attack_margin_mult": attack_margin_mult,
+        "is_alarm": is_alarm,
+        "is_conversion_push": is_conversion_push,
+        "is_retreat_mode": is_retreat_mode,
+        "is_decisive_window": is_decisive_window,
     }
 
 
@@ -885,6 +948,9 @@ def _opening_filter(target, arrival_turns, needed, src_available, world):
         affordable = needed <= max(PARTIAL_SOURCE_MIN_SHIPS, int(src_available * FOUR_PLAYER_ROTATING_SEND_RATIO))
         if affordable and arrival_turns <= FOUR_PLAYER_ROTATING_TURN_LIMIT and reaction_gap >= FOUR_PLAYER_ROTATING_REACTION_GAP:
             return False
+        return True
+    # Rule 1: skip prod=1 neutrals entirely during opening in 2p
+    if not world.is_four_player and target.production < AOW_OPENING_MIN_PROD:
         return True
     return arrival_turns > ROTATING_OPENING_MAX_TURNS or target.production <= ROTATING_OPENING_LOW_PROD
 
@@ -964,13 +1030,54 @@ def _target_value(target, arrival_turns, mission, world, modes):
         if target.owner not in (-1, world.player) and not world.is_opening:
             value *= TWO_PLAYER_HOSTILE_AGGRESSION_BOOST
 
+    # --- Art of War rules ---
+    if target.owner == -1:
+        # Rule 2: alarm — panic expansion, neutrals become urgent
+        if modes.get("is_alarm"):
+            value *= AOW_ALARM_NEUTRAL_BOOST
+        # Rule 3: conversion push — stay below 15 planets = expand at all costs
+        if modes.get("is_conversion_push"):
+            value *= AOW_CONVERSION_NEUTRAL_BOOST
+        # Rule 5: penalise very-low-prod neutrals during opening/early
+        if world.is_early and target.production <= AOW_LOW_PROD_THRESHOLD:
+            value *= AOW_LOW_PROD_PENALTY
+        # Rule 8: decisive window — we're ahead, keep expanding to seal the game
+        if modes.get("is_decisive_window"):
+            value *= AOW_DECISIVE_NEUTRAL_BOOST
+    # Rule 6: retreat mode — skip soft defense of low-prod own planets
+    if (mission == "reinforce"
+            and modes.get("is_retreat_mode")
+            and target.owner == world.player
+            and target.production <= AOW_RETREAT_MAX_PROD):
+        return 0.0
+    # Rule 7: 4p single-enemy focus — amplify weakest, penalise others harder
+    if world.is_four_player and target.owner not in (-1, world.player):
+        if target.owner == world.weakest_enemy_id:
+            value *= AOW_4P_WEAKEST_FOCUS_BOOST
+        elif not world.is_late:
+            value *= AOW_4P_NON_WEAKEST_PENALTY
+
+    if _SCORER is not None and value > 0:
+        if _LOG_PLAYER < 0 or world.player == _LOG_PLAYER:
+            feat = _build_mission_features(target, arrival_turns, mission, world, modes)
+            noise = float(np.random.randn()) * _SCORER_NOISE_STD
+            log_mult = float(_SCORER(feat)) + noise
+            log_mult = max(-3.0, min(3.0, log_mult))
+            _EPISODE_LOG.append((feat, noise))
+            value *= math.exp(log_mult)
+
     return value
 
 
 def _preferred_send(target, base_needed, arrival_turns, src_available, world, modes):
     send = max(base_needed, int(math.ceil(base_needed * modes["attack_margin_mult"])))
     if target.owner == -1:
-        margin_base = TWO_PLAYER_NEUTRAL_MARGIN_BASE if not world.is_four_player else NEUTRAL_MARGIN_BASE
+        if modes.get("is_alarm"):
+            margin_base = AOW_ALARM_MARGIN_BASE
+        elif not world.is_four_player:
+            margin_base = TWO_PLAYER_NEUTRAL_MARGIN_BASE
+        else:
+            margin_base = NEUTRAL_MARGIN_BASE
         margin = min(NEUTRAL_MARGIN_CAP, margin_base + target.production * NEUTRAL_MARGIN_PROD_WEIGHT)
     else:
         margin = min(HOSTILE_MARGIN_CAP, HOSTILE_MARGIN_BASE + target.production * HOSTILE_MARGIN_PROD_WEIGHT)
@@ -1455,6 +1562,31 @@ def plan_moves(world):
                     continue
                 append_move(rear.id, aim[0], send)
 
+    # Rule 4: anti-hoarding — push ships from idle fat planets toward the front
+    if (world.enemy_planets or world.neutral_planets) and len(world.my_planets) > 1 and not world.is_late:
+        frontier_targets_ah = world.enemy_planets or world.static_neutral_planets or world.neutral_planets
+        if frontier_targets_ah:
+            front_ah = min(world.my_planets,
+                           key=lambda p: min(_dist(p.x, p.y, t.x, t.y) for t in frontier_targets_ah))
+            for planet in world.my_planets:
+                if planet.id == front_ah.id or planet.id in world.doomed_candidates:
+                    continue
+                if planet.id in world.threatened_candidates:
+                    continue
+                hoard_limit = int(planet.production * AOW_HOARD_PROD_RATIO)
+                avail = atk_left(planet.id)
+                if avail < hoard_limit:
+                    continue
+                send = int(avail * AOW_HOARD_SEND_RATIO)
+                if send < REAR_SEND_MIN_SHIPS:
+                    continue
+                aim = world.plan_shot(planet.id, front_ah.id, send)
+                if aim is None:
+                    continue
+                if aim[1] > REAR_MAX_TRAVEL_TURNS:
+                    continue
+                append_move(planet.id, aim[0], send)
+
     # Final deduplication
     final_moves = []
     used_final = defaultdict(int)
@@ -1505,6 +1637,62 @@ class NumpyEvaluator:
             size = int(np.prod(shape))
             setattr(self, attr, params[i:i + size].reshape(shape))
             i += size
+
+
+# ---------------------------------------------------------------------------
+# REINFORCE injection (training only — no effect in competition)
+# ---------------------------------------------------------------------------
+
+MISSION_FEATURE_DIM = 15
+
+_SCORER = None          # callable(np.ndarray) -> float, or None
+_SCORER_NOISE_STD = 0.0
+_EPISODE_LOG = []       # list of (features_array, noise_float)
+_LOG_PLAYER = -1        # -1 = log all players, >=0 = only log that player
+
+
+def set_scorer(scorer_fn, noise_std=0.0, log_player=-1):
+    global _SCORER, _SCORER_NOISE_STD, _LOG_PLAYER
+    _SCORER = scorer_fn
+    _SCORER_NOISE_STD = float(noise_std)
+    _LOG_PLAYER = int(log_player)
+
+
+def reset_episode_log():
+    global _EPISODE_LOG
+    _EPISODE_LOG = []
+
+
+def pop_episode_log():
+    global _EPISODE_LOG
+    log = _EPISODE_LOG[:]
+    _EPISODE_LOG = []
+    return log
+
+
+def _build_mission_features(target, arrival_turns, mission, world, modes):
+    total_prod = world.my_prod + world.enemy_prod + 1e-6
+    domination = (world.my_total - world.max_enemy_strength) / max(
+        1, world.my_total + world.max_enemy_strength
+    )
+    indirect = world.indirect_wealth_map.get(target.id, 0)
+    return np.array([
+        min(target.production / 5.0, 2.0),
+        min(arrival_turns / 100.0, 2.0),
+        world.remaining_steps / 500.0,
+        float(not world.is_four_player),
+        max(-1.0, min(1.0, domination)),
+        float(target.owner not in (-1, world.player)),
+        float(world.is_static(target.id)),
+        min(indirect / (100.0 * world.remaining_steps + 1.0), 2.0),
+        world.my_prod / total_prod,
+        float(world.is_early),
+        float(world.is_late),
+        float(mission == "capture"),
+        float(mission == "snipe"),
+        float(mission == "swarm"),
+        float(mission == "reinforce"),
+    ], dtype=np.float32)
 
 
 # ---------------------------------------------------------------------------

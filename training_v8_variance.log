@@ -1,0 +1,106 @@
+Warm-start: zero weights (offline fixed-teacher mode)
+
+Method: offline fixed-teacher plan ranking + value head
+Config: lr=0.03  value_lr=0.02  l2=0.0001  batch=64  target_examples=256  oracle_horizon=80
+Starting training...
+
+Collecting offline snapshots...
+  variance pre-filter: ON (probe=['v7', 'attack', 'defense', 'hold'] horizon=220)
+    harvest game seed=0 opp=notebook_orbitbotnext    (0/16 snapshots so far)
+      done seed=0 (+3 snapshots, 14.7s, end_step=91)
+    harvest game seed=1 opp=notebook_distance_priori (3/16 snapshots so far)
+      done seed=1 (+2 snapshots,  4.6s, end_step=67)
+    harvest game seed=2 opp=notebook_physics_accurat (5/16 snapshots so far)
+      done seed=2 (+3 snapshots,  1.6s, end_step=79)
+    harvest game seed=3 opp=notebook_orbitbotnext    (8/16 snapshots so far)
+      done seed=3 (+3 snapshots,  7.2s, end_step=88)
+    harvest game seed=4 opp=notebook_distance_priori (11/16 snapshots so far)
+      done seed=4 (+3 snapshots,  8.4s, end_step=87)
+    harvest game seed=5 opp=notebook_physics_accurat (14/16 snapshots so far)
+      done seed=5 (+2 snapshots,  1.9s, end_step=45)
+    snap   1/ 16 turn= 20 opp=notebook_orbitbotnext    REJ (52.9s) examples=  0
+    snap   2/ 16 turn= 45 opp=notebook_orbitbotnext    REJ (24.7s) examples=  0
+    snap   3/ 16 turn= 75 opp=notebook_orbitbotnext    REJ ( 2.7s) examples=  0
+    snap   4/ 16 turn= 20 opp=notebook_distance_priori REJ (13.8s) examples=  0
+    snap   5/ 16 turn= 45 opp=notebook_distance_priori REJ ( 6.0s) examples=  0
+    snap   6/ 16 turn= 20 opp=notebook_physics_accurat REJ ( 5.0s) examples=  0
+    snap   7/ 16 turn= 45 opp=notebook_physics_accurat REJ ( 2.4s) examples=  0
+    snap   8/ 16 turn= 75 opp=notebook_physics_accurat REJ ( 0.1s) examples=  0
+    snap   9/ 16 turn= 20 opp=notebook_orbitbotnext    REJ (99.0s) examples=  0
+    snap  10/ 16 turn= 45 opp=notebook_orbitbotnext    REJ (12.4s) examples=  0
+    snap  11/ 16 turn= 75 opp=notebook_orbitbotnext    REJ ( 1.1s) examples=  0
+    snap  12/ 16 turn= 20 opp=notebook_distance_priori REJ (25.4s) examples=  0
+    snap  13/ 16 turn= 45 opp=notebook_distance_priori REJ (13.5s) examples=  0
+    snap  14/ 16 turn= 75 opp=notebook_distance_priori REJ ( 1.6s) examples=  0
+    snap  15/ 16 turn= 20 opp=notebook_physics_accurat REJ ( 8.8s) examples=  0
+    snap  16/ 16 turn= 45 opp=notebook_physics_accurat REJ ( 3.6s) examples=  0
+  harvested=  16 accepted=   0 rejected=  16 last_gap=0.0000
+    harvest game seed=3 opp=notebook_orbitbotnext    (0/16 snapshots so far)
+      done seed=3 (+3 snapshots,  7.7s, end_step=88)
+    harvest game seed=4 opp=notebook_distance_priori (3/16 snapshots so far)
+      done seed=4 (+3 snapshots,  8.9s, end_step=87)
+    harvest game seed=5 opp=notebook_physics_accurat (6/16 snapshots so far)
+      done seed=5 (+3 snapshots,  2.9s, end_step=87)
+    harvest game seed=6 opp=notebook_orbitbotnext    (9/16 snapshots so far)
+      done seed=6 (+4 snapshots,  9.7s, end_step=129)
+    harvest game seed=7 opp=notebook_distance_priori (13/16 snapshots so far)
+      done seed=7 (+3 snapshots, 10.4s, end_step=75)
+    snap   1/ 16 turn= 20 opp=notebook_orbitbotnext    REJ (98.2s) examples=  0
+    snap   2/ 16 turn= 45 opp=notebook_orbitbotnext    REJ (12.9s) examples=  0
+    snap   3/ 16 turn= 75 opp=notebook_orbitbotnext    REJ ( 1.1s) examples=  0
+    snap   4/ 16 turn= 20 opp=notebook_distance_priori REJ (25.8s) examples=  0
+    snap   5/ 16 turn= 45 opp=notebook_distance_priori REJ (14.1s) examples=  0
+    snap   6/ 16 turn= 75 opp=notebook_distance_priori REJ ( 1.5s) examples=  0
+    snap   7/ 16 turn= 20 opp=notebook_physics_accurat REJ ( 8.6s) examples=  0
+    snap   8/ 16 turn= 45 opp=notebook_physics_accurat REJ ( 3.6s) examples=  0
+    snap   9/ 16 turn= 75 opp=notebook_physics_accurat REJ ( 0.8s) examples=  0
+    snap  10/ 16 turn= 20 opp=notebook_orbitbotnext    REJ (28.7s) examples=  0
+    snap  11/ 16 turn= 45 opp=notebook_orbitbotnext    REJ (12.8s) examples=  0
+    snap  12/ 16 turn= 75 opp=notebook_orbitbotnext    REJ ( 2.1s) examples=  0
+    snap  13/ 16 turn=115 opp=notebook_orbitbotnext    REJ ( 0.3s) examples=  0
+    snap  14/ 16 turn= 20 opp=notebook_distance_priori REJ (28.8s) examples=  0
+    snap  15/ 16 turn= 45 opp=notebook_distance_priori REJ (18.5s) examples=  0
+    snap  16/ 16 turn= 75 opp=notebook_distance_priori REJ ( 4.2s) examples=  0
+  harvested=  32 accepted=   0 rejected=  32 last_gap=0.0000
+    harvest game seed=6 opp=notebook_orbitbotnext    (0/16 snapshots so far)
+      done seed=6 (+4 snapshots,  9.4s, end_step=129)
+    harvest game seed=7 opp=notebook_distance_priori (4/16 snapshots so far)
+      done seed=7 (+3 snapshots, 11.5s, end_step=92)
+    harvest game seed=8 opp=notebook_physics_accurat (7/16 snapshots so far)
+      done seed=8 (+3 snapshots,  2.2s, end_step=85)
+    harvest game seed=9 opp=notebook_orbitbotnext    (10/16 snapshots so far)
+      done seed=9 (+3 snapshots,  9.5s, end_step=94)
+    harvest game seed=10 opp=notebook_distance_priori (13/16 snapshots so far)
+      done seed=10 (+3 snapshots,  9.3s, end_step=75)
+    snap   1/ 16 turn= 20 opp=notebook_orbitbotnext    REJ (28.7s) examples=  0
+    snap   2/ 16 turn= 45 opp=notebook_orbitbotnext    REJ (12.9s) examples=  0
+    snap   3/ 16 turn= 75 opp=notebook_orbitbotnext    REJ ( 2.1s) examples=  0
+    snap   4/ 16 turn=115 opp=notebook_orbitbotnext    REJ ( 0.3s) examples=  0
+    snap   5/ 16 turn= 20 opp=notebook_distance_priori REJ (32.9s) examples=  0
+    snap   6/ 16 turn= 45 opp=notebook_distance_priori REJ (20.3s) examples=  0
+    snap   7/ 16 turn= 75 opp=notebook_distance_priori REJ ( 4.6s) examples=  0
+    snap   8/ 16 turn= 20 opp=notebook_physics_accurat REJ ( 6.0s) examples=  0
+    snap   9/ 16 turn= 45 opp=notebook_physics_accurat REJ ( 3.5s) examples=  0
+    snap  10/ 16 turn= 75 opp=notebook_physics_accurat REJ ( 0.5s) examples=  0
+    snap  11/ 16 turn= 20 opp=notebook_orbitbotnext    REJ (28.1s) examples=  0
+    snap  12/ 16 turn= 45 opp=notebook_orbitbotnext    REJ (13.9s) examples=  0
+    snap  13/ 16 turn= 75 opp=notebook_orbitbotnext    REJ ( 2.2s) examples=  0
+    snap  14/ 16 turn= 20 opp=notebook_distance_priori REJ (109.5s) examples=  0
+    snap  15/ 16 turn= 45 opp=notebook_distance_priori REJ (51.2s) examples=  0
+    snap  16/ 16 turn= 75 opp=notebook_distance_priori REJ (34.9s) examples=  0
+  harvested=  48 accepted=   0 rejected=  48 last_gap=0.0000
+    harvest game seed=9 opp=notebook_orbitbotnext    (0/16 snapshots so far)
+      done seed=9 (+3 snapshots,  9.6s, end_step=94)
+    harvest game seed=10 opp=notebook_distance_priori (3/16 snapshots so far)
+      done seed=10 (+4 snapshots, 16.7s, end_step=150)
+    harvest game seed=11 opp=notebook_physics_accurat (7/16 snapshots so far)
+      done seed=11 (+3 snapshots,  1.9s, end_step=83)
+    harvest game seed=12 opp=notebook_orbitbotnext    (10/16 snapshots so far)
+      done seed=12 (+3 snapshots, 16.6s, end_step=95)
+    harvest game seed=13 opp=notebook_distance_priori (13/16 snapshots so far)
+      done seed=13 (+2 snapshots, 10.3s, end_step=70)
+    harvest game seed=14 opp=notebook_physics_accurat (15/16 snapshots so far)
+      done seed=14 (+1 snapshots,  0.6s, end_step=20)
+    snap   1/ 16 turn= 20 opp=notebook_orbitbotnext    REJ (26.4s) examples=  0
+    snap   2/ 16 turn= 45 opp=notebook_orbitbotnext    REJ (14.0s) examples=  0
+    snap   3/ 16 turn= 75 opp=notebook_orbitbotnext    REJ ( 2.5s) examples=  0

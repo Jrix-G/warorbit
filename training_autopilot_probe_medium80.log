@@ -1,0 +1,8 @@
+Warm-start: zero weights (offline fixed-teacher mode)
+
+Method: offline fixed-teacher plan ranking + value head
+Config: lr=0.03  value_lr=0.02  l2=0.0001  batch=64  target_examples=192  oracle_horizon=80
+Starting training...
+
+Collecting offline snapshots...
+  harvested=  48 accepted=   6 rejected=  42 last_gap=0.0294

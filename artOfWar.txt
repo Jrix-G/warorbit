@@ -1,0 +1,73 @@
+ART OF WAR — Orbit Wars V7/V8
+Source: analyse de 95 parties du leader #1 (kovi, 2577 ELO)
+========================================================
+
+RÈGLE 1 — Ouverture agressive (tours 1-20)
+  Le leader lance sa première action au tour 2-8, souvent 2-4 flottes
+  simultanées. Une ouverture tardive (t016+) est corrélée à 100% des défaites.
+  → En 2p, si step < 20 et plusieurs planètes ont du budget : lancer en parallèle
+    même si les cibles ne sont pas optimales.
+
+RÈGLE 2 — Alarme à t040
+  Si à tour 40 on a < 8 planètes en 2p, la partie est quasi perdue.
+  C'est le seuil d'alarme : passer en mode expansion panique.
+  → NEUTRAL_MARGIN_BASE = 0, AGGRESSION_BOOST *= 1.5 dès que ce signal est détecté.
+
+RÈGLE 3 — Seuil de conversion : 15 planètes avant t080
+  Dans toutes les victoires : > 15 planètes à t080.
+  Dans toutes les défaites : plafond à 6-14 planètes, jamais franchi.
+  → Bonus fort sur les cibles neutres tant que len(my_planets) < 15 et step < 80.
+    La conversion économique passe avant la défense jusqu'à ce seuil.
+
+RÈGLE 4 — Anti-hoarding : les ships doivent bouger
+  Les défaites accumulent des ships sur des planètes sans les dépenser.
+  Les victoires maintiennent 15-41 flottes actives en permanence.
+  → Si une planète a ships > 4 * production * 10 et aucune menace :
+    forcer un transfert vers le front.
+
+RÈGLE 5 — Cibler la production, pas la proximité
+  Les victoires atteignent prod 40-60 en fin de partie. Impossible sans
+  capturer les planètes haute production (prod ≥ 3) en priorité.
+  → Multiplier le poids de la production dans le scoring des cibles neutres.
+    Pénaliser fortement les planètes prod=1 en phase opening.
+
+RÈGLE 6 — Abandon défensif si retard > 3 planètes
+  Défendre des planètes périphériques quand on est à -3 planètes est du
+  gaspillage. Les ships défensifs auraient dû aller à l'attaque.
+  → Si enemy_planets - my_planets > 3 et step < 200 :
+    abandonner la défense des planètes prod ≤ 2, concentrer les forces.
+
+RÈGLE 7 — 4p : un ennemi à la fois
+  En 4p, le leader perd quand il se bat sur 2-3 fronts simultanément.
+  La stratégie gagnante est : identifier le voisin le plus faible,
+  le détruire, puis pivoter.
+  → En 4p, cibler un seul ennemi (le plus faible économiquement).
+    Laisser les autres tranquilles sauf défense réactive.
+
+RÈGLE 8 — Fenêtre décisive t040-t080
+  C'est la fenêtre où la partie se joue. Si à t040 on a une avance de
+  +2 planètes ou plus, c'est le moment de finir l'adversaire, pas de consolider.
+  → Si 40 < step < 80 et leadP >= +2 : mode exploitation totale.
+    Arrêt défense soft, tout vers l'expansion et l'attaque.
+
+========================================================
+MÉTRIQUES CLÉS extraites des 95 parties
+
+2p victoires :
+  - t040 : 9-13 planètes, prod 18-25
+  - t080 : +8 à +16 planètes d'avance. Partie pliée.
+  - Terminal : tour 74-190
+
+2p défaites :
+  - t040 : 4-9 planètes (jamais 12+)
+  - t080 : retard -1 à -3 planètes
+  - Terminal : tour 137-500 (agonie)
+
+4p :
+  - Stratégie différente : survie + opportunisme
+  - Perte quand : combat simultané sur 2+ fronts
+  - Seuil planètes ≈ 15 aussi mais plus difficile à atteindre
+
+Seuil de conversion universel : 15 planètes avant tour 80
+Production cible mi-partie : > 20 en 2p
+========================================================

@@ -50,7 +50,18 @@
       "Read(//home/jason/.mozilla/**)",
       "Bash(.venv/bin/python *)",
       "Bash(wait)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(.venv/Scripts/python.exe *)",
+      "Bash(grep --line-buffered -E \"ep |score|Final|Done|Error|Traceback|/3$|global:\")",
+      "Bash(ps -o pid,pcpu,etime,comm -p 696)",
+      "Bash(wmic process *)",
+      "Bash(tasklist /FI \"PID eq 696\" /V)",
+      "PowerShell(Get-Process *)",
+      "Bash(powershell -Command \".\\\\run_v8_aow.ps1\")",
+      "Bash(tasklist /FI \"IMAGENAME eq python.exe\")",
+      "Bash(tasklist)",
+      "Bash(taskkill *)",
+      "PowerShell(Stop-Process *)"
     ]
   }
 }

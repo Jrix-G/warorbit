@@ -1,0 +1,49 @@
+Harvesting 18 snapshots from V7 vs zoo...
+  harvested 18 in 40.8s
+  [ 1/18] turn= 20 opp=notebook_orbitbotnext          oracle_top=defense  true_top=hold     agree=N pearson=+0.61 spearman=+0.68 win_spread=9/9
+  [ 2/18] turn= 45 opp=notebook_orbitbotnext          oracle_top=reserve  true_top=v7       agree=N pearson=-0.73 spearman=-0.47 win_spread=9/9
+  [ 3/18] turn= 75 opp=notebook_orbitbotnext          oracle_top=v7       true_top=hold     agree=N pearson=+0.00 spearman=+1.00 win_spread=9/9
+  [ 4/18] turn= 20 opp=notebook_distance_prioritized  oracle_top=v7       true_top=hold     agree=N pearson=+0.17 spearman=+0.47 win_spread=-9/9
+  [ 5/18] turn= 45 opp=notebook_distance_prioritized  oracle_top=v7       true_top=comet    agree=N pearson=+0.00 spearman=+0.05 win_spread=-9/9
+  [ 6/18] turn= 75 opp=notebook_distance_prioritized  oracle_top=v7       true_top=expand   agree=N pearson=+0.00 spearman=-0.53 win_spread=-9/9
+  [ 7/18] turn=115 opp=notebook_distance_prioritized  oracle_top=v7       true_top=hold     agree=N pearson=+0.00 spearman=+1.00 win_spread=-9/9
+  [ 8/18] turn= 20 opp=notebook_physics_accurate      oracle_top=v7       true_top=v7       agree=Y pearson=+0.92 spearman=+0.87 win_spread=-3/9
+  [ 9/18] turn= 45 opp=notebook_physics_accurate      oracle_top=attack   true_top=v7       agree=N pearson=+0.75 spearman=+0.83 win_spread=9/9
+  [10/18] turn= 75 opp=notebook_physics_accurate      oracle_top=defense  true_top=hold     agree=N pearson=+0.86 spearman=+0.80 win_spread=9/9
+  [11/18] turn= 20 opp=notebook_orbitbotnext          oracle_top=comet    true_top=split    agree=N pearson=-0.00 spearman=+0.17 win_spread=-9/9
+  [12/18] turn= 45 opp=notebook_orbitbotnext          oracle_top=v7       true_top=expand   agree=N pearson=+0.00 spearman=+0.17 win_spread=-9/9
+  [13/18] turn= 75 opp=notebook_orbitbotnext          oracle_top=v7       true_top=v7       agree=Y pearson=+0.00 spearman=+0.38 win_spread=-9/9
+  [14/18] turn= 20 opp=notebook_distance_prioritized  oracle_top=expand   true_top=comet    agree=N pearson=+0.98 spearman=+0.98 win_spread=3/9
+  [15/18] turn= 45 opp=notebook_distance_prioritized  oracle_top=attack   true_top=attack   agree=Y pearson=+0.05 spearman=+0.07 win_spread=9/9
+  [16/18] turn= 75 opp=notebook_distance_prioritized  oracle_top=attack   true_top=hold     agree=N pearson=+0.00 spearman=-0.17 win_spread=9/9
+  [17/18] turn= 20 opp=notebook_physics_accurate      oracle_top=reserve  true_top=expand   agree=N pearson=+0.96 spearman=+0.82 win_spread=-3/9
+  [18/18] turn= 45 opp=notebook_physics_accurate      oracle_top=expand   true_top=expand   agree=Y pearson=+0.97 spearman=+0.48 win_spread=-7/9
+
+============================================================
+Snapshots evaluated      : 18
+Argmax agreement         : 4/18  (22.2%)
+  random baseline (1/9)  : 11.1%
+Mean Pearson  (oracle, margin) : +0.307
+Mean Spearman (oracle, margin) : +0.422
+Total wall time          : 17.4 min
+
+Plan picked by ORACLE:
+  v7        8
+  attack    3
+  defense   2
+  reserve   2
+  expand    2
+  comet     1
+Plan picked by TRUTH:
+  hold      6
+  v7        4
+  expand    4
+  comet     2
+  split     1
+  attack    1
+
+Reading the result:
+  agreement < 25%  : oracle is essentially noise; training on it cannot help
+  agreement 25-50% : weak signal; a lot of training may extract some gain
+  agreement > 50%  : oracle is usable; bottleneck is elsewhere (capacity, distribution)
+  Pearson < 0.2    : even relative ranking is poor; the proxy disagrees on direction
