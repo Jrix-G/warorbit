@@ -1,0 +1,21 @@
+{
+  "id": "sigmaborov/orbit-wars-2026-tactical-heuristic",
+  "id_no": 115887264,
+  "title": "Orbit Wars 2026 - Tactical Heuristic",
+  "code_file": "orbitbotnext.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": false,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "competition_sources": [
+    "orbit-wars"
+  ],
+  "model_sources": [],
+  "docker_image": "gcr.io/kaggle-images/python@sha256:c370a5ff133d162d17c2dca332b50f3e85c0b0ed1471ee18e98e3009eee80b08",
+  "machine_shape": "None"
+}

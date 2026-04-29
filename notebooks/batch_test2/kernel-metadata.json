@@ -1,0 +1,27 @@
+{
+  "id": "debugendless/orbit-wars-sun-dodging-baseline",
+  "id_no": 115904602,
+  "title": "\u2600\ufe0f Orbit Wars: Sun-Dodging Baseline",
+  "code_file": "getting-started.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": false,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [
+    "beginner",
+    "games",
+    "mathematics",
+    "simulations",
+    "artificial intelligence"
+  ],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "competition_sources": [
+    "orbit-wars"
+  ],
+  "model_sources": [],
+  "docker_image": "gcr.io/kaggle-images/python@sha256:c370a5ff133d162d17c2dca332b50f3e85c0b0ed1471ee18e98e3009eee80b08",
+  "machine_shape": "None"
+}

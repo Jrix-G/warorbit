@@ -26,6 +26,8 @@ SUN_RADIUS = 10.0
 ROTATION_RADIUS_LIMIT = 50.0
 MAX_SPEED = 6.0
 TOTAL_TURNS = 500
+START_POSITIONS_2P = [(18.0, 50.0), (82.0, 50.0)]
+START_POSITIONS_4P = [(18.0, 50.0), (82.0, 50.0), (50.0, 18.0), (50.0, 82.0)]
 
 P_ID, P_OWNER, P_X, P_Y, P_R, P_SHIPS, P_PROD = range(7)
 F_ID, F_OWNER, F_X, F_Y, F_ANGLE, F_FROM, F_SHIPS = range(7)
@@ -105,27 +107,62 @@ class SimGame:
         planets = []
         next_id = 0
 
-        starts = [(18.0, 50.0), (82.0, 50.0), (50.0, 18.0), (50.0, 82.0)]
+        if n_players <= 2:
+            starts = START_POSITIONS_2P
+        elif n_players <= 4:
+            starts = START_POSITIONS_4P
+        else:
+            starts = [
+                (
+                    CENTER + 28.0 * math.cos(2.0 * math.pi * i / max(1, n_players)),
+                    CENTER + 28.0 * math.sin(2.0 * math.pi * i / max(1, n_players)),
+                )
+                for i in range(n_players)
+            ]
+        if n_players > len(starts):
+            raise ValueError(f"Unsupported player count: {n_players}")
+
         for player in range(n_players):
             x, y = starts[player]
             planets.append([next_id, player, x, y, 3.0, 100.0, 3.0])
             next_id += 1
 
+        def add_neutral(x: float, y: float) -> bool:
+            nonlocal next_id
+            if math.hypot(x - CENTER, y - CENTER) < SUN_RADIUS + 7.0:
+                return False
+            if all(math.hypot(x - p[P_X], y - p[P_Y]) > p[P_R] + 5.0 for p in planets):
+                radius = rng.choice((1.6, 2.0, 2.4, 2.8))
+                ships = rng.randint(5, 32)
+                prod = rng.randint(1, 4)
+                planets.append([next_id, -1, x, y, radius, ships, prod])
+                next_id += 1
+                return True
+            return False
+
         for _ in range(neutral_pairs):
-            for mirror in (False, True):
+            if n_players <= 2:
+                points = [
+                    (
+                        rng.uniform(18.0, 48.0),
+                        rng.uniform(16.0, 84.0),
+                    ),
+                ]
+                points = points + [(BOARD_SIZE - x, y) for x, y in points]
+            else:
+                x = rng.uniform(18.0, 48.0)
+                y = rng.uniform(16.0, 34.0)
+                points = [
+                    (x, y),
+                    (BOARD_SIZE - x, y),
+                    (x, BOARD_SIZE - y),
+                    (BOARD_SIZE - x, BOARD_SIZE - y),
+                ]
+            for x, y in points:
                 for _tries in range(200):
-                    x = rng.uniform(18.0, 48.0)
-                    y = rng.uniform(16.0, 84.0)
-                    if mirror:
-                        x = BOARD_SIZE - x
-                    if math.hypot(x - CENTER, y - CENTER) < SUN_RADIUS + 7.0:
-                        continue
-                    if all(math.hypot(x - p[P_X], y - p[P_Y]) > p[P_R] + 5.0 for p in planets):
-                        radius = rng.choice((1.6, 2.0, 2.4, 2.8))
-                        ships = rng.randint(5, 32)
-                        prod = rng.randint(1, 4)
-                        planets.append([next_id, -1, x, y, radius, ships, prod])
-                        next_id += 1
+                    jitter_x = x + rng.uniform(-1.5, 1.5)
+                    jitter_y = y + rng.uniform(-1.5, 1.5)
+                    if add_neutral(jitter_x, jitter_y):
                         break
 
         arr = np.array(planets, dtype=np.float32)
@@ -425,6 +462,8 @@ def run_match(
     max_steps: int = TOTAL_TURNS,
 ) -> dict:
     players = int(n_players or len(agents))
+    if len(agents) != players:
+        raise ValueError(f"agent count ({len(agents)}) must match n_players ({players})")
     game = SimGame.random_game(seed=seed, n_players=players, neutral_pairs=neutral_pairs, max_steps=max_steps)
     return game.run(agents, max_steps=max_steps)
 

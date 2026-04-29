@@ -133,103 +133,103 @@ Optimisations performance:
 ### Root cause gap vs notebooks
 
 - V6: décisions sur état courant → sous-estime défenseurs à l'arrivée
-- V7: décisions sur état projeté → correct, mais scoring policy encore heuristique
-- Objectif 4/5: scoring policy entraîné par REINFORCE
+- V7: décisions sur état projeté → correct, mais scoring policy heuristique + défense fragile
+- Diagnostic Kaggle (1000+ parties): **21/26 pertes = mid_collapse** (garrison insuffisant, rapid loss de planètes après expansion)
 
 ---
 
-## Plan REINFORCE (prochaine étape)
+## Stratégie ML (29 avril 2026)
 
-### Objectif
+### Principe: pas de REINFORCE naïf
 
-Remplacer `_target_value()` dans `bot_v7.py` par un MLP appris. Le MLP apprend les comportements émergents (agressivité 2p en early, timing d'attaque, priorité missions) sans qu'on les code à la main.
+Self-play pur → mode collapse (bot apprend à battre sa propre faiblesse, pas les vrais adversaires). Architecture choisie: **Behavioral Cloning + League Training**.
 
-### Architecture MLP mission scorer
+### Phase 1 — Diagnostic & Fix V7 (avant tout ML)
+
+1. Analyser tour exact du collapse dans les parties perdues
+2. Corriger `keep_needed` / garrison sous-estimé
+3. Benchmark local vs 15 notebooks → baseline chiffrée
+
+### Phase 2 — Behavioral Cloning depuis top players
+
+Dataset: `replay_dataset/compact/episodes.jsonl.gz` (1000+ parties)
 
 ```python
-# Features par mission (input au MLP):
-features = [
-    target_production / 5.0,          # valeur économique normalisée
-    eta / 100.0,                       # temps de trajet
-    ships_needed / 500.0,             # coût de capture
-    remaining_turns / 500.0,          # urgence temporelle
-    is_two_player,                     # mode 2p vs 4p
-    domination_score,                  # avance/retard économique
-    target_is_enemy,                   # attaque vs neutre
-    target_is_static,                  # planète statique vs orbitale
-    indirect_wealth_normalized,        # valeur indirecte du territoire
-    my_prod_ratio,                     # ratio production totale
-    # ~10-15 features total
+# Extraire (obs_features, action) de chaque tour du GAGNANT
+# MLP supervisé: état → action optimale
+# Avantage: pas de variance, converge vite, warm-start sur vrais comportements gagnants
+features_per_turn = [
+    my_planets / total_planets,       # dominance économique
+    my_ships / total_ships,           # dominance militaire
+    nearest_neutral_dist,             # opportunité expansion
+    nearest_enemy_dist,               # pression adverse
+    turn / 500.0,                     # phase de jeu
+    is_2p,                            # mode
+    production_ratio,                 # eco relative
+    fleet_ratio,                      # flotte relative
+    # ~15-20 features globaux par tour
 ]
-# Output: scalar log-multiplier sur le score heuristique de base
-# score_final = base_heuristic_score * exp(mlp(features))
-# Warm-start: poids=0 → mlp(x)=0 → exp(0)=1 → comportement V7 pur au départ
+# Output: (from_planet, direction, ships_ratio) → discrétisé
 ```
 
-### Algorithme REINFORCE
+### Phase 3 — League Training (no ceiling)
 
 ```
-for episode in range(N):
-    # Jouer une partie V7-trained vs V7-trained (self-play)
-    # À chaque tour, pour chaque mission candidate:
-    #   score_noisy = base_score * exp(mlp(features) + noise)  # exploration
-    #   choisir missions par score_noisy (greedy)
-    #   enregistrer (features, noise_used) pour chaque mission exécutée
-    
-    reward = +1 si victoire, -1 si défaite, 0 si nul
-    
-    # Mise à jour REINFORCE:
-    for each (features, noise) recorded this episode:
-        gradient = reward * noise  # REINFORCE policy gradient
-        mlp_weights += lr * gradient * features  # backprop simplifié
+Pool = [V7_base, cloned_model, checkpoint_1, ...]
+
+loop indéfini:
+    opponent = random(Pool)          # jamais soi-même seul
+    jouer N parties (SimGame local)
+    gradient update sur dense reward
+    si winrate vs Pool > 60% pendant 100 parties:
+        ajouter checkpoint au Pool
+    Pool = keep top 10 checkpoints par ELO interne
 ```
 
-### Comment lancer (quand 8 cores disponibles)
+**Pourquoi pas de plafond**: adversaire change chaque génération → impossible d'overfitter. Pool grandit → challenge permanent.
 
-```bash
-# Lancer training REINFORCE (à créer: train_reinforce.py)
-python3 train_reinforce.py \
-    --episodes 5000 \
-    --workers 8 \
-    --lr 0.001 \
-    --save-every 500 \
-    --out evaluations/mlp_v7_reinforce.npy
+### Dense reward (vs win/lose binaire)
 
-# Benchmark intermédiaire pendant training
-python3 -c "
-from SimGame import run_match
-import bot_v7
-from opponents import ZOO
-# charger weights intermédiaires dans bot_v7._SCORER
-wins = sum(run_match([bot_v7.agent, ZOO['notebook_physics_accurate']], seed=i)['winner']==0 for i in range(10))
-print(f'{wins}/10')
-"
+```python
+reward_t = (
+    delta_production_ratio * 0.4 +   # gain eco relatif
+    fleet_efficiency * 0.3 +          # ships convertis / ships envoyés
+    survival_bonus * 0.3              # encore vivant à T+50
+)
+# Signal à chaque tour → 500x plus riche que reward final
 ```
 
-### Fichier à créer: `train_reinforce.py`
+### Fichiers à créer
 
-Structure:
-1. `collect_episode(agent_fn, opponent_fn, seed)` → liste de (features, actions_taken, reward)
-2. `update_weights(episodes_batch, lr)` → gradient REINFORCE
-3. `parallel_collect(n_workers, n_episodes)` → multiprocessing.Pool
-4. Boucle principale: collect → update → benchmark every 500 eps → save weights
+| Fichier | Rôle |
+|---------|------|
+| `extract_training_data.py` | extraire (features, actions) gagnants depuis episodes.jsonl.gz |
+| `train_cloning.py` | behavioral cloning supervisé numpy MLP |
+| `league_training.py` | league loop: SimGame + pool + checkpoints |
+| `dense_reward.py` | calcul reward par tour depuis obs |
 
 ### Critères de succès
 
 | Étape | Métrique |
 |-------|---------|
-| Warm-start OK | V7+MLP = V7 pur (0 écart) |
-| Learning signal | loss décroît sur 500 épisodes |
-| Amélioration locale | V7+MLP > V7 pur vs notebooks |
-| Objectif | 4/5 vs notebook_physics_accurate |
+| Fix V7 défense | rapid_collapse < 5/26 (était 22/26) |
+| Behavioral cloning | clone > V7_base vs notebooks |
+| League gen 1 | >50% vs notebooks locaux |
+| League gen N | winrate Kaggle >50% |
 
-### Conseils pour éviter les pièges REINFORCE
+### Commandes clés
 
-- **Variance haute**: utiliser baseline = moyenne mobile des rewards (soustrait reward moyen)
-- **Self-play instable**: alterner self-play et vs ZOO (50/50) pour éviter overfitting circulaire
-- **Exploration**: commencer avec noise_std=0.3, décroître vers 0.05 en fin de training
-- **Batch size**: ne pas updater après chaque épisode — batcher 32-64 épisodes
-- **Learning rate**: 1e-3 max, decay × 0.5 si loss diverge
+```bash
+# Harvest données (Playwright + kaggle session)
+python3 harvest_replays.py --target 2000 --top-teams 0 --headless \
+  --extra-submissions 52128366 51799813 52066322 [autres IDs]
+
+# Analyser parties
+python3 analyze_replays.py --mode all --my-sub 52128366
+
+# Watch harvest en cours
+python3 watch_harvest.py 1000 <PID>
+```
 
 ---
 

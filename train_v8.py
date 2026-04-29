@@ -24,6 +24,7 @@ import numpy as np
 import bot_v7
 import bot_v8
 from SimGame import SimGame, run_match
+from opponents import training_pool
 from v8_core import (
     MODEL_PATH,
     LinearV8Model,
@@ -36,11 +37,7 @@ from v8_core import (
 )
 
 
-DEFAULT_OPPONENTS = [
-    "notebook_physics_accurate",
-    "notebook_orbitbotnext",
-    "notebook_distance_prioritized",
-]
+DEFAULT_FOUR_PLAYER_RATIO = 0.70
 
 
 def _call_obs_agent(agent: Callable, obs: dict):
@@ -94,6 +91,34 @@ def _load_opponent(name: str) -> Callable:
         return passive
 
 
+def _sample_player_count(rng: random.Random, four_player_ratio: float) -> int:
+    return 4 if rng.random() < max(0.0, min(1.0, four_player_ratio)) else 2
+
+
+def _sample_opponent_roster(rng: random.Random, pool: List[str], n_players: int, train_player: int) -> List[str]:
+    needed = max(0, n_players - 1)
+    if needed == 0:
+        return []
+    if not pool:
+        return []
+    if len(pool) >= needed:
+        chosen = rng.sample(pool, needed)
+    else:
+        chosen = [pool[rng.randrange(len(pool))] for _ in range(needed)]
+    return chosen
+
+
+def _build_agents(train_player: int, n_players: int, opponent_names: List[str]) -> List[Callable]:
+    agents: List[Callable] = []
+    opp_iter = iter(opponent_names)
+    for player in range(n_players):
+        if player == train_player:
+            agents.append(bot_v8.agent)
+        else:
+            agents.append(_load_opponent(next(opp_iter, opponent_names[0] if opponent_names else "passive")))
+    return agents
+
+
 def _make_opponent_policy(agent: Callable) -> Callable:
     def policy(game, player: int):
         obs = game.observation(player)
@@ -113,7 +138,7 @@ def _final_value(scores: List[int], our_player: int, winner: int) -> float:
     return float(0.7 * win_term + 0.3 * margin_term)
 
 
-def _run_benchmark(model: LinearV8Model, games: int, opponents: List[str]) -> Dict[str, tuple[int, int]]:
+def _run_benchmark(model: LinearV8Model, games: int, opponents: List[str], n_players: int = 2) -> Dict[str, tuple[int, int]]:
     bot_v8.set_model(model)
     results: Dict[str, tuple[int, int]] = {}
     for opp_name in opponents:
@@ -121,12 +146,25 @@ def _run_benchmark(model: LinearV8Model, games: int, opponents: List[str]) -> Di
         wins = 0
         print(f"  Benchmarking vs {opp_name}...", flush=True)
         for i in range(games):
-            if i % 2 == 0:
-                result = run_match([bot_v8.agent, opp], seed=1000 + i)
-                wins += 1 if result["winner"] == 0 else 0
+            if n_players == 2:
+                if i % 2 == 0:
+                    result = run_match([bot_v8.agent, opp], seed=1000 + i)
+                    wins += 1 if result["winner"] == 0 else 0
+                else:
+                    result = run_match([opp, bot_v8.agent], seed=1000 + i)
+                    wins += 1 if result["winner"] == 1 else 0
             else:
-                result = run_match([opp, bot_v8.agent], seed=1000 + i)
-                wins += 1 if result["winner"] == 1 else 0
+                second = _load_opponent(opponents[(opponents.index(opp_name) + 1) % len(opponents)]) if len(opponents) > 1 else opp
+                third = _load_opponent(opponents[(opponents.index(opp_name) + 2) % len(opponents)]) if len(opponents) > 2 else opp
+                lineup = [bot_v8.agent, opp, second, third]
+                if i % 4 == 1:
+                    lineup = [opp, bot_v8.agent, second, third]
+                elif i % 4 == 2:
+                    lineup = [opp, second, bot_v8.agent, third]
+                elif i % 4 == 3:
+                    lineup = [opp, second, third, bot_v8.agent]
+                result = run_match(lineup, seed=1000 + i, n_players=4)
+                wins += 1 if result["winner"] == lineup.index(bot_v8.agent) else 0
         results[opp_name] = (wins, games)
     return results
 
@@ -195,10 +233,12 @@ def main():
                              "Calibrate against the mean_span column of the oracle "
                              "diagnostic on YOUR plan set (seen ~0.05 with 9 plans @ H=15-20).")
     parser.add_argument("--benchmark-games", type=int, default=20)
-    parser.add_argument("--holdout-opponent", type=str, default="orbit_stars",
-                        help="opponent reserved for held-out validation; not used during training. "
-                             "(notebook_tactical_heuristic is broken in the current zoo: "
-                             "raises NameError 'Planet')")
+    parser.add_argument("--match-4p-ratio", type=float, default=DEFAULT_FOUR_PLAYER_RATIO,
+                        help="fraction of training episodes played as 4-player matches")
+    parser.add_argument("--opponent-pool-size", type=int, default=15,
+                        help="maximum number of notebook adversaries kept in the active training pool")
+    parser.add_argument("--holdout-opponent", type=str, default="notebook_orbitbotnext",
+                        help="notebook opponent reserved for held-out validation; not used during training")
     parser.add_argument("--benchmark-seconds", type=int, default=900)
     parser.add_argument("--save-seconds", type=int, default=900)
     # Keep the oracle longer: the policy is still brittle when beta gets too low.
@@ -246,6 +286,9 @@ def main():
     t_start = time.time()
     replay_buffer: deque[TrainingExample] = deque(maxlen=args.buffer_size)
     rng = random.Random(int(time.time() * 1000) % 100000)
+    active_pool = training_pool(limit=max(1, int(args.opponent_pool_size)))
+    if not active_pool:
+        raise SystemExit("No notebook opponents available in opponents/; populate notebook_* agents first.")
 
     resume_state_path = args.resume_state or state_path
     resumed_state = _load_train_state(resume_state_path)
@@ -269,7 +312,7 @@ def main():
         except Exception as exc:
             print(f"  (could not load training state from {resume_state_path}: {exc})")
 
-    bench_opponents = list(DEFAULT_OPPONENTS)
+    bench_opponents = list(active_pool)
     if args.holdout_opponent and args.holdout_opponent not in bench_opponents:
         try:
             _load_opponent(args.holdout_opponent)
@@ -296,13 +339,12 @@ def main():
     while time.time() < deadline:
         episode += 1
         seed = rng.randrange(1, 2**31 - 1)
-        opponent_name = DEFAULT_OPPONENTS[(episode - 1) % len(DEFAULT_OPPONENTS)]
-        if rng.random() < 0.35:
-            opponent_name = rng.choice(DEFAULT_OPPONENTS)
-        opponent_agent = _load_opponent(opponent_name)
-        opponent_policy = _make_opponent_policy(opponent_agent)
-        game = SimGame.random_game(seed=seed, n_players=2, neutral_pairs=8)
-        train_player = episode % 2
+        n_players = _sample_player_count(rng, args.match_4p_ratio)
+        train_player = rng.randrange(n_players)
+        opponent_names = _sample_opponent_roster(rng, active_pool, n_players, train_player)
+        opponent_agents = _build_agents(train_player, n_players, opponent_names)
+        opponent_policies = [_make_opponent_policy(agent) for agent in opponent_agents]
+        game = SimGame.random_game(seed=seed, n_players=n_players, neutral_pairs=8)
         beta = max(args.beta_end, args.beta_start * math.exp(-(episode - 1) / max(args.beta_decay, 1e-6)))
 
         episode_samples: List[dict] = []
@@ -323,7 +365,7 @@ def main():
                     scores = model.score_candidates(feats)
                     model_idx = int(np.argmax(scores)) if len(scores) else 0
                     if game.state.step % max(1, args.sample_stride) == 0:
-                        rollout_policy = _make_rollout_policy(train_player, opponent_policy)
+                        rollout_policy = _make_rollout_policy(train_player, opponent_policies[player])
                         steps = max(1, int(args.rollout_steps))
                         # Single-horizon rollout. The multi-horizon blend that
                         # was here added cost without measurable signal gain
@@ -374,7 +416,7 @@ def main():
                         chosen_idx = model_idx
                     actions[player] = plans[chosen_idx].actions
                 else:
-                    actions[player] = opponent_policy(game, player)
+                    actions[player] = opponent_policies[player](game, player)
 
             game.step(actions)
 
@@ -402,7 +444,7 @@ def main():
         elapsed = time.time() - t_start
         print(
             f"[ep {episode:5d} | {elapsed/60:5.1f}min]  "
-            f"value={episode_value:+.3f}  beta={beta:.2f}  "
+            f"mode={n_players}p  value={episode_value:+.3f}  beta={beta:.2f}  "
             f"loss={stats['loss']:.3f}  rank={stats.get('rank_loss', 0.0):.3f}  "
             f"acc={stats['acc']:.2f}  "
             f"|w|={np.linalg.norm(model.score_w):.4f}"

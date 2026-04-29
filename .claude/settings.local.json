@@ -61,7 +61,15 @@
       "Bash(tasklist /FI \"IMAGENAME eq python.exe\")",
       "Bash(tasklist)",
       "Bash(taskkill *)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(.venv/bin/playwright install *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(jobs -l)",
+      "Bash(kill -0 253007)",
+      "Bash(.venv/bin/python -c ' *)",
+      "Read(//tmp/**)",
+      "Bash(kill -0 476024)",
+      "Bash(kill 476024)"
     ]
   }
 }

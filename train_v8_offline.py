@@ -26,6 +26,7 @@ import numpy as np
 import bot_v7
 import bot_v8
 from SimGame import F_OWNER, F_SHIPS, P_OWNER, P_PROD, P_SHIPS, SimGame, run_match
+from opponents import training_pool
 from v8_core import (
     LinearV8Model,
     TrainingExample,
@@ -34,12 +35,9 @@ from v8_core import (
 )
 
 
-DEFAULT_OPPONENTS = [
-    "notebook_orbitbotnext",
-    "notebook_distance_prioritized",
-    "notebook_physics_accurate",
-    # notebook_tactical_heuristic disabled: NameError on Planet at line 309
-]
+DEFAULT_OPPONENTS = training_pool(limit=15)
+
+DEFAULT_FOUR_PLAYER_RATIO = 0.70
 
 DEFAULT_SAMPLE_TURNS = (20, 45, 75, 115, 165, 230, 310)
 
@@ -166,6 +164,7 @@ def _harvest_snapshots(
     opponents: Sequence[str],
     seed_start: int = 0,
     neutral_pairs: int = 8,
+    four_player_ratio: float = DEFAULT_FOUR_PLAYER_RATIO,
 ) -> List[OfflineSnapshot]:
     snapshots: List[OfflineSnapshot] = []
     seed = seed_start
@@ -175,7 +174,8 @@ def _harvest_snapshots(
         opp_name = opponents[(seed - seed_start) % max(1, len(opponents))]
         opponent = _load_opponent(opp_name)
         opp_policy = _make_opponent_policy(opponent)
-        game = SimGame.random_game(seed=seed, n_players=2, neutral_pairs=neutral_pairs)
+        n_players = 4 if rng.random() < max(0.0, min(1.0, four_player_ratio)) else 2
+        game = SimGame.random_game(seed=seed, n_players=n_players, neutral_pairs=neutral_pairs)
         our_player = seed % game.n_players
         remaining_targets = list(target_turns)
         game_t0 = time.time()
@@ -419,6 +419,7 @@ def _load_or_build_dataset(
     oracle_horizon: int,
     min_gap: float,
     seed_start: int,
+    four_player_ratio: float = DEFAULT_FOUR_PLAYER_RATIO,
     variance_check: bool = True,
     variance_horizon: int = VARIANCE_PROBE_HORIZON,
 ) -> List[TrainingExample]:
@@ -448,6 +449,7 @@ def _load_or_build_dataset(
             sample_turns=sample_turns,
             opponents=DEFAULT_OPPONENTS,
             seed_start=seed_cursor,
+            four_player_ratio=four_player_ratio,
         )
         if not snapshots:
             break
@@ -595,6 +597,8 @@ def main():
     parser.add_argument("--variance-horizon", type=int, default=VARIANCE_PROBE_HORIZON,
                         help="rollout depth (turns) used by the variance pre-filter")
     parser.add_argument("--benchmark-games", type=int, default=12)
+    parser.add_argument("--match-4p-ratio", type=float, default=DEFAULT_FOUR_PLAYER_RATIO,
+                        help="fraction of harvested snapshots played in 4-player matches")
     parser.add_argument("--benchmark-seconds", type=int, default=600)
     parser.add_argument("--save-seconds", type=int, default=300)
     parser.add_argument("--log-every", type=int, default=25)
@@ -605,7 +609,7 @@ def main():
     parser.add_argument("--lr-decay", type=float, default=0.5)
     parser.add_argument("--min-lr", type=float, default=0.003)
     parser.add_argument("--skip-initial-benchmark", action="store_true")
-    parser.add_argument("--holdout-opponent", type=str, default="orbit_stars")
+    parser.add_argument("--holdout-opponent", type=str, default="notebook_orbitbotnext")
     parser.add_argument("--seed-start", type=int, default=0)
     parser.add_argument("--dataset-out", type=str, default=None)
     parser.add_argument("--refresh-dataset", action="store_true")
@@ -647,6 +651,7 @@ def main():
         oracle_horizon=args.oracle_horizon,
         min_gap=args.min_gap,
         seed_start=args.seed_start,
+        four_player_ratio=args.match_4p_ratio,
         variance_check=not args.no_variance_check,
         variance_horizon=args.variance_horizon,
     )

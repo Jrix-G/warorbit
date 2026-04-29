@@ -1,0 +1,21 @@
+{
+  "id": "aminmahmoudalifayed/kronos-omega",
+  "id_no": 116204054,
+  "title": "KRONOS OMEGA.\ud83d\udc09\ud83d\udef8",
+  "code_file": "getting-started.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": false,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [],
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "competition_sources": [
+    "orbit-wars"
+  ],
+  "model_sources": [],
+  "docker_image": "gcr.io/kaggle-private-byod/python@sha256:00377cd1b3d470a605bc5b0ceca79969e369644e9b36802242a1c70e627372f9",
+  "machine_shape": "NvidiaTeslaT4"
+}

@@ -93,9 +93,9 @@ SNIPE_SCORE_MULT = 1.12
 SWARM_SCORE_MULT = 1.06
 
 # Opening filter
-SAFE_OPENING_PROD_THRESHOLD = 4
-SAFE_OPENING_TURN_LIMIT = 10
-ROTATING_OPENING_MAX_TURNS = 13
+SAFE_OPENING_PROD_THRESHOLD = 2
+SAFE_OPENING_TURN_LIMIT = 12
+ROTATING_OPENING_MAX_TURNS = 15
 ROTATING_OPENING_LOW_PROD = 2
 FOUR_PLAYER_ROTATING_REACTION_GAP = 1
 FOUR_PLAYER_ROTATING_SEND_RATIO = 0.72
@@ -158,7 +158,7 @@ REAR_STAGE_PROGRESS = 0.78
 REAR_SEND_RATIO_TWO_PLAYER = 0.58
 REAR_SEND_RATIO_FOUR_PLAYER = 0.7
 REAR_SEND_MIN_SHIPS = 10
-REAR_MAX_TRAVEL_TURNS = 40
+REAR_MAX_TRAVEL_TURNS = 55
 
 # 4-player specifics
 FOUR_PLAYER_PROACTIVE_RATIO_MULT = 0.85
@@ -186,7 +186,7 @@ TWO_PLAYER_SAFE_NEUTRAL_BOOST = 1.40         # chase safe neutrals aggressively
 # --- Art of War rules (derived from 95-game leader analysis) ---
 # Rule 1: opening — opening filter already exits at t60 in 2p; tighten early prod filter
 AOW_OPENING_MIN_PROD = 2              # skip prod=1 neutrals during full opening
-AOW_EARLY_FLOOD_TURNS = 20           # before this step: minimal margins, capture everything
+AOW_EARLY_FLOOD_TURNS = 25           # before this step: minimal margins, capture everything
 AOW_EARLY_FLOOD_MARGIN = 0           # flood uses the bare minimum needed to capture
 # Rule 2: alarm if < 8 planets at t035-t050 in 2p
 AOW_ALARM_START = 35
@@ -199,8 +199,8 @@ AOW_CONVERSION_THRESHOLD = 15
 AOW_CONVERSION_TURN_LIMIT = 80
 AOW_CONVERSION_NEUTRAL_BOOST = 1.45
 # Rule 4: anti-hoarding — force staging from idle planets
-AOW_HOARD_PROD_RATIO = 40             # ships > prod * this → considered hoarding
-AOW_HOARD_SEND_RATIO = 0.35           # fraction to push toward front
+AOW_HOARD_PROD_RATIO = 18             # ships > prod * this → considered hoarding
+AOW_HOARD_SEND_RATIO = 0.50           # fraction to push toward front
 # Rule 5: production priority — penalize capturing prod=1 during opening/early
 AOW_LOW_PROD_THRESHOLD = 2
 AOW_LOW_PROD_PENALTY = 0.84
@@ -954,7 +954,7 @@ def _opening_filter(target, arrival_turns, needed, src_available, world):
             return False
         return True
     # Early flood: for first AOW_EARLY_FLOOD_TURNS, don't filter — capture everything reachable
-    if not world.is_four_player and world.step < AOW_EARLY_FLOOD_TURNS:
+    if world.step < AOW_EARLY_FLOOD_TURNS:
         return arrival_turns > ROTATING_OPENING_MAX_TURNS
     # Rule 1: skip prod=1 neutrals during opening in 2p
     if not world.is_four_player and target.production < AOW_OPENING_MIN_PROD:

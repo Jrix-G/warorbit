@@ -1,57 +1,83 @@
 """Zoo d'adversaires pour entraînement et tournois.
 
-Chaque module expose `agent(obs, config=None)` compatible kaggle_environments.
-ZOO regroupe tous les adversaires utilisables en training.
+Chaque module expose `agent(obs, config=None)` compatible Kaggle.
+`ZOO` regroupe tous les adversaires utilisables en training, y compris les
+notebooks scrappés quand ils sont présents localement.
 """
 
-from .baselines import passive_agent, random_agent, greedy_agent, starter_agent
+from __future__ import annotations
+
+import pkgutil
+from importlib import import_module
+from pathlib import Path
+
+from .baselines import greedy_agent, passive_agent, random_agent, starter_agent
 from .heuristics import distance_priority_agent, sun_dodging_agent
-from .placeholders import structured_baseline_agent, orbit_star_wars_agent
+from .placeholders import orbit_star_wars_agent, structured_baseline_agent
 
-# Import notebook agents (extracted from top player notebooks)
-try:
-    from .notebook_orbitbotnext import agent as orbitbotnext_agent
-except:
-    orbitbotnext_agent = None
 
-try:
-    from .notebook_distance_prioritized import agent as distance_prioritized_agent
-except:
-    distance_prioritized_agent = None
+def _load_notebook_agent(module_name: str):
+    try:
+        module = import_module(f".{module_name}", __name__)
+        agent = getattr(module, "agent", None)
+        if not callable(agent):
+            return None
 
-try:
-    from .notebook_physics_accurate import agent as physics_accurate_agent
-except:
-    physics_accurate_agent = None
+        def safe_agent(obs, config=None):
+            try:
+                return agent(obs, config)
+            except TypeError:
+                try:
+                    return agent(obs)
+                except Exception:
+                    return []
+            except Exception:
+                return []
 
-try:
-    from .notebook_tactical_heuristic import agent as tactical_heuristic_agent
-except:
-    tactical_heuristic_agent = None
+        return safe_agent
+    except Exception:
+        return None
+
 
 ZOO = {
-    "passive":     passive_agent,
-    "random":      random_agent,
-    "greedy":      greedy_agent,
-    "starter":     starter_agent,
-    "distance":    distance_priority_agent,
-    "sun_dodge":   sun_dodging_agent,
-    "structured":  structured_baseline_agent,
+    "passive": passive_agent,
+    "random": random_agent,
+    "greedy": greedy_agent,
+    "starter": starter_agent,
+    "distance": distance_priority_agent,
+    "sun_dodge": sun_dodging_agent,
+    "structured": structured_baseline_agent,
     "orbit_stars": orbit_star_wars_agent,
 }
 
-# Add notebook agents if available
-if orbitbotnext_agent:
-    ZOO["notebook_orbitbotnext"] = orbitbotnext_agent
-if distance_prioritized_agent:
-    ZOO["notebook_distance_prioritized"] = distance_prioritized_agent
-if physics_accurate_agent:
-    ZOO["notebook_physics_accurate"] = physics_accurate_agent
-if tactical_heuristic_agent:
-    ZOO["notebook_tactical_heuristic"] = tactical_heuristic_agent
+_pkg_dir = Path(__file__).resolve().parent
+for module_info in sorted(pkgutil.iter_modules([str(_pkg_dir)]), key=lambda m: m.name):
+    if not module_info.name.startswith("notebook_"):
+        continue
+    agent = _load_notebook_agent(module_info.name)
+    if agent is not None:
+        ZOO[module_info.name] = agent
+
+
+NOTEBOOK_POOL_ORDER = [
+    "notebook_orbitbotnext",
+    "notebook_distance_prioritized",
+    "notebook_physics_accurate",
+    "notebook_tactical_heuristic",
+]
 
 
 def get(name):
     if name not in ZOO:
         raise ValueError(f"Adversaire inconnu: {name}. Disponibles: {list(ZOO)}")
     return ZOO[name]
+
+
+def training_pool(limit: int = 15):
+    pool = [name for name in NOTEBOOK_POOL_ORDER if name in ZOO]
+    if len(pool) < limit:
+        extras = [name for name in sorted(ZOO) if name not in pool]
+        pool.extend(name for name in extras if name.startswith("notebook_"))
+    if limit <= 0:
+        return pool
+    return pool[:limit]

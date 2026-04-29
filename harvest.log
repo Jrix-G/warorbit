@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "/home/jason/Documents/warorbit/harvest_replays.py", line 297, in <module>
+    main()
+  File "/home/jason/Documents/warorbit/harvest_replays.py", line 293, in main
+    asyncio.run(harvest(args))
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/jason/Documents/warorbit/harvest_replays.py", line 191, in harvest
+    from playwright.async_api import async_playwright
+ModuleNotFoundError: No module named 'playwright'
