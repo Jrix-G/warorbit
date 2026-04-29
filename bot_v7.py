@@ -152,10 +152,10 @@ BEHIND_ATTACK_MARGIN_PENALTY = 0.05
 FINISHING_ATTACK_MARGIN_BONUS = 0.08
 
 # Rear staging
-REAR_SOURCE_MIN_SHIPS = 16
+REAR_SOURCE_MIN_SHIPS = 18
 REAR_DISTANCE_RATIO = 1.25
 REAR_STAGE_PROGRESS = 0.78
-REAR_SEND_RATIO_TWO_PLAYER = 0.62
+REAR_SEND_RATIO_TWO_PLAYER = 0.58
 REAR_SEND_RATIO_FOUR_PLAYER = 0.7
 REAR_SEND_MIN_SHIPS = 10
 REAR_MAX_TRAVEL_TURNS = 40
@@ -175,15 +175,19 @@ FOUR_PLAYER_AGGRESSIVE_FINISHING_PROD_RATIO = 0.95
 
 # --- 2-player tuning (derived from replay analysis: slow scaling = main loss cause) ---
 # More aggressive neutral expansion + hostile pressure in 2p
-TWO_PLAYER_HOSTILE_AGGRESSION_BOOST = 1.35   # attack opponent harder
-TWO_PLAYER_NEUTRAL_MARGIN_BASE = 1           # lower garrison margin on neutrals
+TWO_PLAYER_HOSTILE_AGGRESSION_BOOST = 1.50   # attack opponent harder
+TWO_PLAYER_NEUTRAL_MARGIN_BASE = 0           # lower garrison margin on neutrals
+TWO_PLAYER_NEUTRAL_MARGIN_PROD_WEIGHT = 1    # keep 2p neutral sends thin
+TWO_PLAYER_NEUTRAL_MARGIN_CAP = 5
 TWO_PLAYER_OPENING_TURN_LIMIT = 60           # exit cautious opening mode faster
-TWO_PLAYER_NEUTRAL_VALUE_MULT = 1.35         # neutrals more valuable (faster scaling)
-TWO_PLAYER_SAFE_NEUTRAL_BOOST = 1.30         # chase safe neutrals aggressively
+TWO_PLAYER_NEUTRAL_VALUE_MULT = 1.45         # neutrals more valuable (faster scaling)
+TWO_PLAYER_SAFE_NEUTRAL_BOOST = 1.40         # chase safe neutrals aggressively
 
 # --- Art of War rules (derived from 95-game leader analysis) ---
 # Rule 1: opening — opening filter already exits at t60 in 2p; tighten early prod filter
 AOW_OPENING_MIN_PROD = 2              # skip prod=1 neutrals during full opening
+AOW_EARLY_FLOOD_TURNS = 20           # before this step: minimal margins, capture everything
+AOW_EARLY_FLOOD_MARGIN = 0           # flood uses the bare minimum needed to capture
 # Rule 2: alarm if < 8 planets at t035-t050 in 2p
 AOW_ALARM_START = 35
 AOW_ALARM_END = 50
@@ -193,13 +197,13 @@ AOW_ALARM_MARGIN_BASE = 0             # drop garrison requirement completely
 # Rule 3: conversion push — neutral bonus while below 15 planets and step < 80
 AOW_CONVERSION_THRESHOLD = 15
 AOW_CONVERSION_TURN_LIMIT = 80
-AOW_CONVERSION_NEUTRAL_BOOST = 1.40
+AOW_CONVERSION_NEUTRAL_BOOST = 1.45
 # Rule 4: anti-hoarding — force staging from idle planets
-AOW_HOARD_PROD_RATIO = 35             # ships > prod * this → considered hoarding
+AOW_HOARD_PROD_RATIO = 40             # ships > prod * this → considered hoarding
 AOW_HOARD_SEND_RATIO = 0.35           # fraction to push toward front
 # Rule 5: production priority — penalize capturing prod=1 during opening/early
 AOW_LOW_PROD_THRESHOLD = 2
-AOW_LOW_PROD_PENALTY = 0.72
+AOW_LOW_PROD_PENALTY = 0.84
 # Rule 6: abandon peripheral defense when badly behind
 AOW_RETREAT_PLANET_DEFICIT = 3        # enemy_planets - my_planets to trigger
 AOW_RETREAT_MAX_PROD = 2              # only skip defense of prod ≤ this
@@ -949,7 +953,10 @@ def _opening_filter(target, arrival_turns, needed, src_available, world):
         if affordable and arrival_turns <= FOUR_PLAYER_ROTATING_TURN_LIMIT and reaction_gap >= FOUR_PLAYER_ROTATING_REACTION_GAP:
             return False
         return True
-    # Rule 1: skip prod=1 neutrals entirely during opening in 2p
+    # Early flood: for first AOW_EARLY_FLOOD_TURNS, don't filter — capture everything reachable
+    if not world.is_four_player and world.step < AOW_EARLY_FLOOD_TURNS:
+        return arrival_turns > ROTATING_OPENING_MAX_TURNS
+    # Rule 1: skip prod=1 neutrals during opening in 2p
     if not world.is_four_player and target.production < AOW_OPENING_MIN_PROD:
         return True
     return arrival_turns > ROTATING_OPENING_MAX_TURNS or target.production <= ROTATING_OPENING_LOW_PROD
@@ -982,7 +989,9 @@ def _target_value(target, arrival_turns, mission, world, modes):
             value *= safe_boost
         elif _is_contested_neutral(target, world):
             value *= CONTESTED_NEUTRAL_VALUE_MULT
-        if world.is_early:
+        if world.is_early and not (
+            not world.is_four_player and world.step < AOW_EARLY_FLOOD_TURNS
+        ):
             value *= EARLY_NEUTRAL_VALUE_MULT
 
     if target.id in world.comet_ids:
@@ -1070,15 +1079,34 @@ def _target_value(target, arrival_turns, mission, world, modes):
 
 
 def _preferred_send(target, base_needed, arrival_turns, src_available, world, modes):
-    send = max(base_needed, int(math.ceil(base_needed * modes["attack_margin_mult"])))
+    if target.owner == -1 and not world.is_four_player and world.step < AOW_EARLY_FLOOD_TURNS:
+        send = base_needed
+    else:
+        send = max(base_needed, int(math.ceil(base_needed * modes["attack_margin_mult"])))
     if target.owner == -1:
-        if modes.get("is_alarm"):
+        # Early flood: minimal margin to enable parallel multi-planet capture
+        if not world.is_four_player and world.step < AOW_EARLY_FLOOD_TURNS:
+            margin = AOW_EARLY_FLOOD_MARGIN
+            if _is_contested_neutral(target, world):
+                margin = 1
+            elif not _is_safe_neutral(target, world) and arrival_turns > max(6, ROTATING_OPENING_MAX_TURNS - 2):
+                margin = 1
+        elif modes.get("is_alarm"):
             margin_base = AOW_ALARM_MARGIN_BASE
+            margin = min(NEUTRAL_MARGIN_CAP, margin_base + target.production * NEUTRAL_MARGIN_PROD_WEIGHT)
         elif not world.is_four_player:
             margin_base = TWO_PLAYER_NEUTRAL_MARGIN_BASE
+            margin = min(
+                TWO_PLAYER_NEUTRAL_MARGIN_CAP,
+                margin_base + target.production * TWO_PLAYER_NEUTRAL_MARGIN_PROD_WEIGHT,
+            )
+            if _is_safe_neutral(target, world):
+                margin = max(0, margin - 1)
+            elif _is_contested_neutral(target, world):
+                margin = min(TWO_PLAYER_NEUTRAL_MARGIN_CAP, margin + 1)
         else:
             margin_base = NEUTRAL_MARGIN_BASE
-        margin = min(NEUTRAL_MARGIN_CAP, margin_base + target.production * NEUTRAL_MARGIN_PROD_WEIGHT)
+            margin = min(NEUTRAL_MARGIN_CAP, margin_base + target.production * NEUTRAL_MARGIN_PROD_WEIGHT)
     else:
         margin = min(HOSTILE_MARGIN_CAP, HOSTILE_MARGIN_BASE + target.production * HOSTILE_MARGIN_PROD_WEIGHT)
     if world.is_static(target.id):

@@ -1,0 +1,65 @@
+REINFORCE -- 300 eps  batch=16  lr=0.01  l2=0.0001  zoo=0.4
+noise 0.30 -> 0.10  out=evaluations/reinforce_weights.npy
+
+=== Baseline (w=0, pure V7+AoW) ===
+Benchmark [baseline]: 8/18 overall
+  orbitbotnext           1/6
+  distance-prioritized   5/6
+  physics-accurate       2/6
+  120.7s
+
+ep   16/300  wins=9/16  avg_r=+0.125  grad=0.0072  steps=94  log/ep=1173  noise=0.290  t=40s
+ep   32/300  wins=8/16  avg_r=+0.000  grad=0.0046  steps=101  log/ep=1299  noise=0.279  t=78s
+ep   48/300  wins=7/16  avg_r=-0.125  grad=0.0016  steps=92  log/ep=1120  noise=0.269  t=132s
+ep   64/300  wins=7/16  avg_r=-0.125  grad=0.0034  steps=94  log/ep=943  noise=0.258  t=196s
+ep   80/300  wins=7/16  avg_r=-0.125  grad=0.0063  steps=99  log/ep=1188  noise=0.247  t=231s
+ep   96/300  wins=5/16  avg_r=-0.375  grad=0.0016  steps=96  log/ep=1050  noise=0.236  t=298s
+
+=== Benchmark ep 100 ===
+Benchmark [ep100]: 8/18 overall
+  orbitbotnext           1/6
+  distance-prioritized   5/6
+  physics-accurate       2/6
+  120.3s  w=[-0. -0. -0. -0.  0. -0.  0. -0. -0. -0.  0. -0. -0. -0. -0.]
+  saved -> evaluations/reinforce_weights.npy
+
+ep  112/300  wins=5/16  avg_r=-0.375  grad=0.0019  steps=93  log/ep=729  noise=0.226  t=482s
+ep  128/300  wins=7/16  avg_r=-0.125  grad=0.0008  steps=107  log/ep=1246  noise=0.215  t=557s
+ep  144/300  wins=8/16  avg_r=+0.000  grad=0.0046  steps=91  log/ep=1021  noise=0.204  t=619s
+ep  160/300  wins=5/16  avg_r=-0.375  grad=0.0030  steps=101  log/ep=1230  noise=0.194  t=675s
+ep  176/300  wins=6/16  avg_r=-0.250  grad=0.0012  steps=94  log/ep=1016  noise=0.183  t=742s
+ep  192/300  wins=9/16  avg_r=+0.125  grad=0.0020  steps=108  log/ep=1349  noise=0.172  t=829s
+
+=== Benchmark ep 200 ===
+Benchmark [ep200]: 8/18 overall
+  orbitbotnext           1/6
+  distance-prioritized   5/6
+  physics-accurate       2/6
+  114.5s  w=[-0. -0. -0. -0.  0. -0.  0. -0. -0. -0.  0. -0. -0. -0.  0.]
+  saved -> evaluations/reinforce_weights.npy
+
+ep  208/300  wins=9/16  avg_r=+0.125  grad=0.0016  steps=99  log/ep=1029  noise=0.162  t=989s
+ep  224/300  wins=4/16  avg_r=-0.500  grad=0.0013  steps=90  log/ep=878  noise=0.151  t=1060s
+ep  240/300  wins=7/16  avg_r=-0.125  grad=0.0015  steps=95  log/ep=1131  noise=0.140  t=1129s
+ep  256/300  wins=5/16  avg_r=-0.375  grad=0.0020  steps=89  log/ep=852  noise=0.129  t=1179s
+ep  272/300  wins=9/16  avg_r=+0.125  grad=0.0008  steps=98  log/ep=1101  noise=0.119  t=1225s
+ep  288/300  wins=9/16  avg_r=+0.125  grad=0.0005  steps=101  log/ep=1214  noise=0.108  t=1268s
+
+=== Benchmark ep 300 ===
+Benchmark [ep300]: 8/18 overall
+  orbitbotnext           1/6
+  distance-prioritized   5/6
+  physics-accurate       2/6
+  121.1s  w=[-0. -0. -0. -0. -0. -0.  0. -0. -0. -0.  0. -0. -0. -0.  0.]
+  saved -> evaluations/reinforce_weights.npy
+
+
+Done. 300 eps in 1423s. Saved -> evaluations/reinforce_weights.npy
+Final w: [-0.0001 -0.     -0.0001 -0.0001 -0.     -0.0001  0.     -0.     -0.0001
+ -0.0001  0.     -0.0001 -0.     -0.      0.    ]
+
+=== Final benchmark ===
+Benchmark [final]: 8/18 overall
+  orbitbotnext           1/6
+  distance-prioritized   5/6
+  physics-accurate       2/6
