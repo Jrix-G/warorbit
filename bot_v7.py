@@ -1698,6 +1698,43 @@ def pop_episode_log():
     return log
 
 
+# Tunable heuristic constants exposed for ES training.
+# Reading globals() at function-call time (not at module-import) so writing to
+# the module attribute *does* take effect on subsequent agent() calls.
+_TUNABLE_KEYS = (
+    "HOSTILE_MARGIN_BASE",
+    "HOSTILE_MARGIN_CAP",
+    "HOSTILE_MARGIN_PROD_WEIGHT",
+    "NEUTRAL_MARGIN_BASE",
+    "NEUTRAL_MARGIN_CAP",
+    "NEUTRAL_MARGIN_PROD_WEIGHT",
+    "TWO_PLAYER_HOSTILE_AGGRESSION_BOOST",
+    "TWO_PLAYER_NEUTRAL_MARGIN_BASE",
+    "ATTACK_COST_TURN_WEIGHT",
+    "SNIPE_COST_TURN_WEIGHT",
+    "STATIC_TARGET_MARGIN",
+    "CONTESTED_TARGET_MARGIN",
+    "SAFE_NEUTRAL_MARGIN",
+    "CONTESTED_NEUTRAL_MARGIN",
+)
+_DEFAULT_PARAMS = {k: globals()[k] for k in _TUNABLE_KEYS if k in globals()}
+
+
+def set_heuristic_params(params):
+    """Override tunable heuristic constants (used for ES training)."""
+    g = globals()
+    for k, v in params.items():
+        if k in _DEFAULT_PARAMS:
+            g[k] = v
+
+
+def reset_heuristic_params():
+    """Restore heuristic constants to their original module-load values."""
+    g = globals()
+    for k, v in _DEFAULT_PARAMS.items():
+        g[k] = v
+
+
 def _build_mission_features(target, arrival_turns, mission, world, modes):
     total_prod = world.my_prod + world.enemy_prod + 1e-6
     domination = (world.my_total - world.max_enemy_strength) / max(

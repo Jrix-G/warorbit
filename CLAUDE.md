@@ -76,12 +76,15 @@ return [[from_planet_id, direction_angle_radians, num_ships], ...]
 |---------|------|-------------|
 | `submission.py` | **Bot actif à soumettre** | **OUI** |
 | `bot_v7.py` | **Source principale V7 — WorldModel + arrival ledger** | Dev |
-| `bot_v6.py` | Source V6 (beam_search + NumpyEvaluator) | Référence |
-| `bot_v6_submited.py` | Sauvegarde de la version soumise V6 | Référence |
+| `bot_v8.py` | **Source principale V8 — plan ranking** | Dev |
 | `SimGame.py` | Simulateur local rapide (~5s/partie V7 vs notebook) | Non |
-| `opponents/` | Zoo de 12 bots adversaires | Non |
+| `opponents/` | Zoo d'adversaires actifs | Non |
 | `replay_observer.py` | Capture JSON replay depuis Kaggle via Playwright | Non |
 | `evaluations/` | Évaluateurs numpy sauvegardés | Non |
+
+### Archive
+
+Les versions V1-V6 et leurs outils sont rangés dans `legacy/` pour garder la racine lisible.
 
 ### bot_v7 — Architecture V7 (état 28 avril 2026)
 

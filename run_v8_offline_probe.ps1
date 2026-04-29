@@ -1,2 +1,0 @@
-Remove-Item .\evaluations\v8_policy.npz, .\evaluations\v8_policy_best.npz, .\evaluations\v8_policy_offline_state.pkl, .\evaluations\v8_policy_offline_dataset.pkl -ErrorAction SilentlyContinue
-python -u .\train_v8_offline.py --hours 0.33 --dataset-states 48 --target-examples 160 --max-snapshots 1000 --oracle-horizon 60 --min-gap 0.015 --benchmark-games 10 --benchmark-seconds 600 --save-seconds 300 --skip-initial-benchmark 2>&1 | Tee-Object -FilePath .\training_offline_probe.log

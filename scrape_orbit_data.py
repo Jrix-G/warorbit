@@ -239,8 +239,8 @@ IMMEDIATE ACTIONS:
    - Identify winning vs losing patterns
 
 4. ADAPT BOT:
-   - Modify bot.py weights based on findings
-   - Test against baselines with train.py --quick
+- Modify submission.py weights based on findings
+- Test against baselines with train_v8.py --quick
    - Iterate and improve
 
 ════════════════════════════════════════════════════════════════════════════════

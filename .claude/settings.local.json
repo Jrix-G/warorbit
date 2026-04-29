@@ -77,7 +77,22 @@
       "Bash(awk '{print $2, $3, $11, $12}')",
       "Bash(kill 712675)",
       "Bash(kill 748496)",
-      "Bash(2>/dev/null)"
+      "Bash(2>/dev/null)",
+      "Bash(/c/Users/Capitaine/Documents/GitHub/warorbit/.venv/bin/python -c \"from opponents import ZOO; print\\(sorted\\(ZOO.keys\\(\\)\\)\\)\")",
+      "PowerShell(.\\\\.venv\\\\Scripts\\\\python.exe -c \"from opponents import ZOO; print\\(sorted\\(ZOO.keys\\(\\)\\)\\)\")",
+      "PowerShell(.venv\\\\bin\\\\python.exe -c \"from opponents import ZOO; print\\(sorted\\(ZOO.keys\\(\\)\\)\\)\")",
+      "PowerShell(& \".\\\\.venv\\\\bin\\\\python.exe\" -c \"from opponents import ZOO; print\\(sorted\\(ZOO.keys\\(\\)\\)\\)\")",
+      "Bash(./.venv/bin/python -c 'from opponents import ZOO; print\\(sorted\\(ZOO.keys\\(\\)\\)\\)')",
+      "Bash(./.venv/bin/python)",
+      "PowerShell(python _quick_v7_bench.py)",
+      "PowerShell(python -c \"from SimGame import run_match, SimGame; print\\('SimGame OK'\\)\")",
+      "Bash(sed -n '40,80p' bot_v7.py)",
+      "Bash(sed -n '1620,1776p' bot_v7.py)",
+      "PowerShell(python -c \"import train_v7_fast; print\\('OK'\\)\")",
+      "PowerShell(python train_v7_fast.py --help)",
+      "PowerShell(python -c \"import bot_v7; bot_v7.set_heuristic_params\\({'HOSTILE_MARGIN_BASE': 99}\\); print\\('HMB after set:', bot_v7.HOSTILE_MARGIN_BASE\\); bot_v7.reset_heuristic_params\\(\\); print\\('HMB after reset:', bot_v7.HOSTILE_MARGIN_BASE\\)\")",
+      "PowerShell(python -c \"import train_v7_fast as t; print\\('DIM:',t.DIM,'SCORER:',t.SCORER_DIM,'HEUR:',len\\(t.HEURISTIC_SPECS\\)\\); import numpy as np; w,h = t.decode\\(np.zeros\\(t.DIM\\)\\); print\\('decoded heur with p=0:', h\\)\")",
+      "Bash(PYTHONIOENCODING=utf-8 python *)"
     ]
   }
 }

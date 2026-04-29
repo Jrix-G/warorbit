@@ -91,9 +91,10 @@ class SimGame:
     - `game.run([agent0, agent1, ...])`
     """
 
-    def __init__(self, state: FastState, n_players: int = 2):
+    def __init__(self, state: FastState, n_players: int = 2, overage_time: float = 60.0):
         self.state = state
         self.n_players = int(n_players)
+        self.overage_time = float(overage_time)
 
     @classmethod
     def random_state(
@@ -181,8 +182,9 @@ class SimGame:
         n_players: int = 2,
         neutral_pairs: int = 8,
         max_steps: int = TOTAL_TURNS,
+        overage_time: float = 60.0,
     ) -> "SimGame":
-        return cls(cls.random_state(seed, n_players, neutral_pairs, max_steps), n_players=n_players)
+        return cls(cls.random_state(seed, n_players, neutral_pairs, max_steps), n_players=n_players, overage_time=overage_time)
 
     def observation(self, player: int) -> dict:
         s = self.state
@@ -194,7 +196,7 @@ class SimGame:
             "initial_planets": s.initial_planets.astype(float).tolist(),
             "angular_velocity": float(s.angular_velocity),
             "next_fleet_id": int(s.next_fleet_id),
-            "remainingOverageTime": 60.0,
+            "remainingOverageTime": self.overage_time,
             "comets": [],
             "comet_planet_ids": [],
         }
@@ -460,11 +462,12 @@ def run_match(
     n_players: Optional[int] = None,
     neutral_pairs: int = 8,
     max_steps: int = TOTAL_TURNS,
+    overage_time: float = 60.0,
 ) -> dict:
     players = int(n_players or len(agents))
     if len(agents) != players:
         raise ValueError(f"agent count ({len(agents)}) must match n_players ({players})")
-    game = SimGame.random_game(seed=seed, n_players=players, neutral_pairs=neutral_pairs, max_steps=max_steps)
+    game = SimGame.random_game(seed=seed, n_players=players, neutral_pairs=neutral_pairs, max_steps=max_steps, overage_time=overage_time)
     return game.run(agents, max_steps=max_steps)
 
 
