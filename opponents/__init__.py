@@ -17,8 +17,14 @@ from .placeholders import orbit_star_wars_agent, structured_baseline_agent
 
 
 def _load_notebook_agent(module_name: str):
+    import io, sys
     try:
-        module = import_module(f".{module_name}", __name__)
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        sys.stdout = sys.stderr = io.StringIO()
+        try:
+            module = import_module(f".{module_name}", __name__)
+        finally:
+            sys.stdout, sys.stderr = old_stdout, old_stderr
         agent = getattr(module, "agent", None)
         if not callable(agent):
             return None
@@ -50,9 +56,13 @@ ZOO = {
     "orbit_stars": orbit_star_wars_agent,
 }
 
+_SKIP_NOTEBOOKS = {"notebook_bovard_getting_started"}
+
 _pkg_dir = Path(__file__).resolve().parent
 for module_info in sorted(pkgutil.iter_modules([str(_pkg_dir)]), key=lambda m: m.name):
     if not module_info.name.startswith("notebook_"):
+        continue
+    if module_info.name in _SKIP_NOTEBOOKS:
         continue
     agent = _load_notebook_agent(module_info.name)
     if agent is not None:

@@ -69,7 +69,15 @@
       "Bash(.venv/bin/python -c ' *)",
       "Read(//tmp/**)",
       "Bash(kill -0 476024)",
-      "Bash(kill 476024)"
+      "Bash(kill 476024)",
+      "Bash(awk '{print $1, $2, $11}')",
+      "Bash(kill 626700 636429 636430)",
+      "Bash(awk '{print $2, $11, $12}')",
+      "Bash(kill -0 712675)",
+      "Bash(awk '{print $2, $3, $11, $12}')",
+      "Bash(kill 712675)",
+      "Bash(kill 748496)",
+      "Bash(2>/dev/null)"
     ]
   }
 }

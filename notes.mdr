@@ -1,0 +1,34 @@
+# Orbit Wars Notes
+
+## Commande de benchmark
+
+Commande la plus utile pour retrouver le test des notebooks:
+
+```bash
+.venv/bin/python benchmark_vs_notebooks.py --profile rocket
+```
+
+## Ce que ça mesure
+
+- Benchmark local contre le zoo de notebooks définis dans `opponents/`.
+- Le profil `rocket` correspond à un benchmark intermédiaire, pensé pour rester raisonnable en temps.
+- Les adversaires ne sont pas tous les mêmes selon le script utilisé.
+
+## Pourquoi on a vu 90% puis 30%
+
+- `~90%` venait d'un ensemble d'adversaires plus faciles ou plus rapides.
+- `~30%` venait d'un benchmark plus dur contre des notebooks forts comme `notebook_orbitbotnext`, `notebook_distance_prioritized` et `notebook_physics_accurate`.
+- Les deux scores ne sont pas directement comparables si le pool d'adversaires change.
+
+## Fichiers à relire
+
+- [`benchmark_vs_notebooks.py`](./benchmark_vs_notebooks.py)
+- [`benchmark_v7_aow.py`](./benchmark_v7_aow.py)
+- [`train_v8_offline.py`](./train_v8_offline.py)
+- [`opponents/__init__.py`](./opponents/__init__.py)
+- [`run_v7_aow_benchmark.ps1`](./run_v7_aow_benchmark.ps1)
+
+## Règle pratique
+
+- Toujours noter le script exact, les arguments, et les adversaires utilisés.
+- Sans ça, un winrate seul n'a pas de valeur de comparaison.
