@@ -333,8 +333,11 @@ Step 4: Benchmark and iterate
 
 ## File Layout
 
-- `bot_v8.py`: inference-time policy, candidate generation, model, feature extraction.
-- `train_v8.py`: DAgger + pairwise ranking + value training.
+- `bot_v8_2.py`: inference-time V8.2 policy, V7-derived planner with safety fixes, candidate generation, ranker, value head, checkpoint I/O.
+- `train_v8_2.py`: executable long-run ES trainer for the V8.2 candidate-plan ranker.
+- `benchmark_v8_2.py`: reproducible SimGame benchmark for 2p, 4p, and mixed local validation.
+- `bot_v8.py`: planned generic V8 inference-time policy name; not required by the current V8.2 implementation.
+- `train_v8.py`: planned DAgger + pairwise ranking + value training name; superseded locally by `train_v8_2.py` until the richer oracle is implemented.
 - `test_v8.py`: smoke tests, shape checks, benchmark checks.
 - `docs/specs/V8_ARCHITECTURE.md`: this spec.
 - `docs/reports/V8_DEFEAT_ANALYSIS.md`: empirical loss analysis, 40 Kaggle games.
@@ -343,10 +346,209 @@ Step 4: Benchmark and iterate
 
 Zero weights mean:
 - candidate scores tie,
-- tie-break chooses the first candidate,
-- first candidate is the existing V7 baseline plan.
+- tie-break chooses the first candidate;
+- first candidate is the V7 action grammar with V8.2 safety fixes applied.
 
-So the warm-start behaviour remains conservative and safe.
+So the warm-start behaviour is conservative, but not byte-for-byte V7. This is
+intentional: the empirical V7 loss analysis identified the inter-turn
+overcommitment and garrison failures as hard bugs that should not be preserved
+as a fallback.
+
+---
+
+## V8.2 Implemented Shape
+
+V8.2 is now implemented in `bot_v8_2.py`.
+
+### Runtime planner
+
+The runtime path is:
+
+```text
+agent(obs)
+  -> _build_world(obs) from V7
+  -> _generate_candidates(world)
+  -> build_state_features(world)
+  -> score_candidates(state_features, candidates, world)
+  -> argmax score, tie-break to candidate 0
+```
+
+Candidate 0 is `v7_baseline`, meaning V7's planner grammar with the V8.2
+corrections enabled. Additional candidates bias the same grammar toward
+expansion, attack, defense, reserve, and 4p-specific plans.
+
+### Corrections shipped
+
+- Fix #0: `already_committed_enough` checks own fleets already in transit to a
+  target before sending more ships.
+- Fix #1: `garrison_floor` forces a production-proportional reserve based on
+  nearest enemy distance.
+- Fix #2: `GARRISON_FLOOR_RATIO` trims emitted moves if too many ships would
+  leave planets.
+- Fix #3: `latent_threat` raises reserves for planets reachable by enemy
+  capacity inside a short horizon.
+- Fix #4: early 4p neutral captures use a lower margin and rear staging is
+  delayed until turn 60.
+- Fix #5: 4p pressure throttle blocks offense when multiple active fronts or
+  top-enemy pressure make overextension likely.
+
+### Candidate plans
+
+V8.2 currently emits up to nine candidate plans:
+
+```text
+0 v7_baseline
+1 expand_focus
+2 attack_focus
+3 defense_focus
+4 reserve_hold
+5 4p_opportunistic
+6 4p_eliminate_weakest
+7 4p_conservation
+8 4p_late_blitz
+```
+
+The 4p variants are only available in four-player states, and `4p_late_blitz`
+only appears after turn 280.
+
+### Ranker and value head
+
+The ranker is intentionally linear for safe long training:
+
+```text
+score(plan) = state_w[plan_id] dot state_features
+              + candidate_w dot candidate_features
+```
+
+Dimensions:
+
+```text
+state_features:     24
+candidate_features: 12
+plan rows:           9
+trainable weights: 253 including value head and bias
+```
+
+The value head is:
+
+```text
+value = value_w dot state_features + value_b
+```
+
+The value estimate is logged for training analysis; the current runtime
+selection is ranker-only.
+
+### Training and benchmarks
+
+Short smoke:
+
+```bash
+python3 -m py_compile bot_v8_2.py benchmark_v8_2.py train_v8_2.py
+python3 benchmark_v8_2.py --games-per-opp 1 --mode 2p --opponents bot_v7 --max-steps 80 --workers 1
+python3 benchmark_v8_2.py --games-per-opp 1 --mode 4p --opponents bot_v7 --max-steps 80 --workers 1
+```
+
+Medium local benchmark:
+
+```bash
+python3 benchmark_v8_2.py --games-per-opp 8 --mode mixed --pool-limit 4 --max-steps 220 --workers 4
+```
+
+Long ranker run (10h calibrated):
+
+```bash
+python3 train_v8_2.py \
+  --minutes 600 \
+  --pairs 6 --games-per-eval 4 \
+  --eval-games 60 --eval-every 4 \
+  --max-steps 260 --eval-max-steps 500 \
+  --four-player-ratio 0.65 --eval-four-player-ratio 0.70 \
+  --workers 8 --pool-limit 8 \
+  --min-improvement 0.015 --min-mode-floor 0.05
+```
+
+Why these numbers (rationale, not magic):
+
+- `--workers 8` with the **persistent** spawn pool: notebook agents are imported
+  once per worker (~3-5s each); the original draft re-created the pool 8 times
+  per generation, which alone explained the 14-min/gen wall clock.
+- `--max-steps 260` for training. ES does not need 500-turn games to estimate
+  plan ordering — most of the policy signal sits in the first 200 turns of a
+  match. Games average ~ish 4-5s for 2p / ~25-30s for 4p in this regime.
+- `--eval-max-steps 500` for the periodic fixed-seed eval. This keeps the
+  promotion criterion honest without paying the 500-turn cost on every ES
+  sample.
+- `--pairs 6 --games-per-eval 4` → 24 antithetic samples per generation. Below
+  16 the rank-shaped gradient is mostly noise; above 32 the cost dominates.
+- `--four-player-ratio 0.65` for training, 0.70 for eval: 4p is where the ELO
+  gap is largest, but 2p signal is more stable so we keep some of it for ES.
+- `--eval-every 4`: evaluation budget ≈ 25-30% of total run; promotion gated
+  by `--min-improvement 0.015` AND no per-mode regression > 0.05.
+- Eval seeds are **fixed across generations** (`seed + 50000 + i`), so
+  generation-to-generation eval scores are directly comparable. The previous
+  draft used `seed + 50000 + generation`, which made every eval an apples-to-
+  oranges draw and caused noisy "best" promotions.
+
+Resume is on by default:
+
+```bash
+python3 train_v8_2.py --minutes 600 --workers 8 --pool-limit 8
+```
+
+Sanity smoke (≈1 minute):
+
+```bash
+python3 train_v8_2.py --minutes 1 --pairs 2 --games-per-eval 1 --eval-games 4 \
+  --max-steps 120 --workers 4 --pool-limit 2 --no-resume \
+  --checkpoint /tmp/v8_2_latest.npz --best-checkpoint /tmp/v8_2_best.npz \
+  --export-bot-checkpoint /tmp/v8_2_ranker.npz --log-jsonl /tmp/v8_2_train.jsonl
+```
+
+Important outputs:
+
+```text
+evaluations/v8_2_ranker_train_latest.npz
+evaluations/v8_2_ranker_train_best.npz
+evaluations/v8_2_ranker.npz
+```
+
+`bot_v8_2.py` auto-loads `evaluations/v8_2_ranker.npz` unless
+`BOT_V8_2_NO_AUTOLOAD=1` is set.
+
+### Metrics to watch (live in `evaluations/v8_2_train.jsonl`)
+
+Each generation emits a JSON line with:
+
+- `train_mean`, `train_wr_2p`, `train_wr_4p` — ES sample mean reward and
+  per-mode WR. Noisy by design.
+- `eval_mean`, `eval_wr_2p`, `eval_wr_4p` — fixed-seed eval (only every
+  `--eval-every` generations). These are the honest signal.
+- `best`, `best_wr_2p`, `best_wr_4p` — best score and per-mode WR currently
+  promoted.
+- `grad_norm` — ES update norm. Pre-clip values > 50 mean the loss landscape
+  is locally flat (mostly draws) and the rank-shaping is amplifying noise. If
+  it stays high for many generations without `eval` movement, raise `--pairs`
+  or shrink `--sigma`.
+
+Stop the run early if:
+
+- `eval_mean` does not improve over 8 consecutive eval points.
+- `eval_wr_4p` collapses below 0.20 (probably a regression bug, not learning).
+- `grad_norm > 8` for 20+ generations with stagnant `eval_mean`.
+
+Benchmark gate: run `benchmark_v8_2.py --mode mixed --workers 8
+--games-per-opp 6` against the full pool **before** trusting any ranker
+checkpoint. The training eval set is a small subsample.
+
+### Remaining gaps
+
+- `train_v8_2.py` is ES over the ranker, not the full DAgger short-rollout
+  oracle described above.
+- The value head is trained only indirectly by ES unless a future supervised
+  dataset is added.
+- SimGame is a fast local approximation; Kaggle/replay validation remains
+  mandatory before treating any win rate as real.
+- No explicit opponent-memory model is persisted across games yet.
 
 ## External References
 
