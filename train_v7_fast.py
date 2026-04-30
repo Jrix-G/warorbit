@@ -13,6 +13,7 @@ Design (post-mortem of previous failed runs):
 Usage:
     python train_v7_fast.py --minutes 20            # sanity test
     python train_v7_fast.py --minutes 840 --workers 8   # overnight
+    python train_v7_fast.py --minutes 5 --workers 4 --pairs 4 --games-per-eval 1 --match-4p-ratio 0.7 --skip-baseline-eval
 """
 
 from __future__ import annotations
@@ -323,10 +324,17 @@ def main():
     ap.add_argument("--overage", type=float, default=1.0)
     ap.add_argument("--eval-every", type=int, default=5,
                     help="Run fixed eval every N generations")
+    ap.add_argument("--skip-baseline-eval", action="store_true",
+                    help="Skip the initial fixed eval before the first ES generation")
     ap.add_argument("--load", type=str, default=None,
                     help="Resume from .npz checkpoint")
     ap.add_argument("--out", type=str, default="evaluations/scorer_v7_unified")
     args = ap.parse_args()
+
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -362,7 +370,7 @@ def main():
 
     available = [n for n in NOTEBOOK_OPPONENTS if n in ZOO]
     eval_opps = [n for n in EVAL_OPPONENTS if n in ZOO]
-    print(f"Pool: {len(available)} opponents | Eval set: {len(eval_opps)} × {EVAL_GAMES_PER_OPP} games",
+    print(f"Pool: {len(available)} opponents | Eval set: {len(eval_opps)} x {EVAL_GAMES_PER_OPP} games",
           flush=True)
     if not available or not eval_opps:
         print("No opponents available — aborting.")
@@ -386,7 +394,7 @@ def main():
 
     print(f"\nES training | DIM={DIM} | {args.minutes:.0f}min | "
           f"{args.workers} workers | pairs={args.pairs} | "
-          f"sigma={args.sigma_init}→{args.sigma_min} | lr={args.lr} momentum={args.momentum}",
+          f"sigma={args.sigma_init} to {args.sigma_min} | lr={args.lr} momentum={args.momentum}",
           flush=True)
     print(f"Training mix: 4p_ratio={args.match_4p_ratio:.2f} | "
           f"Eval mix: 4p_ratio={eval_4p_ratio:.2f} | eval_games_per_opp={args.eval_games_per_opp}",
@@ -397,27 +405,35 @@ def main():
     with ctx.Pool(processes=args.workers) as pool:
 
         # ── Baseline eval ───────────────────────────────────────────────
-        print("=== Baseline eval ===", flush=True)
-        t0 = time.time()
-        wr, summary = evaluate_fixed(pool, params, eval_opps,
-                                     args.eval_games_per_opp, args.overage, eval_4p_ratio)
-        last_eval_wr = wr
-        last_eval_detail = format_per_opp(summary)
-        print(f"WR={wr:.0%}  {last_eval_detail}  ({time.time()-t0:.0f}s)", flush=True)
-        best_score = wr
-        best_params = params.copy()
         no_improve_evals = 0
         sigma_boost = 1.0  # multiplied into sigma; reset+shrink on stagnation
-        np.savez(str(out_path) + ".npz",
-                 params=best_params, momentum=momentum, generation=generation,
-                 wr=best_score)
-        print(f"Initial checkpoint saved.\n", flush=True)
+        saw_fixed_eval = False
+        if not args.skip_baseline_eval:
+            print("=== Baseline eval ===", flush=True)
+            t0 = time.time()
+            wr, summary = evaluate_fixed(pool, params, eval_opps,
+                                         args.eval_games_per_opp, args.overage, eval_4p_ratio)
+            last_eval_wr = wr
+            last_eval_detail = format_per_opp(summary)
+            print(f"WR={wr:.0%}  {last_eval_detail}  ({time.time()-t0:.0f}s)", flush=True)
+            best_score = wr
+            best_params = params.copy()
+            saw_fixed_eval = True
+            np.savez(str(out_path) + ".npz",
+                     params=best_params, momentum=momentum, generation=generation,
+                     wr=best_score)
+            print(f"Initial checkpoint saved.\n", flush=True)
+        else:
+            best_score = -1.0
+            best_params = params.copy()
+            print("=== Baseline eval skipped (fast start) ===", flush=True)
+            print("Initial checkpoint will be saved after the first fixed eval.\n", flush=True)
 
         # ── ES loop ─────────────────────────────────────────────────────
         while time.time() < deadline:
             elapsed_min = (time.time() - t_start) / 60.0
 
-            # Sigma annealing (exponential) × ratchet boost
+            # Sigma annealing (exponential) x ratchet boost
             decay = 0.5 ** (elapsed_min / max(1e-3, args.sigma_half_life_min))
             sigma = max(args.sigma_min, args.sigma_init * decay * sigma_boost)
 
@@ -450,6 +466,7 @@ def main():
                                              args.eval_games_per_opp, args.overage, eval_4p_ratio)
                 last_eval_wr = wr
                 last_eval_detail = format_per_opp(summary)
+                saw_fixed_eval = True
                 star = ""
                 if wr > best_score:
                     best_score = wr
@@ -459,7 +476,7 @@ def main():
                     np.savez(str(out_path) + ".npz",
                              params=best_params, momentum=momentum,
                              generation=generation, wr=best_score)
-                    star = " ★"
+                    star = " *"
                 else:
                     no_improve_evals += 1
                     # Ratchet: after 4 stagnant evals, restart from best with
@@ -469,15 +486,15 @@ def main():
                         momentum = np.zeros_like(momentum)
                         sigma_boost *= 0.7
                         no_improve_evals = 0
-                        star = " ↻ratchet"
-                print(f"gen {generation:4d} | σ={sigma:.3f} | avg_r={avg_r:+.3f} | "
+                        star = " ratchet"
+                print(f"gen {generation:4d} | sigma={sigma:.3f} | avg_r={avg_r:+.3f} | "
                       f"|p|={np.linalg.norm(params):.2f} | gen_t={gen_t:.0f}s | "
                       f"EVAL={wr:.0%} {last_eval_detail} ({time.time()-t_e:.0f}s){star}",
                       flush=True)
                 eval_wr_str = f"{wr:.4f}"
                 eval_detail = last_eval_detail
             else:
-                print(f"gen {generation:4d} | σ={sigma:.3f} | avg_r={avg_r:+.3f} | "
+                print(f"gen {generation:4d} | sigma={sigma:.3f} | avg_r={avg_r:+.3f} | "
                       f"|p|={np.linalg.norm(params):.2f} | gen_t={gen_t:.0f}s",
                       flush=True)
 
@@ -498,12 +515,19 @@ def main():
                 break
 
         # ── Final eval ──────────────────────────────────────────────────
+        if not saw_fixed_eval:
+            best_params = params.copy()
         print("\n=== Final eval (best params) ===", flush=True)
         t0 = time.time()
         wr, summary = evaluate_fixed(pool, best_params, eval_opps,
                                      args.eval_games_per_opp, args.overage, eval_4p_ratio)
         print(f"WR={wr:.0%}  {format_per_opp(summary)}  ({time.time()-t0:.0f}s)",
               flush=True)
+        if not saw_fixed_eval:
+            best_score = wr
+            np.savez(str(out_path) + ".npz",
+                     params=best_params, momentum=momentum,
+                     generation=generation, wr=best_score)
 
     # Persist also human-readable scorer + heur dump
     scorer_w, heur = decode(best_params)
@@ -515,7 +539,7 @@ def main():
     print(f"\nDone. {generation} generations.", flush=True)
     print(f"Best WR: {best_score:.0%}", flush=True)
     print(f"Saved:", flush=True)
-    print(f"  {out_path}.npz           (full ES state — for resume)", flush=True)
+    print(f"  {out_path}.npz           (full ES state for resume)", flush=True)
     print(f"  {out_path}_scorer.npy    (decoded scorer weights)", flush=True)
     print(f"  {out_path}_heur.txt      (decoded heuristic constants)", flush=True)
     print(f"  {csv_path}               (per-gen metrics)", flush=True)

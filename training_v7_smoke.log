@@ -1,0 +1,24 @@
+Warm-start scorer block from C:\Users\Capitaine\Documents\GitHub\warorbit\evaluations\scorer_es.npy
+Loading ZOO ...
+Pool: 15 opponents | Eval set: 15 x 4 games
+
+ES training | DIM=22 | 5min | 4 workers | pairs=2 | sigma=0.3 to 0.05 | lr=0.05 momentum=0.9
+Training mix: 4p_ratio=0.70 | Eval mix: 4p_ratio=0.70 | eval_games_per_opp=1
+Out: evaluations\scorer_v7_unified.npz   CSV: evaluations\scorer_v7_unified.csv
+
+=== Baseline eval skipped (fast start) ===
+Initial checkpoint will be saved after the first fixed eval.
+
+gen    1 | sigma=0.300 | avg_r=+0.750 | |p|=1.70 | gen_t=150s
+gen    2 | sigma=0.291 | avg_r=+0.000 | |p|=1.69 | gen_t=239s
+
+=== Final eval (best params) ===
+WR=27%  4p=1/11  2p=3/4  (229s)
+
+Done. 2 generations.
+Best WR: -100%
+Saved:
+  evaluations\scorer_v7_unified.npz           (full ES state ÔÇö for resume)
+  evaluations\scorer_v7_unified_scorer.npy    (decoded scorer weights)
+  evaluations\scorer_v7_unified_heur.txt      (decoded heuristic constants)
+  evaluations\scorer_v7_unified.csv               (per-gen metrics)

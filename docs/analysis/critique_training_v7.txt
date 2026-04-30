@@ -1,0 +1,333 @@
+================================================================================
+CRITIQUE DU CODE D'ENTRAINEMENT ACTUEL — train_kaggle.py / train_v7_fast.py
+État au 30 avril 2026 — gen 105, eval WR 43%
+Auteur : analyse formelle (mathématicien / informaticien / physicien)
+================================================================================
+
+Conclusion en une phrase : le training tourne, le score remonte, mais la borne
+supérieure théorique de cette approche se situe autour de 50–60% WR contre le
+zoo de notebooks publics et NE PEUT PAS franchir le seuil ELO 1300 — pour des
+raisons structurelles que je détaille ci-dessous.
+
+
+--------------------------------------------------------------------------------
+1.  CE QUI EST CORRECT DANS LE CODE
+--------------------------------------------------------------------------------
+
+a)  Antithetic sampling avec opp+seed partagés (train_v7_fast.es_generation,
+    lignes 247-256). Réduit la variance d'un facteur ≈2 — bien.
+b)  Rank-shaping (Wierstra 2014, OpenAI ES 2017) avec jitter pour éviter le
+    biais d'argsort sur les égalités (lignes 278-283). Bon réflexe.
+c)  Adam-lite momentum (β=0.9) sur l'update ES, reset après norm-clip
+    (lignes 447-455). Standard, OK.
+d)  Per-parameter (base, scale) decoding de sorte que ES voit N(0,1) pour
+    tous les paramètres (lignes 62-71). Conditionnement correct.
+e)  Auto-resume + best-checkpoint séparé du latest-checkpoint, rollback sur
+    eval pire que best (train_kaggle.py 252-280 et 343-359). Robuste.
+f)  Schedule deterministe 2p/4p mixé via `_build_match_schedule`
+    (train_v7_fast.py 115-149). Permet la comparaison génération-à-génération.
+
+Bref, tout ce qui relève de la **plomberie ES** est honnête. Le problème n'est
+pas la mécanique de l'optimiseur. Le problème est l'objet qu'on optimise.
+
+
+--------------------------------------------------------------------------------
+2.  LE FACTEUR LIMITANT N°1 — DIMENSION DE RECHERCHE TROP FAIBLE
+--------------------------------------------------------------------------------
+
+DIM = SCORER_DIM (15) + len(HEURISTIC_SPECS) (7) = **22 paramètres**.
+
+Mathématiquement :
+    - 22 réels ∈ ℝ → variété de comportement |Θ| ≈ 10²² configurations distinctes
+      à granularité 0.1
+    - Mais la majorité des décisions du bot (∼ 80 constantes magiques codées en
+      dur dans bot_v7.py lignes 30–217) reste FIXE pendant le training.
+
+Inventaire de ce qui n'est PAS optimisable par ES actuellement :
+
+    SAFE_NEUTRAL_MARGIN, CONTESTED_NEUTRAL_MARGIN, DOOMED_EVAC_*, AIM_ITERATIONS,
+    INTERCEPT_TOLERANCE, LAUNCH_CLEARANCE, SNIPE_COST_TURN_WEIGHT,
+    INDIRECT_VALUE_SCALE, INDIRECT_*_WEIGHT (3), STATIC_NEUTRAL_VALUE_MULT,
+    HOSTILE_TARGET_VALUE_MULT, OPENING_HOSTILE_TARGET_VALUE_MULT, COMET_VALUE_MULT,
+    SNIPE_VALUE_MULT, SWARM_VALUE_MULT, FINISHING_HOSTILE_VALUE_MULT,
+    BEHIND_ROTATING_NEUTRAL_VALUE_MULT, NEUTRAL_MARGIN_PROD_WEIGHT,
+    NEUTRAL_MARGIN_CAP, CONTESTED_TARGET_MARGIN, FOUR_PLAYER_TARGET_MARGIN,
+    LONG_TRAVEL_MARGIN_*, COMET_MARGIN_RELIEF, FINISHING_HOSTILE_SEND_BONUS,
+    STATIC_TARGET_SCORE_MULT, EARLY_STATIC_NEUTRAL_SCORE_MULT,
+    FOUR_PLAYER_ROTATING_NEUTRAL_SCORE_MULT, DENSE_*, SNIPE_SCORE_MULT,
+    SWARM_SCORE_MULT, SAFE_OPENING_*, ROTATING_OPENING_*,
+    PARTIAL_SOURCE_MIN_SHIPS, MULTI_SOURCE_*, THREE_SOURCE_*, FOUR_SOURCE_*,
+    REINFORCE_* (7), MULTI_ENEMY_*, PROACTIVE_DEFENSE_*, LATE_*, COMET_*,
+    BEHIND/AHEAD/FINISHING_DOMINATION (3), REAR_* (7), FOUR_PLAYER_* (12),
+    TWO_PLAYER_NEUTRAL_VALUE_MULT, AOW_* (≈20)
+
+Soit **environ 90 constantes structurellement gelées**. ES ne peut explorer
+qu'une projection 22-dimensionnelle d'un manifold ≈ 110-D effectif. La
+direction de plus forte amélioration peut être orthogonale à ce sous-espace
+— et dans ce cas le gradient ES estimé (∇̂ J) est nul à l'espérance, quel que
+soit le nombre de générations.
+
+Conséquence formelle : si la stratégie optimale exige par exemple
+TWO_PLAYER_NEUTRAL_VALUE_MULT = 2.0 au lieu de 1.45, AUCUN nombre de
+générations ne corrigera ce paramètre. Le seul moyen est de le rajouter au
+HEURISTIC_SPECS (et perdre en variance d'estimation, voir §3).
+
+
+--------------------------------------------------------------------------------
+3.  LE FACTEUR LIMITANT N°2 — RATIO SIGNAL/BRUIT FONDAMENTAL
+--------------------------------------------------------------------------------
+
+Configuration actuelle (run en cours) :
+    pairs = 2, games_per_eval = 1, episode_steps = 150
+    → 4 reward binaires par génération ⇒ 2 paires antithétiques
+
+Modèle statistique :
+    Pour chaque perturbation ε_i, on observe r_i ∈ {0, 1} (Bernoulli p_i).
+    Var(r_i) = p_i (1 − p_i) ∈ [0, 0.25]
+    Avec antithétique parfait (corrélation = −1) :
+        Var(r_+ − r_−) ≤ 4 · p · (1 − p) (cas pessimiste, antithétique pas
+        parfaitement anti-corrélé sur du Bernoulli pur)
+
+Estimateur ES gradient :
+    g = Σ_i (r_i^+ − r_i^−) ε_i / (n_pairs · σ)
+    Var(g) ≈ Var(Δr) · ‖ε‖² / (n_pairs · σ²)
+            ≈ 0.5 · DIM / (2 · 0.30²) ≈ 60
+
+Norme du gradient utile attendue (différence de WR par mouvement de 1σ ≈ 0.30) :
+    Si en doublant un paramètre on gagne 5% WR, alors |∇ J| ≈ 0.05 / 0.30 ≈ 0.17
+    Si on gagne 1% WR seulement, alors |∇ J| ≈ 0.03
+
+SNR par génération : |∇ J|² / Var(g) ≈ 0.03 / 60 ≈ **5 × 10⁻⁴**
+
+Autrement dit : il faut **≈ 2000 générations** pour qu'un signal de +1% WR
+sorte du bruit avec p=0.95. À gen_t médian = 35s, cela représente ≈ 19 heures
+PAR direction de paramètre. Avec 22 paramètres, l'ordre de grandeur de
+convergence est **plusieurs jours** — sans garantie de convergence vers
+l'optimum global puisque ES est local et le paysage est non-convexe.
+
+C'est cohérent avec ce qu'on observe : 105 générations, plateau à 40-43% WR
+oscillant entre 33% et 47% sans tendance claire. Le signal est noyé.
+
+Recommandation chiffrée :
+    Pour p = 0.50 (autour du WR cible), Var(r) = 0.25.
+    Cible SNR = 1 ⇒ il faut ≈ 100 reward binaires par perturbation.
+    ⇒ pairs = 4, games_per_eval = 4 (32 reward / gen) MINIMUM.
+    À workers=8 et 10s/match cela donne gen_t ≈ 40s — faisable.
+
+Le run actuel à pairs=2 games-per-eval=1 est UN ORDRE DE GRANDEUR sous-échantillonné.
+
+
+--------------------------------------------------------------------------------
+4.  LE FACTEUR LIMITANT N°3 — LE SCORER LINÉAIRE EST UN MULTIPLICATEUR FAIBLE
+--------------------------------------------------------------------------------
+
+bot_v7.py:1069-1077 :
+
+    if _SCORER is not None and value > 0:
+        log_mult = float(_SCORER(feat))     # = scorer_w @ features ∈ ℝ
+        log_mult = clip(log_mult, -3, 3)
+        value *= math.exp(log_mult)
+
+Donc le scorer multiplie value par exp(w·x) ∈ [e⁻³, e³] = [0.05, 20.1].
+
+Mais value lui-même est calculé en `_target_value` (ligne 965+) qui inclut DÉJÀ :
+
+    target.production * turns_profit
+    + indirect_wealth * INDIRECT_VALUE_SCALE
+    × {STATIC,HOSTILE,OPENING,...}_MULT (cascade de 12 multiplicateurs fixes)
+
+Effet : le scorer est un re-rerangement marginal du ranking. Tant qu'aucune
+mission n'est globalement supérieure d'un facteur >20 à une autre, le scorer
+peut intervertir. Mais la STRUCTURE des missions générées (capture / snipe /
+swarm / reinforce) ne peut pas être modifiée. Or le top-1 (kovi, sub
+52018000) fait DOMINANTEMENT du **transfert ami → ami** (66% de ses actions
+selon les replays — cf. critique #5), ce que bot_v7.plan_moves ne génère que
+via REAR staging et anti-hoarding (deux passages courts en fin de plan_moves
+ligne 1553-1616 — ratio ≈ 1 transfert pour 5 attaques).
+
+Conclusion : même avec un scorer parfait, V7 ne peut pas reproduire le profil
+comportemental gagnant car la GRAMMAIRE D'ACTION du planificateur l'exclut.
+
+
+--------------------------------------------------------------------------------
+5.  LE FACTEUR LIMITANT N°4 — DÉRIVE DU CHECKPOINT "BEST"
+--------------------------------------------------------------------------------
+
+Dans train_kaggle.py 343-348 :
+
+    if wr > best_score:
+        best_score = wr
+        best_params = params.copy()
+
+Avec eval_games_per_opp=1, eval_4p_ratio=0.7, 15 opps :
+    n_eval = 15 jeux, dont ~10 4p et ~5 2p (selon RNG fixe).
+    σ̂ WR = √(0.25/15) ≈ 0.13 → **±13% à 1σ**
+
+Donc l'observation "wr=47%" peut correspondre à un vrai WR ∈ [21%, 73%]
+à 95%. Le critère "wr > best_score" promeut donc fréquemment des paramètres
+qui n'ont pas vraiment progressé, juste fait un coup de chance favorable. Le
+rollback (margin=0.05, ligne 213) compense partiellement mais pas
+suffisamment vu que le bruit dépasse 0.05.
+
+C'est exactement pour cette raison que la courbe gen 76→105 oscille entre
+33% et 47% sans rien apprendre durablement. Le "best" ratchet est cassé par
+la variance.
+
+Recommandation : doubler `eval_games_per_opp` (actuellement 1) à 4 ⇒
+n_eval=60, σ̂≈0.06. Coût : +60s/eval, négligeable vu eval_every=999.
+
+
+--------------------------------------------------------------------------------
+6.  LE FACTEUR LIMITANT N°5 — `eval_every=999` ANNULE L'EVAL
+--------------------------------------------------------------------------------
+
+Dans run_kaggle_night.ps1 et l'output observé : "eval WR=43%" apparaît
+typiquement après 15 générations seulement parce que `gen % args.eval_every`
+n'est jamais déclenché (eval_every par défaut = 999). Donc :
+
+    a) L'eval observée vient de la baseline ou d'un cas de bord
+    b) `best_score` n'est presque JAMAIS mis à jour avec des données récentes
+    c) Le rollback ne peut pas s'activer (il faudrait `eval_every` raisonnable)
+
+Recommandation : `--eval-every 10` minimum.
+
+
+--------------------------------------------------------------------------------
+7.  LE FACTEUR LIMITANT N°6 — POOL D'ADVERSAIRES STATIQUE
+--------------------------------------------------------------------------------
+
+Pool = NOTEBOOK_OPPONENTS = 15 notebooks publics (train_v7_fast.py 76-92).
+
+Trois pathologies :
+
+a)  **Co-évolution gelée** : le pool ne change jamais. ES converge vers une
+    politique qui exploite les biais de ces 15 bots. Sur Kaggle, l'adversaire
+    inclut 1500 autres équipes que le bot n'a JAMAIS vues à l'entraînement.
+    → overfitting structurel sur le zoo.
+
+b)  **Plafond évolutif** : on ne peut JAMAIS dépasser le meilleur notebook
+    du pool (orbit_star_wars_lb_max_1224 ≈ ELO 1224 selon docs/specs).
+    Le top1 kovi est à ELO 2577. Écart 1350 points = 1 chance sur ~10⁵
+    contre kovi. ES sur ce pool peut au mieux atteindre ELO ≈ 1300.
+
+c)  **Self-play absent** : aucun checkpoint historique n'est ajouté au pool,
+    donc pas de league dynamics. Le bot ne joue jamais contre des versions
+    plus fortes que lui-même.
+
+
+--------------------------------------------------------------------------------
+8.  LE FACTEUR LIMITANT N°7 — `episode_steps=150` AU LIEU DE 500
+--------------------------------------------------------------------------------
+
+run_kaggle_night.ps1 fixe `--episode-steps 150`.
+
+Or :
+    - Le jeu est joué sur 500 tours en éval Kaggle.
+    - L'analyse PartyAnaly (docs/analysis/PartyAnaly/summary.json) montre que
+      les pertes ont une médiane de step_finals à 278.2.
+    - Les replays kovi : avg_steps = 211.7 (90% des parties durent > 150).
+    - Les "duel plateau loss" se manifestent typiquement entre t100 et t250.
+
+Optimiser sur 150 tours = optimiser le sous-jeu opening + early-mid. Le
+bot sera tuned pour la phase EARLY mais pas la conversion threshold qui se
+joue à t60-t120 et le squeeze qui se joue à t150-t300.
+
+Attention : ce paramètre est un compromis vitesse/fidélité. À t=500 et 8
+workers, gen_t passerait de ~35s à ~120s (×3.4). Mais le signal optimisé
+serait le bon. Compromis: alterner courts (random 100-180) et longs (300-500)
+selon une distribution réaliste.
+
+
+--------------------------------------------------------------------------------
+9.  PLAFOND THÉORIQUE DE CETTE APPROCHE
+--------------------------------------------------------------------------------
+
+Modèle de Fermi pour le ELO atteignable :
+
+    ELO_max(V7+ES) ≈ ELO_max(notebook_le_plus_fort_du_pool) + δ
+    avec δ ≈ +50 à +150 ELO (gain typique d'un fine-tuning sur poids)
+
+    ELO_max ≈ 1224 (orbit_star_wars notebook) + 100 ≈ **1324 ELO**
+
+Top 10 actuel : 1313–2577.
+Top 5 : > 1500.
+Plafond V7+ES : ≈ 1300–1400.
+
+→ V7+ES peut entrer top 20, pas top 10.
+→ Pour entrer top 5, il faut **changer d'approche**.
+
+
+--------------------------------------------------------------------------------
+10.  CORRECTIFS IMMÉDIATS (1-2h de dev)
+--------------------------------------------------------------------------------
+
+[A] Corriger la variance par augmentation du sample size :
+        --pairs 4 --games-per-eval 4   (au lieu de 2 / 1)
+    Coût : ×8 gen_t, mais le signal devient extractible.
+
+[B] Activer l'eval périodique :
+        --eval-every 10 --eval-games-per-opp 4
+    Coût : ~2 min toutes les 10 gens. Ratchet best devient fiable.
+
+[C] Allonger les épisodes :
+        --episode-steps 350     (capture la conversion threshold)
+
+[D] Élargir le set de paramètres tunables :
+    Ajouter à HEURISTIC_SPECS (train_v7_fast.py:48) au minimum :
+        TWO_PLAYER_NEUTRAL_VALUE_MULT, TWO_PLAYER_SAFE_NEUTRAL_BOOST,
+        FOUR_PLAYER_HOSTILE_AGGRESSION_BOOST, REAR_SEND_RATIO_TWO_PLAYER,
+        REAR_SEND_RATIO_FOUR_PLAYER, AOW_HOARD_PROD_RATIO,
+        AOW_HOARD_SEND_RATIO, AOW_CONVERSION_NEUTRAL_BOOST,
+        AOW_DECISIVE_NEUTRAL_BOOST, REINFORCE_VALUE_MULT
+    → DIM 22 → 32. Coût ES : ~+45% temps de convergence, compensé par le
+    gain de pouvoir descriptif.
+
+[E] CMA-ES au lieu d'OpenAI ES sur cet espace 22-D :
+    À 22-32 dimensions, CMA-ES est strictement supérieur (matrix de cov
+    apprend les corrélations). Adam-lite ES suppose un Hessian isotrope.
+
+[F] Mixer 2p/4p selon distribution Kaggle réelle :
+    Kaggle laisse tomber des matchs aléatoires. Le mix actuel 4p_ratio=0.70
+    est cohérent avec les replays (679 4p vs 430 2p ≈ 61% 4p), donc OK,
+    mais ajouter aussi des 3p (le moteur Kaggle peut faire 3p).
+
+
+--------------------------------------------------------------------------------
+11.  CORRECTIFS STRUCTURELS (semaines, pour franchir le plafond)
+--------------------------------------------------------------------------------
+
+Voir documents séparés :
+    - docs/analysis/reverse_engineering_top1.txt
+    - docs/analysis/neural_proposal.txt
+
+Pour résumer : il faut **soit** changer la grammaire d'action de plan_moves
+pour inclure le transfer ami→ami (cf. profil de kovi 66%), **soit** remplacer
+la loop "missions scored linéairement" par un MLP/GNN différentiable entraîné
+par BC (behavioral cloning sur replays) puis self-play league.
+
+
+--------------------------------------------------------------------------------
+12.  TL;DR — POURQUOI ÇA NE TIENT PAS À LONG TERME
+--------------------------------------------------------------------------------
+
+(1) 22 paramètres dans un manifold 110-D : projection trop pauvre.
+(2) Le scorer linéaire NE PEUT QUE MULTIPLIER une value composée à 90%
+    d'heuristiques fixes. Le mode d'expression est limité à un "scaling" du
+    ranking.
+(3) bot_v7.plan_moves ne génère pas de mission "transfer ami→ami" en
+    proportion suffisante (≈10%) alors que les bots top en font 66%. La
+    grammaire d'action est trop pauvre.
+(4) Pool d'adversaires statique → plafond ELO ≈ ELO_max(pool) + 100.
+(5) Variance d'estimation domine le signal au régime actuel (pairs=2,
+    games_per_eval=1). On fait du random walk à coût élevé.
+(6) Le checkpoint "best" est promu sur du bruit (σ̂ WR = 13% sur 15 jeux).
+
+Le code est honnête en plomberie et restera utile pour fine-tuner les
+constantes une fois la nouvelle architecture posée. Mais comme moteur
+d'amélioration principal, il a atteint son plafond ; les générations
+supplémentaires ne franchiront pas WR=50% contre le zoo, et certainement
+pas ELO 1300 sur Kaggle.
+
+================================================================================
+FIN DE LA CRITIQUE
+================================================================================

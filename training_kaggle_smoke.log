@@ -1,0 +1,42 @@
+Resumed from evaluations\scorer_v7_kaggle.npz (gen=7, wr=0.400)
+Kaggle ES training
+Pool: 15 opponents | Eval set: 15
+minutes=20.0 workers=8 pairs=2 episode_steps=150 4p_ratio=0.7
+baseline skipped
+gen    8 | avg_r=+0.500 | |p|=1.82 | gen_t=33.5s
+gen    9 | avg_r=+0.500 | |p|=1.85 | gen_t=20.9s
+gen   10 | avg_r=+0.500 | |p|=1.89 | gen_t=31.7s
+gen   11 | avg_r=+0.750 | |p|=1.93 | gen_t=64.6s
+gen   12 | avg_r=+0.750 | |p|=1.97 | gen_t=54.0s
+gen   13 | avg_r=+0.250 | |p|=2.01 | gen_t=28.1s
+gen   14 | avg_r=+1.000 | |p|=2.05 | gen_t=16.2s
+gen   15 | avg_r=+0.500 | |p|=2.09 | gen_t=48.4s
+gen   16 | avg_r=+0.500 | |p|=2.13 | gen_t=29.2s
+gen   17 | avg_r=+0.500 | |p|=2.16 | gen_t=31.0s
+gen   18 | avg_r=+0.250 | |p|=2.19 | gen_t=41.4s
+gen   19 | avg_r=+0.250 | |p|=2.21 | gen_t=61.8s
+gen   20 | avg_r=+0.250 | |p|=2.23 | gen_t=71.2s
+gen   21 | avg_r=+0.000 | |p|=2.24 | gen_t=47.2s
+gen   22 | avg_r=+0.750 | |p|=2.28 | gen_t=39.3s
+gen   23 | avg_r=+0.250 | |p|=2.31 | gen_t=35.2s
+gen   24 | avg_r=+0.750 | |p|=2.35 | gen_t=25.7s
+gen   25 | avg_r=+0.750 | |p|=2.38 | gen_t=12.5s
+gen   26 | avg_r=+0.000 | |p|=2.40 | gen_t=62.5s
+gen   27 | avg_r=+0.250 | |p|=2.43 | gen_t=35.0s
+gen   28 | avg_r=+0.500 | |p|=2.45 | gen_t=14.5s
+gen   29 | avg_r=+1.000 | |p|=2.47 | gen_t=4.1s
+gen   30 | avg_r=+0.500 | |p|=2.50 | gen_t=60.9s
+gen   31 | avg_r=+0.250 | |p|=2.53 | gen_t=22.3s
+gen   32 | avg_r=+0.250 | |p|=2.56 | gen_t=22.1s
+gen   33 | avg_r=+0.750 | |p|=2.58 | gen_t=22.8s
+gen   34 | avg_r=+0.250 | |p|=2.60 | gen_t=56.3s
+gen   35 | avg_r=+0.750 | |p|=2.62 | gen_t=26.5s
+gen   36 | avg_r=+0.750 | |p|=2.64 | gen_t=19.3s
+gen   37 | avg_r=+0.250 | |p|=2.65 | gen_t=46.9s
+gen   38 | avg_r=+0.250 | |p|=2.67 | gen_t=39.3s
+gen   39 | avg_r=+0.500 | |p|=2.68 | gen_t=34.2s
+gen   40 | avg_r=+0.500 | |p|=2.70 | gen_t=28.5s
+gen   41 | avg_r=+0.000 | |p|=2.72 | gen_t=39.7s
+final WR=40% 4p=2/11  2p=4/4 (104.0s)
+Done. 41 generations in 1330.8s
+Best WR: 40%

@@ -1,0 +1,367 @@
+================================================================================
+REVERSE ENGINEERING — TOP-1 ORBIT WARS (kovi, sub 52018000, ELO 2577)
+Analyse statistique sur 95 replays publics — 30 avril 2026
+================================================================================
+
+But : extraire un modèle comportemental reproductible du bot #1, à partir de
+ses 95 replays publics, en mode "behavioral fingerprinting". Toutes les
+mesures qui suivent sortent de mes scripts d'analyse (tmp_inspect_kovi_*.py).
+
+Notation : par convention, "kovi" désigne ici le bot de la submission Kaggle
+n°52018000, classé 1ᵉʳ public à ELO 2577. Aucune intuition n'est utilisée
+sans support chiffré tiré des replays.
+
+
+--------------------------------------------------------------------------------
+1.  PROFIL D'ACTION GLOBAL
+--------------------------------------------------------------------------------
+
+  Première action :
+      Tour médian = 3 (mean 4.2, P10=2)
+      Interprétation : kovi attend 3 tours avant son 1er envoi, le temps
+      que sa planète de départ ait produit ≈ prod * 3 ships. Pas de "tour 0
+      forcé".
+
+  Densité d'action :
+      4.21 actions par tour ACTIF (médiane = 3, max=40)
+      → bot très "loquace" — V7 actuel est à ≈ 1.7 actions/tour
+
+  Concentration des sources :
+      Médiane 1-2 sources actives par tour (81% des tours actifs ≤ 3 sources)
+      Mais des bursts à 30+ sources (push final).
+
+  Distribution des ships envoyés par action (sur 25 277 actions) :
+      P10 =   2     P25 =   4
+      P50 =  16     P75 =  54
+      P90 = 160     P99 = 989
+
+  Cette distribution log-normale double-mode est le **fingerprint le plus
+  caractéristique** :
+
+      • Mode 1 — "probe" (P10 à P50) :  2-16 ships, action légère, fréquente
+      • Mode 2 — "finishing strike" (P90+) : 160+ ships, sortie de garrison
+        complète, rare mais décisive
+
+  Rapport probe/finish : env. 8:1 en nombre, mais 1:6 en ships totaux.
+
+
+--------------------------------------------------------------------------------
+2.  TYPOLOGIE DE CIBLE  (DÉCOUVERTE MAJEURE)
+--------------------------------------------------------------------------------
+
+  Distribution des 33 831 actions analysées :
+
+      → Friendly (transfer ami → ami)  :  22 307  (66 %)
+      → Hostile (attaque ennemi)       :   7 049  (21 %)
+      → Neutral (capture)              :   4 475  (13 %)
+
+  Constat : DEUX TIERS DES ACTIONS DE KOVI SONT DES TRANSFERTS ENTRE SES
+  PROPRES PLANÈTES.
+
+  V7 actuel a un ratio transfer ≈ 10-15 % (rear staging + anti-hoarding).
+  C'est l'écart comportemental n°1 entre V7 et le top.
+
+  Pourquoi ce ratio si élevé est-il rationnel ?
+
+      a) La vitesse des flottes croît en log(ships) (cf. fleet_speed dans
+         bot_v7.py:262-267). Une flotte de 100 ships voyage à 4.6 u/tour,
+         une flotte de 1000 à 6.0 u/tour. Concentrer les ships à un point
+         de staging donne une économie cinétique de ~25-30 % de temps de
+         vol pour une attaque ultérieure.
+
+      b) Le ledger d'arrivée (cf. bot_v7.simulate_planet_timeline) suppose
+         un seul flux par planète. Découper 1×500 ships en 5×100 ships
+         depuis 5 sources étalées dans le temps ouvre des fenêtres
+         d'arrivée en cascade qui sont **plus difficiles à défendre** :
+         l'adversaire ne peut pas garrison-ner contre toutes les arrivées
+         simultanément si elles sont en T, T+1, T+2.
+
+      c) Le combat se fait par diff (cf. règles : la plus grande force gagne,
+         garrison résiduelle = différence). Donc 100 vs 50 = on garde 50 ;
+         500 vs 50 = on garde 450. Concentrer pour un coup unique est
+         maximally inefficient en ships mais minimally costly en temps.
+         Kovi équilibre : il pré-stack au front via transfers, puis frappe
+         avec un convoy compact.
+
+  → Méta-stratégie de kovi en une phrase : **"attaque rare, transfert
+     constant, finition décisive"**.
+
+
+--------------------------------------------------------------------------------
+3.  DYNAMIQUE D'ÉCONOMIE — LA "CONVERSION THRESHOLD"
+--------------------------------------------------------------------------------
+
+  Production médiane (winner = kovi) par phase de jeu :
+
+      t000-t029 :  prod = 5     planets = 2
+      t030-t059 :  prod = 21    planets = 8
+      t060-t099 :  prod = 34    planets = 13     ← "conversion threshold"
+      t100-t199 :  prod = 42    planets = 16
+      t200-t349 :  prod = 49    planets = 18
+      t350-t499 :  prod = 57    planets = 21
+
+  Forme : croissance super-linéaire entre t30 et t100, puis sigmoïde qui
+  plafonne. Le seuil critique à atteindre est **planets ≥ 13 vers t = 60**.
+
+  Le rapport docs/analysis/leaderboard_top1_deep_report.txt montre que
+  les défaites de kovi sont précisément les parties où il échoue à
+  franchir ce seuil :
+      duel plateau loss  : max planets = 9.7 → final 0
+      duel squeeze loss  : max planets = 15.8 → final 3.2
+      slow 4p squeeze    : max planets = 10.8 → final 0.3
+
+  Conclusion : la métrique unique la plus prédictive du résultat n'est NI
+  les ships finaux NI la production absolue mais le **count de planètes à
+  t=60-80**. Si > 13 → kovi gagne 80%+. Si < 10 → kovi perd 70%+.
+
+  Cette observation dicte la formule de reward dense pour le training :
+
+      r_t = α · ln(planets_t / 13.0)   à t ≈ 60-100, α ≈ 1.5
+            + β · production_efficiency
+            + γ · I[survived]
+
+  (à comparer au reward "win/lose binaire" actuel).
+
+
+--------------------------------------------------------------------------------
+4.  POLITIQUE DE GARRISON (DÉFENSE)
+--------------------------------------------------------------------------------
+
+  Garrison par planète chez le winner (kovi) :
+
+      Médiane : 34 ships    Mean : 122 ships
+      P10 :  6   P50 : 34   P90 : 334
+
+  Lecture : la médiane à 34 ships est faible (≈ 5-10 tours de production).
+  P10 = 6 montre que kovi vide ses planètes jusqu'à 6 ships en mode probe.
+  P90 = 334 = il y a quelques planètes "bunker" où il accumule (typiquement
+  les sources de futures finishing strikes).
+
+  Comparaison V7 :
+      V7 calcule keep_needed via binary search sur timeline (bot_v7.py
+      simulate_planet_timeline lignes 552-604). Conservative.
+      Ratio garrison/production effectif ≈ 8-15× la production.
+
+      Kovi a un ratio médian = 34 / 2.5 ≈ **14× la production** mais avec
+      énorme variance : la P10 montre qu'il accepte de descendre à
+      garrison < 2× production sur certaines planètes.
+
+  Implication pour ML : le NN doit apprendre une politique CONDITIONNELLE
+  de garrison (plus agressif sur les plantes-front, conservateur sur les
+  back/hub planets), pas une règle uniforme.
+
+
+--------------------------------------------------------------------------------
+5.  POLITIQUE D'OUVERTURE (t < 30)
+--------------------------------------------------------------------------------
+
+  915 actions opening analysées :
+
+      Cibles neutres : 75.7 %
+      Cibles ennemies : 14 %
+      Transfer amical : 10 %
+
+  Distribution de la production des neutrals capturées en opening :
+      prod=1 :  20.1 %
+      prod=2 :  18.5 %
+      prod=3 :  22.1 %
+      prod=4 :  19.5 %
+      prod=5 :  19.9 %
+
+  → distribution quasi-uniforme.
+
+  Donc kovi N'EXCLUT PAS les prod=1. C'est en contradiction directe avec
+  la règle V7 :
+
+      AOW_OPENING_MIN_PROD = 2     # skip prod=1 neutrals during opening
+      AOW_LOW_PROD_THRESHOLD = 2
+      AOW_LOW_PROD_PENALTY = 0.84
+
+  Ces règles "Art of War" qui pénalisent les prod=1 vont à l'encontre de
+  ce que fait le top1 : il prend tout ce qui est proche, peu importe la
+  production. La logique de kovi : un prod=1 capturé = +1 production
+  permanente + déni à l'adversaire + contrôle territorial. La pénaliser
+  est une erreur empirique.
+
+  Recommandation immédiate : tester
+      AOW_OPENING_MIN_PROD = 1
+      AOW_LOW_PROD_PENALTY = 1.0
+  ou supprimer ces deux règles. Cela peut donner +5-10% WR contre les
+  notebooks à coût zéro.
+
+
+--------------------------------------------------------------------------------
+6.  COORDINATION SPATIALE — SWARM
+--------------------------------------------------------------------------------
+
+  Distribution des actions atteignant la MÊME cible le MÊME tour :
+
+      1 action  : 82.8 %
+      2 actions :  9.0 %
+      3 actions :  3.5 %
+      4 actions :  2.3 %
+      5+ actions :  2.4 %
+
+  → Kovi fait peu de swarm "synchrone" (8 % de cibles avec 2+ sources
+  simultanées). En revanche, la coordination est temporelle (T+0, T+2,
+  T+5) et les flottes arrivent en cascade.
+
+  Comparaison V7 :
+      bot_v7 a `MULTI_SOURCE_TOP_K=10`, `MULTI_SOURCE_ETA_TOLERANCE=2`,
+      THREE_SOURCE_SWARM_ENABLED=True. Le code essaie ACTIVEMENT de coordonner
+      des swarms à 2-3-4 sources convergentes.
+
+  Donc le multi-source swarm V7 est plus présent que chez kovi. Mais kovi
+  joue mieux malgré tout : le swarm n'est pas la bonne arme. La bonne
+  arme est le **transfer ami→ami**, qui fait converger les ships AU SOL
+  avant de tirer.
+
+  Ré-architecture suggérée : remplacer les swarms 3-4 sources par une
+  séquence "transfer T0 → consolidate T2 → fire T3" depuis 1 source.
+  Économise sur le coût turn-by-turn et sur la complexité combinatoire
+  (qui consomme du temps CPU dans plan_moves).
+
+
+--------------------------------------------------------------------------------
+7.  ÉCART D'ÉCONOMIE FIN DE PARTIE
+--------------------------------------------------------------------------------
+
+  Sur les 95 wins de kovi :
+
+      Médiane ships finaux winner :  2655
+      Médiane ships finaux loser :      0
+      Ratio :                       ≥ 2655x
+
+  Donc dans les wins, l'adversaire est éliminé à 0 ships : kovi ne se
+  contente pas de gagner aux points, il NETTOIE le plateau. C'est cohérent
+  avec une politique de finishing strikes coordonnés (cf. point 1, P99=989
+  ships en une action).
+
+  Lesson : le bot doit apprendre une notion de "killing blow" — quand
+  passer de mode "stage & probe" à mode "all-in finish". V7 a un
+  is_finishing flag (lignes 868-874) mais il est strictement scalaire
+  (domination > 0.35 + prod > 1.25 × enemy + step > 100). Trop binaire.
+  Kovi semble passer à finish mode dès qu'il a ≥ 14 planètes ET enemy ≤ 4
+  planètes. Critère structurel, pas continu.
+
+
+--------------------------------------------------------------------------------
+8.  RECONSTRUCTION DE L'ARCHITECTURE PROBABLE DE KOVI
+--------------------------------------------------------------------------------
+
+  Sur la base de tout ce qui précède, je conjecture l'architecture suivante
+  pour le bot top-1, par ordre de plausibilité décroissante :
+
+  Hypothèse principale (≈ 70 % subjectif) :
+      Rule-based avancé + une SEARCH FORWARD légère (1-3 ply) + PRIORITY
+      QUEUE de "tasks" qui persistent sur plusieurs tours.
+
+      Indices :
+          - Action density élevée mais non saturée (4.2/tour, max 40)
+            cohérent avec un planificateur qui replanifie à chaque obs.
+          - Distribution bimodale ships envoyés (probe + finishing) cohérente
+            avec un système qui distingue "actions courantes" et "actions
+            décisives" — typique d'un système rule-based avec deux strates.
+          - Garrison médiane 34 + P10 6 cohérent avec un système qui
+            calcule un keep_needed dynamique (proche de bot_v7) mais sans
+            le clipping conservateur que V7 applique.
+          - 75% de neutrals en opening sans filtrage par production →
+            heuristique simple "prend le plus proche réalisable".
+          - 66% de transfers amis → présence d'une politique structurelle
+            de pré-positionnement, peut-être style "supply chain" : une
+            planète back accumule, transfert vers planète mid, qui transfère
+            vers planète front, qui frappe.
+
+  Hypothèse secondaire (≈ 20 %) :
+      Réseau de neurones (MLP) entraîné par self-play, avec une couche
+      finale "action-head" multi-tâches (probe / transfer / strike).
+
+      Indices contre :
+          - Pas de PyTorch dans l'env d'eval, donc le NN serait en numpy
+            pur — possible mais inhabituel à ELO 2577.
+          - La distribution d'actions est très structurée (modes nets),
+            alors qu'un NN tend à produire des distributions plus lisses.
+
+  Hypothèse tertiaire (≈ 10 %) :
+      Hybride : règles + scorer NN comme V7 mais avec un horizon de
+      lookahead beaucoup plus long (ex: 3-step Monte-Carlo rollouts) et
+      un planificateur qui inclut les transferts amis comme actions de
+      premier ordre.
+
+
+--------------------------------------------------------------------------------
+9.  COMMENT REPRODUIRE — STRATÉGIE D'EXTRACTION
+--------------------------------------------------------------------------------
+
+  Étape 1 : Réécrire bot_v7.plan_moves pour ajouter "transfer" comme
+  type de mission de premier ordre, avec scoring approprié :
+
+      Mission types : { capture, snipe, swarm, reinforce, transfer }
+
+      transfer scoring (esquisse) :
+          score = (target.production * remaining_steps - source_idle_value)
+                  / (transit_turns + 1)
+          target choice = la planète amie LA PLUS PROCHE de la frontière
+                          (frontier = planète ennemie OU neutrale convoitée)
+          send_ratio = 0.4-0.7 selon source.idle_score
+
+      Le transfer ne doit s'activer que si :
+          source est "back" (frontier_distance > median frontier_distance)
+          OR source est "fat" (ships > production × 8)
+          OR target est "thin" (ships < estimated_threat × 2)
+
+  Étape 2 : Tuner les nouveaux paramètres par ES sur le set existant. La
+  cible immédiate : porter le ratio transfer/total de 10% à 30-40% (à mi-
+  chemin de kovi).
+
+  Étape 3 : Behavioral cloning. Voir reverse engineering étape suivante :
+      a) Extraire (state_features, kovi_action) sur les 95 replays.
+      b) Discrétiser les actions (target = parmi N candidats top-K, ships
+         ratio = parmi 5 buckets).
+      c) Entraîner un MLP supervisé (cross-entropy) → distribution
+         conditionnelle p(action | state).
+      d) Initialiser le scorer V7 avec les logits du MLP. Ce sera un
+         warm-start sensiblement meilleur que zéro.
+
+  Étape 4 : League training (fichier docs/analysis/neural_proposal.txt).
+
+
+--------------------------------------------------------------------------------
+10.  TESTS QUANTITATIFS DE VALIDATION
+--------------------------------------------------------------------------------
+
+  Pour valider que la nouvelle politique reproduit bien le profil top-1,
+  mesurer dans 200 parties contre le pool actuel :
+
+      M1 — ratio transfer/total          cible : ≥ 0.35  (V7 : ≈ 0.10)
+      M2 — actions/tour actif (médiane)  cible : ≥ 3.0   (V7 : ≈ 1.7)
+      M3 — count planets à t=60          cible : ≥ 8     (V7 : 5-7)
+      M4 — count planets à t=100         cible : ≥ 13    (V7 : 8-11)
+      M5 — distribution ships/action P50 cible : 16 ± 5  (V7 : ≈ 30)
+      M6 — distribution ships/action P99 cible : ≥ 800   (V7 : ≈ 400)
+      M7 — garrison P10 sur planètes     cible : ≤ 8     (V7 : ≈ 18)
+      M8 — taux victoire vs zoo          cible : ≥ 60%   (V7 : 43%)
+
+  Si M1-M7 sont atteints mais pas M8, c'est que la grammaire est correcte
+  mais le scoring est faux → temps d'introduire le NN (cf. neural_proposal).
+
+  Si M8 atteint sans M1-M7 → le bot a trouvé une exploit du zoo et ça ne
+  généralisera pas sur Kaggle. Garder le bot mais NE PAS soumettre.
+
+
+================================================================================
+RÉSUMÉ EN 5 LIGNES (à imprimer en grand)
+================================================================================
+
+  - Top-1 fait 66 % de TRANSFERS amis, V7 fait 10 % → grammaire à étendre.
+  - Top-1 attaque dès t=3 (médiane), pas au tour 0 → patience.
+  - Top-1 prend les neutrals SANS filtrer par production en opening.
+  - Top-1 a une distribution d'envois bimodale (probe 16 / strike 200+).
+  - Top-1 vise planet count ≥ 13 à t=80 — cette métrique prédit la victoire.
+
+  → Si on copie ces 5 invariants, V7 saute de WR=43% à ≈ 55-60% sans NN.
+  → Pour viser ELO 1500+, ajouter un NN différentiable (cf. neural_proposal).
+
+================================================================================
+FIN DU REVERSE ENGINEERING
+================================================================================

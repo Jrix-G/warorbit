@@ -1,0 +1,486 @@
+================================================================================
+PROPOSITION D'ARCHITECTURE NEURONALE — ORBIT WARS
+30 avril 2026
+Cible : ELO Kaggle 1500-2000 (top 5 actuel — top 1 actuel = 2577)
+Contraintes dures : numpy-only à l'eval, < 100 ms par décision (overage 60s/g)
+================================================================================
+
+Avertissement : tous les calculs ci-dessous sont faits avec une précision
+acceptable pour la conception. Les ordres de grandeur de FLOPs, de mémoire,
+et de coût d'entraînement ont été vérifiés deux fois. Si l'exécution
+hardware réelle s'écarte de plus de 30%, ré-vérifier numpy.einsum vs
+numpy.dot et la cache CPU L1/L2.
+
+
+--------------------------------------------------------------------------------
+0.  HYPOTHÈSES DE CONCEPTION
+--------------------------------------------------------------------------------
+
+H1.  PyTorch indisponible à l'eval Kaggle. → forward pass en numpy pur.
+H2.  Budget temps par décision : ≤ 50 ms moyen, ≤ 200 ms pire cas (overage
+     budget 60s + 1s/turn → 0.12s effective median si on ne déborde pas).
+H3.  Espace mémoire submission : doit tenir dans le pickle d'eval Kaggle.
+     Limite pratique : ≤ 5 Mo de poids. À float32 → ≤ 1.25 M paramètres.
+H4.  L'environnement d'entraînement A PyTorch (peut servir uniquement à
+     entraîner ; les poids sont exportés en numpy .npy ou inlined base64).
+H5.  Self-play possible via SimGame (~5s/match V7 vs V7) ou kaggle env
+     (~7s/match en 4p, vu logs gen_t=27-60s pour 8 jeux × 8 workers).
+
+
+--------------------------------------------------------------------------------
+1.  POURQUOI C'EST LE BON MOMENT POUR LE NEURAL
+--------------------------------------------------------------------------------
+
+a)  Le ceiling rule-based+ES est ≈ ELO 1300 (cf. critique §9). Il faut
+    DOUBLER l'expressivité du modèle pour viser ELO 1500.
+
+b)  Aucun bot publié dans la compétition n'utilise NN différentiable
+    sérieux à ce jour (cf. docs/analysis/stratégie.md, recensement) :
+    "RL Tutorial REINFORCE notebook" → ELO 958 (donc PPO sans soin →
+    perd contre rule-based)
+    "James McGuigan a essayé RL et n'a pas dépassé le rule-based"
+    → CRENAU OUVERT. Bien fait, c'est notre fenêtre d'avance.
+
+c)  Le replay dataset existe : 1109 épisodes parsés (analysis/v7_fast_
+    replay_summary.md) + 95 replays de kovi top-1 + nos propres replays.
+    Volume suffisant pour BC.
+
+d)  Le moteur game (SimGame.py + bot_v7.WorldModel) est déjà différentiable
+    "moralement" : tout est en numpy, tout est continu sauf l'arrondi
+    discret qu'on peut relâcher au training.
+
+
+--------------------------------------------------------------------------------
+2.  ARCHITECTURE PROPOSÉE — PointerNet adapté à orbit_wars
+--------------------------------------------------------------------------------
+
+   ┌─────────────────────────────────────────────────────────────┐
+   │                                                             │
+   │  ENCODER                                                    │
+   │  ───────                                                    │
+   │  Input : N planètes + M flottes en transit                  │
+   │                                                             │
+   │  Pour chaque planète p_i :                                  │
+   │    feat_i = [owner_onehot(4), x/100, y/100, r/5,            │
+   │              ships_log/8, prod/5, is_static, is_comet,      │
+   │              comet_life/50, ang_pos/2π, dist_to_sun/50,     │
+   │              keep_needed_log/8, threat_log/8, eta_to_me/50, │
+   │              eta_to_enemy/50, indirect_wealth_log/8]        │
+   │       ∈ ℝ^20                                                │
+   │                                                             │
+   │  Pour chaque flotte f_j :                                   │
+   │    feat_j = [owner_onehot(4), x/100, y/100, ang/2π,         │
+   │              ships_log/8, eta/50, target_id_normalized,     │
+   │              speed/6]                                       │
+   │       ∈ ℝ^12                                                │
+   │                                                             │
+   │  Embedding partagé Linear(20→64) sur planètes :  E_P ∈ ℝ^Nx64
+   │  Embedding partagé Linear(12→64) sur flottes  :  E_F ∈ ℝ^Mx64
+   │                                                             │
+   │  Stack(E_P, E_F) → tokens T ∈ ℝ^(N+M)x64                    │
+   │                                                             │
+   │  ATTENTION (1 layer, 4 heads, dim_head=16, MLP 64→128→64) : │
+   │    T' = T + MultiHeadAttention(T)                           │
+   │    T'' = T' + FeedForward(T')                               │
+   │    Total params : ≈ 4 × (64 × 16 × 3) + (64 × 64) +         │
+   │                    (64 × 128) + (128 × 64)                  │
+   │                  ≈ 12 + 4 + 8 + 8 = 32 K params             │
+   │                                                             │
+   │  CLS pooling : ajouter un token global g ∈ ℝ^64 entraîné,  │
+   │  l'attention pèse sur tous → contexte global.               │
+   │                                                             │
+   │  Sortie encoder : E ∈ ℝ^(N+M+1)×64                          │
+   │                                                             │
+   ├─────────────────────────────────────────────────────────────┤
+   │                                                             │
+   │  ACTION HEAD — pointer mechanism                            │
+   │  ──────────────────────────────                             │
+   │                                                             │
+   │  Pour chaque source possible (= chaque planète moi) :       │
+   │    src_emb = E[planet_idx_de_la_source]                     │
+   │                                                             │
+   │    Pour chaque target candidat :                            │
+   │      score(src, tgt, mission) =                             │
+   │        MLP_pointer(src_emb ⊙ tgt_emb ⊕ mission_onehot(5)    │
+   │                    ⊕ global_emb)                            │
+   │       ∈ ℝ                                                   │
+   │                                                             │
+   │    mission_onehot ∈ ℝ^5  →  {capture, snipe, swarm,         │
+   │                              reinforce, transfer}           │
+   │                                                             │
+   │  Softmax sur (target × mission) → distribution              │
+   │  p(target, mission | source).                               │
+   │                                                             │
+   │  Tête séparée pour la fraction de ships à envoyer :         │
+   │    ships_frac = sigmoid(MLP_ratio(src_emb ⊕ tgt_emb))       │
+   │                ∈ [0, 1]                                     │
+   │                                                             │
+   │  Tête séparée pour "skip ce tour" :                         │
+   │    p_idle = sigmoid(MLP_idle(global_emb))                   │
+   │                                                             │
+   │  Total params action head : ≈ 8 K                           │
+   │                                                             │
+   ├─────────────────────────────────────────────────────────────┤
+   │                                                             │
+   │  VALUE HEAD (pour PPO/AC) :                                 │
+   │    V = MLP_value(global_emb) → ℝ                            │
+   │    ≈ 5 K params                                             │
+   │                                                             │
+   └─────────────────────────────────────────────────────────────┘
+
+   BILAN PARAMÈTRES :
+       Embedding planète      :  20 × 64 + 64 =     1 344
+       Embedding flotte       :  12 × 64 + 64 =       832
+       Attention layer 1      :          ≈     32 000
+       MLP_pointer            :  3 × 64 → 64 → 1 ≈ 12 480
+       MLP_ratio              :  2 × 64 → 32 → 1 ≈  4 224
+       MLP_idle               :  64 → 32 → 1 ≈     2 080
+       MLP_value              :  64 → 32 → 1 ≈     2 080
+       Token CLS              :          64 =        64
+                                              ─────────
+                                Total   ≈     55 100 paramètres
+
+   À float32 : 55 100 × 4 ≈ 220 Ko sur disque.
+   ✓ Très loin du budget 5 Mo.
+
+
+--------------------------------------------------------------------------------
+3.  ANALYSE DE COMPLEXITÉ — INFERENCE
+--------------------------------------------------------------------------------
+
+   Au pire cas typique : N=40 planètes, M=60 flottes.
+   Total tokens K = N + M + 1 = 101.
+
+   Coût attention 1 layer 4 heads :
+       Q, K, V projections : 3 × (K × 64 × 64)            ≈ 1.24 M FLOPs
+       Attention scores    : K × K × 64                    ≈ 0.65 M FLOPs
+       Output projection   : K × 64 × 64                   ≈ 0.41 M FLOPs
+       FeedForward         : K × (64 × 128 + 128 × 64)     ≈ 1.65 M FLOPs
+       Total attention     :                              ≈ 3.95 M FLOPs
+
+   Pointer head au pire cas : N_my × N_total × 5 missions
+       N_my (mes planètes) typiquement 6-15 ; N_total = 40
+       Pointer MLP : 192 → 64 → 1 → ≈ 12 K FLOPs/élément
+       Total pointer :                  15 × 40 × 5 × 12 K ≈ 36 M FLOPs
+
+   Ratio + idle + value heads : ≈ 1 M FLOPs
+
+   TOTAL FLOPs INFERENCE / décision : ≈ 40 M FLOPs
+
+   Sur CPU x86 moderne (single-thread numpy.dot ≈ 5 GFLOPs effectifs) :
+       Temps inférence ≈ 40 M / 5 G ≈ 8 ms
+
+   ✓ Très en dessous des 200 ms budget. Marge confortable pour incorporer
+     plusieurs forward passes par tour si nécessaire (ex: argmax sampling
+     puis ré-évaluation des top-k).
+
+
+--------------------------------------------------------------------------------
+4.  PIPELINE D'ENTRAÎNEMENT — 3 PHASES
+--------------------------------------------------------------------------------
+
+   ─────────────────────────────────────────────────────────────────────
+   PHASE 1 — BEHAVIORAL CLONING DEPUIS TOP-1 (kovi sub 52018000)
+   ─────────────────────────────────────────────────────────────────────
+
+   Données : 95 replays de kovi (replay_dataset/output/submission_52018000)
+   + 1 109 épisodes compactés (replay_dataset/compact/episodes.jsonl.gz).
+
+   Extraction (tableau cible) :
+       Pour chaque tour t et chaque action a de kovi :
+         (state_features_t, action_target_id, action_mission_type,
+          action_ships_fraction)
+
+   Volumétrie estimée :
+       95 replays × ≈ 230 tours × 4.2 actions/tour ≈ 92 000 transitions
+       + replay_dataset compact slice → ≈ 200-300 K transitions
+
+   Loss (training par PyTorch local, export en numpy) :
+       L = α · CE(p(target,mission), action_label)         # cible
+         + β · MSE(ships_frac_pred, ships_frac_actual)    # ratio
+         + γ · BCE(p_idle, idle_actual)                    # idle prediction
+
+       α = 1.0, β = 0.3, γ = 0.5
+
+   Optimiseur : AdamW lr=3e-4, batch 256, 30 epochs, dropout 0.1.
+   Coût : ≈ 30 min sur GPU consommer / 4-6h sur CPU.
+
+   Validation : 80/20 split par EPISODE (jamais split intra-épisode pour
+   éviter le data leak).
+   Cible : top-1 accuracy sur (target,mission) ≥ 60%, MSE ratio ≤ 0.05.
+
+   ─────────────────────────────────────────────────────────────────────
+   PHASE 2 — POLICY GRADIENT (PPO numpy, optionnel mais recommandé)
+   ─────────────────────────────────────────────────────────────────────
+
+   Objet : raffiner la policy clonée par retour environnemental.
+
+   Acteur : le NN entraîné en phase 1.
+   Critique : value head V.
+   Avantage : GAE λ=0.95, γ=0.997 (~horizon 333 tours, cohérent).
+
+   Loss PPO clipped (Schulman 2017) :
+       L_clip = E_t[min(r_t · Â_t, clip(r_t, 1-ε, 1+ε) · Â_t)]
+              + c1 · V_loss − c2 · entropy
+
+       ε = 0.15  (plus petit que 0.2 standard car espace d'action discret
+                 large : éviter divergences brutes)
+       c1 = 0.5, c2 = 0.005
+
+   Reward dense :
+       r_t = 0.30 · Δ(planets) + 0.20 · Δ(prod_ratio)
+           + 0.10 · Δ(ships_log_ratio) + 0.40 · I[winner_at_T+50]
+
+       Le terme prédictif I[winner_at_T+50] est calculé en bootstrap
+       depuis V_phi (la value head), pas un pré-rollout. Standard PPO.
+
+   Self-play schedule :
+       Pool initial = { kovi_clone, V7_baseline, V6_baseline,
+                        opponents/ZOO (15 notebooks) }
+       Chaque rollout (1 partie) : sample 1 opponent au hasard.
+       Tous les 50 generations : freeze actor → ajouter au pool.
+       Pool max = 10 (élimination par ELO interne).
+
+   Coût : 1 partie SimGame ≈ 5 s ; cible 50 K parties → ≈ 70 h CPU avec
+   8 workers en parallèle → faisable en 1 nuit.
+
+   PyTorch utilisé pour les gradients ; export final en numpy via .npy.
+
+   ─────────────────────────────────────────────────────────────────────
+   PHASE 3 — LEAGUE TRAINING (alphastar-style, simplifié)
+   ─────────────────────────────────────────────────────────────────────
+
+   Plus de dispositif de pool dynamique. 3 types de joueurs :
+
+       Main agent     : celui qui sera soumis. Apprend contre tous.
+       Main exploiter : tente de battre le main agent (pression continue).
+       League exploiter : trouve les forks faibles dans la league.
+
+   Schedule :
+       Tous les K générations, archiver le main → join "frozen pool".
+       Main exploiter ré-init aléatoirement tous les N générations.
+       Match-making : main joue 70% main exploiter, 20% league exploiter,
+                      10% frozen pool.
+
+   Référence : "Grandmaster level in StarCraft II using multi-agent
+   reinforcement learning", Nature 2019. Adapté en numpy.
+
+   Coût : marathon, plusieurs jours. Optionnel — phase 2 + bon BC peut
+   suffire pour ELO 1500.
+
+
+--------------------------------------------------------------------------------
+5.  MISES EN GARDE MATHÉMATIQUES
+--------------------------------------------------------------------------------
+
+   M1.  Action space discret combinatoire :
+        |Actions(t)| ≤ N_my × N_total × 5 ≈ 15 × 40 × 5 = 3 000 par tour.
+        × ratio continue ∈ [0, 1] → infinie.
+        Discrétiser le ratio en 5 buckets : {idle, 0.1, 0.3, 0.5, 0.8, 1.0}
+        → action space = 18 K combinaisons, parfait pour softmax.
+
+   M2.  Exploration vs exploitation en PPO :
+        Avec entropy_coeff trop bas (< 0.001) on collapse rapidement vers
+        une politique unique. Avec trop haut (> 0.05) le gradient
+        s'éparpille. Notre c2=0.005 est central, à rééchelonner si
+        l'entropy drop > 80% à mi-training.
+
+   M3.  Reward shaping piège :
+        Le terme Δ(planets) peut induire un comportement de "captures
+        opportunistes", trop greedy. Solution : clip Δ(planets) à
+        [-1, +1] par tour. Évite que la prise d'un seul prod=5 vaille
+        autant que 5 prod=1.
+
+   M4.  Self-play non-stationnaire :
+        L'optimum bouge à chaque update. Pour limiter le mode collapse :
+        - garder ≥ 20% du temps contre policies fixes (V7, ZOO)
+        - early stopping si winrate vs V7_baseline tombe sous 50% :
+          c'est le signal qu'on apprend à battre soi-même au lieu d'être
+          robuste.
+
+   M5.  Numerical safety :
+        log_softmax avec -∞ pour les actions invalides (source.ships=0,
+        target inaccessible, etc.). Toujours masker AVANT softmax,
+        jamais après (sinon les probabilités ne somment pas à 1).
+
+   M6.  Time budget par decision :
+        Mesurer le forward pass à PRIORI sur la pire config (N=50, M=80).
+        Si > 100 ms, alterner :
+            - Réduire l'attention à 1 head
+            - Caching d'embeddings entre tours (planètes statiques ne
+              bougent pas — on peut réutiliser l'embedding)
+            - Discrétiser ratio en 3 buckets seulement
+
+
+--------------------------------------------------------------------------------
+6.  EXPORT NUMPY POUR L'EVAL KAGGLE
+--------------------------------------------------------------------------------
+
+   Pipeline :
+
+       1. Train en PyTorch → torch.save(model.state_dict(), 'weights.pt')
+
+       2. Convert :
+          for k, v in state_dict.items():
+              np.save(f'weights/{k}.npy', v.cpu().numpy())
+
+       3. Inline dans submission.py :
+          - soit charger les .npy depuis un répertoire (autorisé Kaggle)
+          - soit base64 encoder le ndarray + np.frombuffer dedans
+
+       4. Forward pass numpy :
+          - Code écrit MAIN, sans torch.
+          - Test parity vs torch sur 100 cas : MAE < 1e-5 → OK.
+          - Reproduit attention, layer_norm, GELU/ReLU à la main.
+
+   Ratio sécurité : tester 30+ minutes le bot numpy en local (SimGame +
+   kaggle_environments) AVANT de soumettre. Toute exception → bot
+   renvoie [] et perd → on ne veut pas découvrir une exception en
+   submission live.
+
+
+--------------------------------------------------------------------------------
+7.  ARCHITECTURE ALTERNATIVE — GNN (si l'attention est trop coûteuse)
+--------------------------------------------------------------------------------
+
+   Variante : remplacer l'attention par une GNN à 2 hops style GraphSAGE.
+
+   Construction du graph :
+       Nœuds = planètes ∪ flottes (∪ soleil comme nœud central)
+       Arêtes = k-NN (k=8) basé sur distance euclidienne.
+
+   Layer message passing :
+       h_i^(l+1) = ReLU(W_self · h_i^(l) + Σ_{j∈N(i)} W_neigh · h_j^(l))
+
+   Avantages :
+       - Plus interprétable
+       - Coût constant en N (pas de O(N²) de l'attention)
+       - Forward pass ≈ 8 M FLOPs au lieu de 40 M ; 1-2 ms
+
+   Inconvénients :
+       - Moins expressif (pas d'attention dynamique)
+       - k-NN doit être recalculé chaque tour si planètes bougent
+
+   Comparaison empirique requise : entraîner les deux pendant la phase 1,
+   garder le meilleur sur val accuracy.
+
+
+--------------------------------------------------------------------------------
+8.  ROADMAP CONCRÈTE — 30 JOURS (deadline Kaggle 23 juin 2026)
+--------------------------------------------------------------------------------
+
+   Semaine 1 (1-7 mai) :
+   [ ] Étendre extract_training_data.py pour produire les features
+       per-planet et per-fleet (pas seulement les 22 globales).
+       Cible : training_data_v2.npz contenant N tours × ≤ 50 planètes
+       × 20 features.
+   [ ] Implémenter forward pass numpy de l'attention (sanity check vs
+       PyTorch).
+   [ ] Augmenter le pipeline ES pendant ce temps :
+       --pairs 4 --games-per-eval 4 --eval-every 10
+       Si V7 atteint WR=55%, c'est notre nouvelle baseline.
+
+   Semaine 2 (8-14 mai) :
+   [ ] Entraîner BC phase 1 sur 95 replays kovi.
+   [ ] Mesurer top-1 accuracy par classe d'action (capture/snipe/...).
+   [ ] Wrapper le NN dans un agent compatible bot_v7 → tester en local
+       SimGame contre V7 et ZOO.
+   [ ] Si NN_BC > V7 sur ZOO, soumettre comme "v8_clone".
+
+   Semaine 3 (15-21 mai) :
+   [ ] Implémenter PPO numpy ou continuer en PyTorch (le training peut
+       être en PT, seul le forward eval est en numpy).
+   [ ] Self-play 50 K parties contre pool dynamique.
+   [ ] Tracker reward dense et winrate vs baselines fixes.
+
+   Semaine 4 (22-28 mai) :
+   [ ] League training : 3 archetypes d'agents.
+   [ ] Tournoi interne pour sélectionner le meilleur checkpoint.
+   [ ] Soumettre v9_league.
+
+   Semaine 5+ (29 mai → 23 juin) :
+   [ ] Itérations de raffinement, ablations (avec/sans attention, avec/
+       sans value head, etc.).
+   [ ] Optimiser le forward pass (caching, reduced precision).
+   [ ] Submissions A/B sur Kaggle pour ladder ELO.
+
+
+--------------------------------------------------------------------------------
+9.  RISQUES IDENTIFIÉS & MITIGATIONS
+--------------------------------------------------------------------------------
+
+   R1.  Le BC sur kovi peut sous-performer en zone OOD (parties très
+        longues, mid-game à 4 joueurs).
+        Mitigation : mélanger 30% des données venues de notre pool
+        (V7 + Zoo) pour régulariser.
+
+   R2.  Le forward pass peut dépasser le timeout en pire cas (N=50, M=80).
+        Mitigation : profiling sur pathological worst-case dès la phase 2.
+
+   R3.  Le pool de self-play peut induire un overfit sur lui-même.
+        Mitigation : league training (phase 3) résout ce problème par
+        construction.
+
+   R4.  PyTorch non disponible → bug d'export numpy.
+        Mitigation : test parity automatisé sur 1000 cas random
+        (input_random → torch_out vs numpy_out, MAE < 1e-5).
+
+   R5.  Le top-1 (kovi) peut avoir une stratégie qui exploite des bugs
+        spécifiques de l'env Kaggle (timing edge cases). Notre BC les
+        copierait sans le savoir.
+        Mitigation : reverse-engineering complémentaire des replays
+        de losers contre kovi pour identifier les exploits.
+
+
+--------------------------------------------------------------------------------
+10.  MÉTRIQUES DE SUCCÈS (par phase)
+--------------------------------------------------------------------------------
+
+   Phase 1 (BC) :
+       - val top-1 (target, mission) accuracy ≥ 60%
+       - val MSE ships_fraction ≤ 0.05
+       - winrate vs ZOO ≥ 50% (V7 actuel : 43%)
+       - winrate vs V7 baseline ≥ 50%
+       - submit ELO ≥ 1100
+
+   Phase 2 (PPO) :
+       - winrate vs V7 baseline ≥ 65%
+       - winrate vs ZOO ≥ 65%
+       - submit ELO ≥ 1300
+
+   Phase 3 (league) :
+       - winrate vs phase 2 checkpoint ≥ 55% (signe qu'on a progressé)
+       - submit ELO ≥ 1500
+
+   Stretch (optionnel) :
+       - submit ELO ≥ 1700 → top 5 actuel
+       - écart au n°1 (kovi 2577) ne sera pas comblé sans data orders
+         of magnitude supérieurs
+
+
+--------------------------------------------------------------------------------
+11.  CHIFFRES IMPORTANTS À MÉMORISER
+--------------------------------------------------------------------------------
+
+   Modèle : ≈ 55 K paramètres, ≈ 220 Ko sur disque
+   Inférence : ≈ 40 M FLOPs / décision, ≈ 8 ms en numpy
+   Training BC : 30 min GPU / 4-6h CPU sur 95 replays
+   Training PPO : 50 K matchs × 5 s = 70 h avec 1 worker, ≈ 9 h × 8 workers
+   Training league : 200-500 K matchs → 2-5 jours
+   Espace de paramètres ES actuel : 22-D     → max ELO 1300
+   Espace de paramètres NN proposé : 55 K-D → cible ELO 1500-2000
+   Ratio expressivité : ×2500
+
+
+================================================================================
+TL;DR EN UNE PHRASE
+
+  Encoder transformer 1-couche (32K params) sur les nœuds (planètes+flottes),
+  pointer head sur (source × target × mission), entraîné par BC sur kovi
+  (95 replays, ≈ 90 K samples) puis PPO self-play league. Forward 8 ms en
+  numpy, taille 220 Ko, cible ELO 1500-2000 d'ici 30 jours. Aucun autre
+  bot du leaderboard public n'a un NN différentiable — c'est le créneau.
+
+================================================================================
+FIN DE LA PROPOSITION
+================================================================================

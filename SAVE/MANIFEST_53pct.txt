@@ -1,0 +1,7 @@
+Saved snapshot
+- date: 2026-04-30 10:17:02
+- bot: bot_v7.py
+- checkpoint best: evaluations\scorer_v7_kaggle.npz
+- checkpoint latest: evaluations\scorer_v7_kaggle_latest.npz
+- reported best WR: 53%
+- generation: 273
