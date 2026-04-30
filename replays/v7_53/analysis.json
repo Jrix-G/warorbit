@@ -1,0 +1,718 @@
+[
+  {
+    "episode_id": 75680588,
+    "n_players": 4,
+    "my_idx": 3,
+    "scores": [
+      -1,
+      1,
+      -1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 225,
+    "agents": [
+      51863527,
+      51954335,
+      52200346,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75680594,
+    "n_players": 4,
+    "my_idx": 3,
+    "scores": [
+      -1,
+      -1,
+      1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 211,
+    "agents": [
+      51992037,
+      52200406,
+      52186704,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75680219,
+    "n_players": 4,
+    "my_idx": 0,
+    "scores": [
+      -1,
+      -1,
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 147,
+    "agents": [
+      52195726,
+      51981805,
+      52194243,
+      52200823
+    ]
+  },
+  {
+    "episode_id": 75679936,
+    "n_players": 4,
+    "my_idx": 2,
+    "scores": [
+      -1,
+      1,
+      -1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 181,
+    "agents": [
+      51868091,
+      52179717,
+      52195726,
+      52200823
+    ]
+  },
+  {
+    "episode_id": 75678207,
+    "n_players": 4,
+    "my_idx": 2,
+    "scores": [
+      -1,
+      -1,
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 265,
+    "agents": [
+      51972539,
+      52155568,
+      52195726,
+      52199403
+    ]
+  },
+  {
+    "episode_id": 75677641,
+    "n_players": 2,
+    "my_idx": 1,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 202,
+    "agents": [
+      52191380,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75677598,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 82,
+    "agents": [
+      52195726,
+      52197823
+    ]
+  },
+  {
+    "episode_id": 75677409,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 187,
+    "agents": [
+      52195726,
+      51849371
+    ]
+  },
+  {
+    "episode_id": 75677245,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 97,
+    "agents": [
+      52195726,
+      51801975
+    ]
+  },
+  {
+    "episode_id": 75677086,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 147,
+    "agents": [
+      52195726,
+      52197451
+    ]
+  },
+  {
+    "episode_id": 75676832,
+    "n_players": 4,
+    "my_idx": 2,
+    "scores": [
+      -1,
+      -1,
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 216,
+    "agents": [
+      52197437,
+      52134481,
+      52195726,
+      52175531
+    ]
+  },
+  {
+    "episode_id": 75676830,
+    "n_players": 4,
+    "my_idx": 1,
+    "scores": [
+      -1,
+      -1,
+      1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 157,
+    "agents": [
+      52197567,
+      52195726,
+      51849792,
+      51870245
+    ]
+  },
+  {
+    "episode_id": 75676737,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 185,
+    "agents": [
+      52195726,
+      52005068
+    ]
+  },
+  {
+    "episode_id": 75676480,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 104,
+    "agents": [
+      52195726,
+      52167008
+    ]
+  },
+  {
+    "episode_id": 75676284,
+    "n_players": 2,
+    "my_idx": 1,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 164,
+    "agents": [
+      51962428,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75675995,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 231,
+    "agents": [
+      52195726,
+      52106404
+    ]
+  },
+  {
+    "episode_id": 75675775,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 187,
+    "agents": [
+      52195726,
+      52177413
+    ]
+  },
+  {
+    "episode_id": 75675650,
+    "n_players": 4,
+    "my_idx": 3,
+    "scores": [
+      -1,
+      -1,
+      -1,
+      1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 197,
+    "agents": [
+      51947353,
+      52179872,
+      52149832,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75675561,
+    "n_players": 2,
+    "my_idx": 1,
+    "scores": [
+      -1,
+      1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 99,
+    "agents": [
+      52197130,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75675429,
+    "n_players": 4,
+    "my_idx": 2,
+    "scores": [
+      -1,
+      1,
+      -1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 500,
+    "agents": [
+      52151561,
+      52172165,
+      52195726,
+      51964071
+    ]
+  },
+  {
+    "episode_id": 75675181,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 282,
+    "agents": [
+      52195726,
+      52194230
+    ]
+  },
+  {
+    "episode_id": 75675263,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 149,
+    "agents": [
+      52195726,
+      52081244
+    ]
+  },
+  {
+    "episode_id": 75675096,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 120,
+    "agents": [
+      52195726,
+      51985558
+    ]
+  },
+  {
+    "episode_id": 75675001,
+    "n_players": 4,
+    "my_idx": 1,
+    "scores": [
+      -1,
+      1,
+      -1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 174,
+    "agents": [
+      52102259,
+      52195726,
+      51993484,
+      52094210
+    ]
+  },
+  {
+    "episode_id": 75674901,
+    "n_players": 4,
+    "my_idx": 0,
+    "scores": [
+      -1,
+      1,
+      -1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 142,
+    "agents": [
+      52195726,
+      52169132,
+      51846343,
+      52195074
+    ]
+  },
+  {
+    "episode_id": 75674731,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 205,
+    "agents": [
+      52195726,
+      51979913
+    ]
+  },
+  {
+    "episode_id": 75674582,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 156,
+    "agents": [
+      52195726,
+      52148337
+    ]
+  },
+  {
+    "episode_id": 75674486,
+    "n_players": 4,
+    "my_idx": 3,
+    "scores": [
+      -1,
+      1,
+      -1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 221,
+    "agents": [
+      52139578,
+      52180094,
+      52082849,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75674419,
+    "n_players": 4,
+    "my_idx": 1,
+    "scores": [
+      -1,
+      -1,
+      1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 188,
+    "agents": [
+      51968374,
+      52195726,
+      52157712,
+      52041704
+    ]
+  },
+  {
+    "episode_id": 75674223,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 143,
+    "agents": [
+      52195726,
+      51928695
+    ]
+  },
+  {
+    "episode_id": 75674122,
+    "n_players": 4,
+    "my_idx": 3,
+    "scores": [
+      -1,
+      -1,
+      1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 214,
+    "agents": [
+      52026441,
+      51958804,
+      52152385,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75674020,
+    "n_players": 4,
+    "my_idx": 1,
+    "scores": [
+      -1,
+      -1,
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 205,
+    "agents": [
+      51920768,
+      52195726,
+      52023833,
+      52192518
+    ]
+  },
+  {
+    "episode_id": 75674022,
+    "n_players": 4,
+    "my_idx": 1,
+    "scores": [
+      1,
+      -1,
+      -1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 195,
+    "agents": [
+      52195948,
+      52195726,
+      52164988,
+      51880841
+    ]
+  },
+  {
+    "episode_id": 75673924,
+    "n_players": 4,
+    "my_idx": 0,
+    "scores": [
+      -1,
+      1,
+      -1,
+      -1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 186,
+    "agents": [
+      52195726,
+      52138267,
+      52168937,
+      52061201
+    ]
+  },
+  {
+    "episode_id": 75673784,
+    "n_players": 4,
+    "my_idx": 1,
+    "scores": [
+      -1,
+      -1,
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 219,
+    "agents": [
+      52028747,
+      52195726,
+      52184583,
+      52184311
+    ]
+  },
+  {
+    "episode_id": 75673635,
+    "n_players": 2,
+    "my_idx": 1,
+    "scores": [
+      -1,
+      1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 140,
+    "agents": [
+      52168897,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75673546,
+    "n_players": 4,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1,
+      -1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 500,
+    "agents": [
+      52195726,
+      51972539,
+      52093187,
+      52177493
+    ]
+  },
+  {
+    "episode_id": 75673389,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      1,
+      -1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 122,
+    "agents": [
+      52195726,
+      51939225
+    ]
+  },
+  {
+    "episode_id": 75673242,
+    "n_players": 2,
+    "my_idx": 1,
+    "scores": [
+      -1,
+      1
+    ],
+    "my_score": 1,
+    "won": true,
+    "n_turns": 139,
+    "agents": [
+      52191596,
+      52195726
+    ]
+  },
+  {
+    "episode_id": 75673197,
+    "n_players": 2,
+    "my_idx": 0,
+    "scores": [
+      -1,
+      1
+    ],
+    "my_score": -1,
+    "won": false,
+    "n_turns": 235,
+    "agents": [
+      52195726,
+      52195726
+    ]
+  }
+]

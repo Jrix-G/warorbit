@@ -2,6 +2,64 @@
 
 Goal: avoid the V7 ceiling by moving learning from a late local multiplier to a policy-level ranker over candidate plans, with a value head and DAgger-style dataset aggregation.
 
+## V8 Prerequisites — V7 Bug Fixes
+
+Before any training, three hard bugs in V7's candidate generation must be fixed.
+Training on a broken base policy embeds broken behaviors into the dataset irreversibly.
+
+### Fix #0 — Already-in-flight check (CRITICAL)
+
+Measured: 88 wasted missions in a single 4p game (ep75680588).
+Root cause: `planned_commitments` prevents double-counting *within* a turn but not *across* turns.
+The bot sees a partially-captured target, computes `ships_needed > 0`, and sends more fleets — ignoring
+the 20-30 own fleets already en route from previous turns.
+
+```python
+def my_ships_en_route_to(target_id, world):
+    return sum(
+        entry[2]
+        for entry in world.arrival_ledger.get(target_id, [])
+        if entry[1] == world.player
+    )
+
+# In plan_moves target loop:
+already = my_ships_en_route_to(target.id, world)
+needed = world.ships_needed_to_capture(target.id, turns, planned_commitments)
+if already >= needed:
+    continue  # enough in flight, do not escalate
+if target.owner != -1 and already > needed * 0.5:
+    continue  # enemy target, partial commitment — wait for resolution
+```
+
+### Fix #1 — Garrison floor proportional to production
+
+`min_garrison` stays at 1-5 ships across all loss games. Any enemy fleet of 6 ships
+takes any planet unconditionally.
+
+```python
+def garrison_floor(planet, world):
+    dist = world.nearest_enemy_dist(planet)
+    if dist < 20:   return max(5, planet.production * 8)
+    if dist < 35:   return max(5, planet.production * 5)
+    return max(5, planet.production * 3)
+
+# keep_needed returns max(timeline_result, garrison_floor(planet, world))
+```
+
+### Fix #4 — Early 4p expansion thresholds
+
+In 2p games the bot reaches 10+ planets by t60. In 4p it averages 3-4 planets at t70.
+The neutral capture margin is calibrated for 2p; in 4p the contested window is 2-3× shorter.
+
+```python
+IS_4P = len(obs.initial_planets) > 8
+if IS_4P and world.step < 60:
+    NEUTRAL_MARGIN = 1.05          # was TWO_PLAYER_NEUTRAL_MARGIN_BASE = 1.2
+    REAR_STAGING_MIN_TURN = 60     # no rear staging before mass is established
+```
+
+---
+
 ## Why V7 Plateaus
 
 Current V7 learns only in a narrow slot:
@@ -39,11 +97,35 @@ In the implemented V8 shape, the candidate set is intentionally small and
 structured:
 
 ```text
-C(s) = { V7 baseline, attack, expand, defense, comet, reserve }
+C(s) = { V7 baseline, attack, expand, defense, comet, reserve,
+          4p_opportunistic*, 4p_eliminate_weakest*, 4p_conservation* }
 ```
 
+The three starred candidates are only generated when `IS_4P = True`.
 This avoids the plateau of a late scalar reranker because the model can now
 switch between qualitatively different plan families.
+
+### 4p-Specific Candidate Plans
+
+#### `4p_opportunistic`
+Target only planets that are contested or recently fought over.
+A planet is a candidate if: `target.ships < target.production * 3` (just changed hands),
+or an enemy fleet is en route to it (they will fight, leaving it depleted).
+Ships sent = minimum needed to take the post-battle residual.
+Effect: the bot scavenges from other players' wars instead of initiating its own.
+
+#### `4p_eliminate_weakest`
+Concentrate all offensive resources against the single weakest enemy
+(`min over enemies of: total_ships + production * 20`).
+Stop attacking others entirely until that enemy is eliminated or drops to 0 planets.
+Effect: each elimination removes 1/3 of total pressure and redistributes resources.
+
+#### `4p_conservation`
+Triggered when `active_fronts >= 2` (2+ enemies have fleets en route to my planets).
+Zero new offensive missions. All ships go to reinforcement of threatened planets.
+Releases when `active_fronts < 2` for 10 consecutive turns.
+Effect: prevents the self-destruction loop where the bot attacks A while B and C
+take undefended planets from behind.
 
 ## State and Candidate Features
 
@@ -61,7 +143,13 @@ z_c = E_c(s, c)
 - comet pressure,
 - threat pressure,
 - reserve ratios,
-- orbit / center proximity statistics.
+- orbit / center proximity statistics,
+- **[4p]** `n_active_fronts`: number of enemies currently attacking my planets,
+- **[4p]** `weakest_enemy_fraction`: weakest enemy total ships / my total ships,
+- **[4p]** `contested_planet_count`: planets with 2+ enemy fleets inbound,
+- **[4p]** `inter_enemy_fight_intensity`: sum of enemy fleets targeting other-enemy planets (they are busy),
+- **[4p]** `garrison_ratio`: my ships on planets / my total ships (key collapse predictor),
+- **[4p]** `min_garrison_normalized`: min garrison across my planets / avg production.
 
 `E_c` consumes:
 - variant identity,
@@ -70,7 +158,10 @@ z_c = E_c(s, c)
 - source / target mix,
 - average ETA,
 - source production / reserve stats,
-- coverage and concentration statistics.
+- coverage and concentration statistics,
+- **[4p]** `targets_weakest_enemy`: fraction of actions targeting the weakest enemy,
+- **[4p]** `targets_contested`: fraction of actions targeting contested/depleted planets,
+- **[4p]** `already_committed_ratio`: my ships already en route to targets / ships sent this plan.
 
 ## Training Loss
 
@@ -138,6 +229,45 @@ evaluate on held-out opponents
 keep best checkpoint
 ```
 
+## 4p Training Considerations
+
+4p games have structurally different dynamics from 2p and must not be pooled naively.
+
+### Separate oracle labeling per mode
+
+In 2p, `c+ = argmax_c margin_after_H_steps` works well.
+In 4p, margin is noisy because 3 opponents interact. Use:
+
+```text
+c+_4p = argmax_c (ship_delta * 0.3 + planet_delta * 0.5 + eliminated_enemies * 0.2)
+```
+
+The `eliminated_enemies` term captures the asymmetric value of 4p kills
+(removing one player collapses the threat landscape discontinuously).
+
+### Stratified sampling
+
+Training batch composition:
+- 50% 2p games (stable signal)
+- 50% 4p games (harder, but where the ELO gap is largest)
+
+Within 4p, oversample states where `active_fronts >= 2` and `garrison_ratio < 0.30`
+— these are the states where V7 fails most and where the 4p candidates add value.
+
+### Late-game 4p blitz
+
+At `step > 280` in 4p, most resources have been spent by other players.
+Add a `4p_late_blitz` candidate: all offense, ignore garrison floor.
+This is only valid late because early use triggers the overextend pattern.
+The model learns to activate it via `turn_phase` in `E_s`.
+
+```python
+if IS_4P and world.step > 280:
+    candidates.append(generate_4p_late_blitz(world))
+```
+
+---
+
 ## V8.1 Training Improvements
 
 The implementation now keeps the same architecture, but makes the signal less
@@ -172,12 +302,42 @@ This is much less sparse than terminal win/loss and is closer to the actual indu
 4. The value head adds a longer-horizon signal without forcing the ranker to solve the entire game alone.
 5. The simulator is used as an oracle generator and validator, not as the single source of truth for final policy quality.
 
+## Implementation Sequence
+
+Order matters. Each step must benchmark before the next starts.
+
+```text
+Step 0 (pre-ML): Apply V7 bug fixes
+  - Fix #0: already_in_flight check           → benchmark 4p, target +14pts
+  - Fix #1: garrison_floor                    → benchmark 4p, target +10pts
+  - Fix #4: early 4p expansion thresholds     → benchmark 4p, target +5pts
+  → Gate: 4p winrate > 40% before proceeding to Step 1
+
+Step 1: Extend candidate set
+  - Add 4p_opportunistic, 4p_eliminate_weakest, 4p_conservation
+  - Add 4p_late_blitz (t>280 only)
+  - Zero weights → fallback to V7 baseline (safe warm-start preserved)
+
+Step 2: Extend feature vectors
+  - Add 6 new E_s features (4p dynamics)
+  - Add 3 new E_c features
+  - Retrain with existing DAgger loop, stratified 50/50 2p/4p
+
+Step 3: 4p oracle calibration
+  - Separate labeling function for 4p (ship_delta + planet_delta + eliminated_enemies)
+  - Oversample active_fronts>=2 states
+
+Step 4: Benchmark and iterate
+  - Target: 4p > 55%, 2p > 70%, overall > 62%
+```
+
 ## File Layout
 
 - `bot_v8.py`: inference-time policy, candidate generation, model, feature extraction.
 - `train_v8.py`: DAgger + pairwise ranking + value training.
 - `test_v8.py`: smoke tests, shape checks, benchmark checks.
 - `docs/specs/V8_ARCHITECTURE.md`: this spec.
+- `docs/reports/V8_DEFEAT_ANALYSIS.md`: empirical loss analysis, 40 Kaggle games.
 
 ## Implemented Baseline
 

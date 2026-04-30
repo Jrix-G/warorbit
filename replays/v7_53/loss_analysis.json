@@ -1,0 +1,4741 @@
+[
+  {
+    "episode_id": 75680588,
+    "n_players": 4,
+    "n_turns": 225,
+    "peak_ships": 1283,
+    "peak_turn": 129,
+    "collapse_turn": 175,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 532,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 28,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 376,
+        "my_planets": 6,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 363,
+          "1": 280,
+          "2": 315,
+          "3": 376,
+          "-1": 301
+        },
+        "all_planets": {
+          "0": 7,
+          "1": 6,
+          "2": 7,
+          "3": 6,
+          "-1": 10
+        },
+        "my_player_id": 3,
+        "n_actions": 3,
+        "fleets_count": 72
+      },
+      "100": {
+        "my_ships": 684,
+        "my_planets": 12,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 536,
+          "0": 315,
+          "3": 684,
+          "2": 261
+        },
+        "all_planets": {
+          "1": 10,
+          "0": 6,
+          "3": 12,
+          "2": 4
+        },
+        "my_player_id": 3,
+        "n_actions": 2,
+        "fleets_count": 84
+      },
+      "150": {
+        "my_ships": 1004,
+        "my_planets": 11,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 1256,
+          "3": 1004,
+          "-1": 56,
+          "0": 26
+        },
+        "all_planets": {
+          "1": 21,
+          "3": 11,
+          "-1": 4
+        },
+        "my_player_id": 3,
+        "n_actions": 5,
+        "fleets_count": 63
+      },
+      "165": {
+        "my_ships": 938,
+        "my_planets": 9,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 1687,
+          "3": 938,
+          "-1": 28
+        },
+        "all_planets": {
+          "1": 25,
+          "3": 9,
+          "-1": 2
+        },
+        "my_player_id": 3,
+        "n_actions": 1,
+        "fleets_count": 76
+      },
+      "175": {
+        "my_ships": 574,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 1997,
+          "3": 574
+        },
+        "all_planets": {
+          "1": 32,
+          "3": 4
+        },
+        "my_player_id": 3,
+        "n_actions": 2,
+        "fleets_count": 60
+      },
+      "200": {
+        "my_ships": 26,
+        "my_planets": 0,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 3294,
+          "3": 26
+        },
+        "all_planets": {
+          "1": 32
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 40
+      }
+    },
+    "my_ships_t10": [
+      10,
+      30,
+      80,
+      145,
+      244,
+      376,
+      495,
+      575,
+      652,
+      649,
+      684,
+      868,
+      1064,
+      1263,
+      1134,
+      1004,
+      873,
+      784,
+      465,
+      227,
+      26,
+      1,
+      1
+    ],
+    "winner_ships_t10": [
+      10,
+      30,
+      62,
+      104,
+      212,
+      280,
+      407,
+      482,
+      535,
+      552,
+      536,
+      677,
+      880,
+      1039,
+      1082,
+      1256,
+      1477,
+      1868,
+      2260,
+      2684,
+      3294,
+      4109,
+      4949
+    ],
+    "my_planets_t10": [
+      1,
+      1,
+      3,
+      4,
+      7,
+      6,
+      7,
+      7,
+      11,
+      9,
+      12,
+      13,
+      16,
+      14,
+      10,
+      11,
+      13,
+      6,
+      2,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75680594,
+    "n_players": 4,
+    "n_turns": 211,
+    "peak_ships": 440,
+    "peak_turn": 111,
+    "collapse_turn": 132,
+    "winner_idx": 2,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 20,
+        "all_ships": {
+          "-1": 376,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 16,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 306,
+        "my_planets": 3,
+        "total_planets": 20,
+        "all_ships": {
+          "1": 299,
+          "0": 390,
+          "3": 306,
+          "-1": 120,
+          "2": 296
+        },
+        "all_planets": {
+          "1": 6,
+          "0": 4,
+          "3": 3,
+          "-1": 6,
+          "2": 5
+        },
+        "my_player_id": 3,
+        "n_actions": 1,
+        "fleets_count": 57
+      },
+      "100": {
+        "my_ships": 350,
+        "my_planets": 3,
+        "total_planets": 20,
+        "all_ships": {
+          "2": 944,
+          "1": 185,
+          "3": 350,
+          "0": 69
+        },
+        "all_planets": {
+          "2": 13,
+          "1": 3,
+          "3": 3,
+          "0": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 30
+      },
+      "122": {
+        "my_ships": 375,
+        "my_planets": 4,
+        "total_planets": 20,
+        "all_ships": {
+          "2": 1399,
+          "1": 49,
+          "3": 375,
+          "0": 39
+        },
+        "all_planets": {
+          "2": 13,
+          "1": 2,
+          "3": 4,
+          "0": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 27
+      },
+      "132": {
+        "my_ships": 206,
+        "my_planets": 4,
+        "total_planets": 20,
+        "all_ships": {
+          "2": 1482,
+          "3": 206,
+          "0": 22
+        },
+        "all_planets": {
+          "2": 16,
+          "3": 4
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 12
+      },
+      "150": {
+        "my_ships": 218,
+        "my_planets": 3,
+        "total_planets": 20,
+        "all_ships": {
+          "2": 2210,
+          "3": 218,
+          "-1": 36,
+          "0": 5
+        },
+        "all_planets": {
+          "2": 17,
+          "3": 3,
+          "-1": 4
+        },
+        "my_player_id": 3,
+        "n_actions": 1,
+        "fleets_count": 14
+      },
+      "200": {
+        "my_ships": 9,
+        "my_planets": 1,
+        "total_planets": 20,
+        "all_ships": {
+          "2": 5002,
+          "3": 9
+        },
+        "all_planets": {
+          "2": 19,
+          "3": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 1
+      }
+    },
+    "my_ships_t10": [
+      10,
+      46,
+      113,
+      219,
+      244,
+      306,
+      302,
+      357,
+      398,
+      330,
+      350,
+      427,
+      402,
+      290,
+      221,
+      218,
+      154,
+      69,
+      50,
+      26,
+      9,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      60,
+      128,
+      181,
+      225,
+      296,
+      446,
+      632,
+      767,
+      949,
+      944,
+      1078,
+      1322,
+      1571,
+      1766,
+      2210,
+      2662,
+      3191,
+      3822,
+      4395,
+      5002,
+      5613
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      3,
+      3,
+      4,
+      3,
+      5,
+      7,
+      7,
+      4,
+      3,
+      4,
+      4,
+      4,
+      4,
+      3,
+      3,
+      1,
+      1,
+      0,
+      1,
+      0
+    ]
+  },
+  {
+    "episode_id": 75680219,
+    "n_players": 4,
+    "n_turns": 147,
+    "peak_ships": 721,
+    "peak_turn": 101,
+    "collapse_turn": 121,
+    "winner_idx": 3,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 24,
+        "all_ships": {
+          "-1": 608,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 20,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 314,
+        "my_planets": 4,
+        "total_planets": 24,
+        "all_ships": {
+          "0": 314,
+          "1": 254,
+          "3": 343,
+          "-1": 303,
+          "2": 132
+        },
+        "all_planets": {
+          "0": 4,
+          "1": 5,
+          "3": 8,
+          "-1": 9,
+          "2": 2
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 24
+      },
+      "100": {
+        "my_ships": 702,
+        "my_planets": 5,
+        "total_planets": 24,
+        "all_ships": {
+          "2": 110,
+          "1": 333,
+          "3": 1249,
+          "0": 702
+        },
+        "all_planets": {
+          "2": 2,
+          "1": 3,
+          "3": 14,
+          "0": 5
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 56
+      },
+      "111": {
+        "my_ships": 531,
+        "my_planets": 4,
+        "total_planets": 24,
+        "all_ships": {
+          "3": 1429,
+          "1": 139,
+          "0": 531,
+          "2": 89
+        },
+        "all_planets": {
+          "3": 18,
+          "1": 1,
+          "0": 4,
+          "2": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 3,
+        "fleets_count": 39
+      },
+      "121": {
+        "my_ships": 346,
+        "my_planets": 4,
+        "total_planets": 24,
+        "all_ships": {
+          "3": 1845,
+          "0": 346,
+          "1": 77
+        },
+        "all_planets": {
+          "3": 19,
+          "0": 4,
+          "1": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 15
+      }
+    },
+    "my_ships_t10": [
+      10,
+      24,
+      93,
+      210,
+      251,
+      314,
+      421,
+      408,
+      574,
+      648,
+      702,
+      521,
+      371,
+      266,
+      83
+    ],
+    "winner_ships_t10": [
+      10,
+      30,
+      72,
+      162,
+      318,
+      343,
+      542,
+      745,
+      885,
+      1045,
+      1249,
+      1392,
+      1775,
+      2378,
+      3043
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      3,
+      4,
+      3,
+      4,
+      5,
+      7,
+      7,
+      8,
+      5,
+      5,
+      4,
+      3,
+      0
+    ]
+  },
+  {
+    "episode_id": 75679936,
+    "n_players": 4,
+    "n_turns": 181,
+    "peak_ships": 589,
+    "peak_turn": 89,
+    "collapse_turn": 106,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 36,
+        "all_ships": {
+          "-1": 472,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 32,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 414,
+        "my_planets": 8,
+        "total_planets": 36,
+        "all_ships": {
+          "0": 403,
+          "1": 378,
+          "2": 414,
+          "3": 360,
+          "-1": 61
+        },
+        "all_planets": {
+          "0": 9,
+          "1": 10,
+          "2": 8,
+          "3": 8,
+          "-1": 5
+        },
+        "my_player_id": 2,
+        "n_actions": 1,
+        "fleets_count": 51
+      },
+      "96": {
+        "my_ships": 516,
+        "my_planets": 6,
+        "total_planets": 36,
+        "all_ships": {
+          "0": 575,
+          "1": 635,
+          "3": 717,
+          "2": 516
+        },
+        "all_planets": {
+          "0": 10,
+          "1": 13,
+          "3": 7,
+          "2": 6
+        },
+        "my_player_id": 2,
+        "n_actions": 1,
+        "fleets_count": 109
+      },
+      "100": {
+        "my_ships": 466,
+        "my_planets": 5,
+        "total_planets": 36,
+        "all_ships": {
+          "0": 578,
+          "1": 653,
+          "3": 776,
+          "2": 466
+        },
+        "all_planets": {
+          "0": 8,
+          "1": 14,
+          "3": 9,
+          "2": 5
+        },
+        "my_player_id": 2,
+        "n_actions": 1,
+        "fleets_count": 121
+      },
+      "106": {
+        "my_ships": 276,
+        "my_planets": 2,
+        "total_planets": 36,
+        "all_ships": {
+          "0": 501,
+          "1": 698,
+          "3": 696,
+          "2": 276
+        },
+        "all_planets": {
+          "0": 8,
+          "1": 15,
+          "3": 11,
+          "2": 2
+        },
+        "my_player_id": 2,
+        "n_actions": 1,
+        "fleets_count": 110
+      },
+      "150": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 36,
+        "all_ships": {
+          "3": 545,
+          "1": 1420,
+          "0": 134,
+          "-1": 88
+        },
+        "all_planets": {
+          "3": 9,
+          "1": 25,
+          "0": 2,
+          "-1": 4
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 70
+      }
+    },
+    "my_ships_t10": [
+      10,
+      39,
+      102,
+      187,
+      245,
+      414,
+      484,
+      566,
+      534,
+      583,
+      466,
+      211,
+      59,
+      27,
+      9,
+      0,
+      0,
+      0,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      39,
+      105,
+      198,
+      246,
+      378,
+      535,
+      611,
+      667,
+      664,
+      653,
+      712,
+      835,
+      1072,
+      1219,
+      1420,
+      1562,
+      1932,
+      2596
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      4,
+      6,
+      8,
+      8,
+      9,
+      7,
+      7,
+      7,
+      5,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75677641,
+    "n_players": 2,
+    "n_turns": 202,
+    "peak_ships": 1256,
+    "peak_turn": 102,
+    "collapse_turn": 150,
+    "winner_idx": 0,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 28,
+        "all_ships": {
+          "-1": 688,
+          "0": 10,
+          "1": 10
+        },
+        "all_planets": {
+          "-1": 26,
+          "0": 1,
+          "1": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 435,
+        "my_planets": 8,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 347,
+          "1": 435,
+          "-1": 430
+        },
+        "all_planets": {
+          "0": 11,
+          "1": 8,
+          "-1": 13
+        },
+        "my_player_id": 1,
+        "n_actions": 3,
+        "fleets_count": 61
+      },
+      "100": {
+        "my_ships": 1223,
+        "my_planets": 10,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 1451,
+          "1": 1223
+        },
+        "all_planets": {
+          "0": 18,
+          "1": 10
+        },
+        "my_player_id": 1,
+        "n_actions": 4,
+        "fleets_count": 123
+      },
+      "140": {
+        "my_ships": 900,
+        "my_planets": 7,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 1998,
+          "1": 900
+        },
+        "all_planets": {
+          "0": 21,
+          "1": 7
+        },
+        "my_player_id": 1,
+        "n_actions": 3,
+        "fleets_count": 113
+      },
+      "150": {
+        "my_ships": 578,
+        "my_planets": 6,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 2234,
+          "1": 578,
+          "-1": 56
+        },
+        "all_planets": {
+          "0": 22,
+          "1": 6,
+          "-1": 4
+        },
+        "my_player_id": 1,
+        "n_actions": 2,
+        "fleets_count": 103
+      },
+      "200": {
+        "my_ships": 10,
+        "my_planets": 0,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 4812,
+          "1": 10
+        },
+        "all_planets": {
+          "0": 28
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 3
+      }
+    },
+    "my_ships_t10": [
+      10,
+      60,
+      110,
+      183,
+      303,
+      435,
+      611,
+      740,
+      923,
+      1128,
+      1223,
+      1086,
+      1002,
+      900,
+      900,
+      578,
+      409,
+      215,
+      85,
+      54,
+      10
+    ],
+    "winner_ships_t10": [
+      10,
+      60,
+      110,
+      187,
+      337,
+      347,
+      556,
+      731,
+      985,
+      1168,
+      1451,
+      1500,
+      1566,
+      1664,
+      1998,
+      2234,
+      2609,
+      3233,
+      3868,
+      4001,
+      4812
+    ],
+    "my_planets_t10": [
+      1,
+      1,
+      2,
+      4,
+      7,
+      8,
+      11,
+      13,
+      16,
+      14,
+      10,
+      9,
+      11,
+      11,
+      7,
+      6,
+      2,
+      3,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75676832,
+    "n_players": 4,
+    "n_turns": 216,
+    "peak_ships": 82,
+    "peak_turn": 90,
+    "collapse_turn": 102,
+    "winner_idx": 3,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 764,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 28,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 59,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 821,
+          "0": 82,
+          "1": 71,
+          "2": 59,
+          "3": 94
+        },
+        "all_planets": {
+          "-1": 23,
+          "0": 3,
+          "1": 2,
+          "2": 4,
+          "3": 4
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 17
+      },
+      "92": {
+        "my_ships": 74,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 80,
+          "-1": 509,
+          "3": 267,
+          "2": 74,
+          "0": 173
+        },
+        "all_planets": {
+          "1": 2,
+          "-1": 14,
+          "3": 9,
+          "2": 1,
+          "0": 6
+        },
+        "my_player_id": 2,
+        "n_actions": 1,
+        "fleets_count": 30
+      },
+      "100": {
+        "my_ships": 50,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 94,
+          "-1": 444,
+          "3": 310,
+          "2": 50,
+          "0": 199
+        },
+        "all_planets": {
+          "1": 3,
+          "-1": 11,
+          "3": 11,
+          "2": 1,
+          "0": 6
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 26
+      },
+      "102": {
+        "my_ships": 36,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 106,
+          "-1": 415,
+          "3": 295,
+          "2": 36,
+          "0": 213
+        },
+        "all_planets": {
+          "1": 3,
+          "-1": 10,
+          "3": 12,
+          "2": 1,
+          "0": 6
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 25
+      },
+      "150": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 195,
+          "3": 863,
+          "-1": 598,
+          "0": 150
+        },
+        "all_planets": {
+          "1": 5,
+          "3": 20,
+          "-1": 9,
+          "0": 2
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 45
+      },
+      "200": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 32,
+        "all_ships": {
+          "3": 2254,
+          "1": 37
+        },
+        "all_planets": {
+          "3": 31,
+          "1": 1
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 9
+      }
+    },
+    "my_ships_t10": [
+      10,
+      20,
+      31,
+      51,
+      52,
+      59,
+      70,
+      54,
+      58,
+      82,
+      50,
+      19,
+      19,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      20,
+      28,
+      48,
+      68,
+      94,
+      122,
+      106,
+      174,
+      254,
+      310,
+      350,
+      441,
+      606,
+      736,
+      863,
+      928,
+      1139,
+      1510,
+      1851,
+      2254,
+      2731
+    ],
+    "my_planets_t10": [
+      1,
+      1,
+      2,
+      2,
+      2,
+      4,
+      3,
+      3,
+      3,
+      3,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75676830,
+    "n_players": 4,
+    "n_turns": 157,
+    "peak_ships": 404,
+    "peak_turn": 94,
+    "collapse_turn": 114,
+    "winner_idx": 2,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 40,
+        "all_ships": {
+          "-1": 800,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 36,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 265,
+        "my_planets": 8,
+        "total_planets": 40,
+        "all_ships": {
+          "-1": 556,
+          "1": 265,
+          "2": 274,
+          "0": 238,
+          "3": 47
+        },
+        "all_planets": {
+          "-1": 21,
+          "1": 8,
+          "2": 9,
+          "0": 5,
+          "3": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 2,
+        "fleets_count": 61
+      },
+      "100": {
+        "my_ships": 345,
+        "my_planets": 8,
+        "total_planets": 40,
+        "all_ships": {
+          "-1": 236,
+          "2": 1113,
+          "1": 345,
+          "0": 85
+        },
+        "all_planets": {
+          "-1": 6,
+          "2": 26,
+          "1": 8
+        },
+        "my_player_id": 1,
+        "n_actions": 1,
+        "fleets_count": 96
+      },
+      "104": {
+        "my_ships": 344,
+        "my_planets": 5,
+        "total_planets": 40,
+        "all_ships": {
+          "-1": 204,
+          "2": 1230,
+          "1": 344,
+          "0": 66
+        },
+        "all_planets": {
+          "-1": 5,
+          "2": 29,
+          "1": 5,
+          "0": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 1,
+        "fleets_count": 107
+      },
+      "114": {
+        "my_ships": 193,
+        "my_planets": 2,
+        "total_planets": 40,
+        "all_ships": {
+          "-1": 126,
+          "2": 1579,
+          "1": 193,
+          "0": 39
+        },
+        "all_planets": {
+          "-1": 3,
+          "2": 35,
+          "1": 2
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 86
+      },
+      "150": {
+        "my_ships": 2,
+        "my_planets": 0,
+        "total_planets": 40,
+        "all_ships": {
+          "2": 4264,
+          "-1": 148,
+          "1": 2
+        },
+        "all_planets": {
+          "2": 40,
+          "-1": 4
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 11
+      }
+    },
+    "my_ships_t10": [
+      10,
+      21,
+      69,
+      100,
+      159,
+      265,
+      360,
+      278,
+      282,
+      367,
+      345,
+      295,
+      93,
+      19,
+      2,
+      2
+    ],
+    "winner_ships_t10": [
+      10,
+      30,
+      54,
+      123,
+      185,
+      274,
+      362,
+      528,
+      644,
+      840,
+      1113,
+      1438,
+      1878,
+      2583,
+      3384,
+      4264
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      3,
+      5,
+      7,
+      8,
+      7,
+      10,
+      10,
+      9,
+      8,
+      4,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75676737,
+    "n_players": 2,
+    "n_turns": 185,
+    "peak_ships": 433,
+    "peak_turn": 94,
+    "collapse_turn": 136,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 28,
+        "all_ships": {
+          "-1": 710,
+          "0": 10,
+          "1": 10
+        },
+        "all_planets": {
+          "-1": 26,
+          "0": 1,
+          "1": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 118,
+        "my_planets": 5,
+        "total_planets": 28,
+        "all_ships": {
+          "-1": 827,
+          "0": 118,
+          "1": 186
+        },
+        "all_planets": {
+          "-1": 23,
+          "0": 5,
+          "1": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 3,
+        "fleets_count": 22
+      },
+      "100": {
+        "my_ships": 384,
+        "my_planets": 8,
+        "total_planets": 28,
+        "all_ships": {
+          "-1": 301,
+          "1": 576,
+          "0": 384
+        },
+        "all_planets": {
+          "-1": 7,
+          "1": 13,
+          "0": 8
+        },
+        "my_player_id": 0,
+        "n_actions": 3,
+        "fleets_count": 68
+      },
+      "126": {
+        "my_ships": 300,
+        "my_planets": 5,
+        "total_planets": 28,
+        "all_ships": {
+          "1": 892,
+          "-1": 196,
+          "0": 300
+        },
+        "all_planets": {
+          "1": 19,
+          "-1": 4,
+          "0": 5
+        },
+        "my_player_id": 0,
+        "n_actions": 3,
+        "fleets_count": 62
+      },
+      "136": {
+        "my_ships": 214,
+        "my_planets": 2,
+        "total_planets": 28,
+        "all_ships": {
+          "1": 1070,
+          "0": 214,
+          "-1": 153
+        },
+        "all_planets": {
+          "1": 23,
+          "0": 2,
+          "-1": 3
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 63
+      },
+      "150": {
+        "my_ships": 106,
+        "my_planets": 1,
+        "total_planets": 28,
+        "all_ships": {
+          "1": 1499,
+          "-1": 265,
+          "0": 106
+        },
+        "all_planets": {
+          "1": 24,
+          "-1": 7,
+          "0": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 2,
+        "fleets_count": 77
+      }
+    },
+    "my_ships_t10": [
+      10,
+      20,
+      26,
+      56,
+      67,
+      118,
+      236,
+      283,
+      380,
+      404,
+      384,
+      327,
+      293,
+      255,
+      148,
+      106,
+      103,
+      29,
+      11
+    ],
+    "winner_ships_t10": [
+      10,
+      20,
+      29,
+      79,
+      120,
+      186,
+      200,
+      322,
+      376,
+      443,
+      576,
+      602,
+      749,
+      944,
+      1163,
+      1499,
+      1768,
+      1954,
+      2435
+    ],
+    "my_planets_t10": [
+      1,
+      1,
+      2,
+      2,
+      3,
+      5,
+      6,
+      9,
+      7,
+      7,
+      8,
+      6,
+      6,
+      3,
+      1,
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75676284,
+    "n_players": 2,
+    "n_turns": 164,
+    "peak_ships": 997,
+    "peak_turn": 80,
+    "collapse_turn": 143,
+    "winner_idx": 0,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 820,
+          "0": 10,
+          "1": 10
+        },
+        "all_planets": {
+          "-1": 30,
+          "0": 1,
+          "1": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 623,
+        "my_planets": 12,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 592,
+          "-1": 539,
+          "1": 623
+        },
+        "all_planets": {
+          "0": 11,
+          "-1": 13,
+          "1": 12
+        },
+        "my_player_id": 1,
+        "n_actions": 4,
+        "fleets_count": 64
+      },
+      "100": {
+        "my_ships": 993,
+        "my_planets": 11,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 1417,
+          "1": 993,
+          "-1": 138
+        },
+        "all_planets": {
+          "0": 19,
+          "1": 11,
+          "-1": 2
+        },
+        "my_player_id": 1,
+        "n_actions": 3,
+        "fleets_count": 113
+      },
+      "133": {
+        "my_ships": 661,
+        "my_planets": 7,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 2237,
+          "1": 661
+        },
+        "all_planets": {
+          "0": 25,
+          "1": 7
+        },
+        "my_player_id": 1,
+        "n_actions": 3,
+        "fleets_count": 115
+      },
+      "143": {
+        "my_ships": 465,
+        "my_planets": 0,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 2835,
+          "1": 465
+        },
+        "all_planets": {
+          "0": 32
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 133
+      },
+      "150": {
+        "my_ships": 279,
+        "my_planets": 2,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 3338,
+          "1": 279,
+          "-1": 24
+        },
+        "all_planets": {
+          "0": 30,
+          "1": 2,
+          "-1": 4
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 132
+      }
+    },
+    "my_ships_t10": [
+      10,
+      58,
+      99,
+      222,
+      375,
+      623,
+      925,
+      944,
+      997,
+      939,
+      993,
+      935,
+      801,
+      734,
+      560,
+      279,
+      94
+    ],
+    "winner_ships_t10": [
+      10,
+      46,
+      136,
+      243,
+      376,
+      592,
+      845,
+      1018,
+      1125,
+      1266,
+      1417,
+      1700,
+      1843,
+      2186,
+      2644,
+      3338,
+      4140
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      4,
+      6,
+      10,
+      12,
+      14,
+      12,
+      14,
+      13,
+      11,
+      11,
+      10,
+      9,
+      2,
+      2,
+      0
+    ]
+  },
+  {
+    "episode_id": 75675995,
+    "n_players": 2,
+    "n_turns": 231,
+    "peak_ships": 1399,
+    "peak_turn": 143,
+    "collapse_turn": 192,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 36,
+        "all_ships": {
+          "0": 10,
+          "-1": 752,
+          "1": 10
+        },
+        "all_planets": {
+          "0": 1,
+          "-1": 34,
+          "1": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 510,
+        "my_planets": 11,
+        "total_planets": 36,
+        "all_ships": {
+          "0": 510,
+          "-1": 461,
+          "1": 487
+        },
+        "all_planets": {
+          "0": 11,
+          "-1": 17,
+          "1": 12
+        },
+        "my_player_id": 0,
+        "n_actions": 4,
+        "fleets_count": 87
+      },
+      "100": {
+        "my_ships": 1354,
+        "my_planets": 17,
+        "total_planets": 36,
+        "all_ships": {
+          "0": 1354,
+          "1": 1601
+        },
+        "all_planets": {
+          "0": 17,
+          "1": 19
+        },
+        "my_player_id": 0,
+        "n_actions": 4,
+        "fleets_count": 141
+      },
+      "150": {
+        "my_ships": 1252,
+        "my_planets": 7,
+        "total_planets": 36,
+        "all_ships": {
+          "1": 2613,
+          "0": 1252,
+          "-1": 96
+        },
+        "all_planets": {
+          "1": 29,
+          "0": 7,
+          "-1": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 4,
+        "fleets_count": 92
+      },
+      "182": {
+        "my_ships": 757,
+        "my_planets": 4,
+        "total_planets": 36,
+        "all_ships": {
+          "1": 3693,
+          "0": 757
+        },
+        "all_planets": {
+          "1": 32,
+          "0": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 75
+      },
+      "192": {
+        "my_ships": 677,
+        "my_planets": 2,
+        "total_planets": 36,
+        "all_ships": {
+          "1": 4345,
+          "0": 677
+        },
+        "all_planets": {
+          "1": 34,
+          "0": 2
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 94
+      },
+      "200": {
+        "my_ships": 412,
+        "my_planets": 1,
+        "total_planets": 36,
+        "all_ships": {
+          "1": 4766,
+          "0": 412
+        },
+        "all_planets": {
+          "1": 35,
+          "0": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 129
+      }
+    },
+    "my_ships_t10": [
+      10,
+      40,
+      72,
+      180,
+      344,
+      510,
+      763,
+      990,
+      1047,
+      1146,
+      1354,
+      1265,
+      1305,
+      1225,
+      1385,
+      1252,
+      1029,
+      893,
+      793,
+      760,
+      412,
+      299,
+      173,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      40,
+      72,
+      185,
+      284,
+      487,
+      726,
+      954,
+      1018,
+      1262,
+      1601,
+      1535,
+      1697,
+      1900,
+      2368,
+      2613,
+      2805,
+      3167,
+      3761,
+      4260,
+      4766,
+      5591,
+      6454,
+      7243
+    ],
+    "my_planets_t10": [
+      1,
+      1,
+      3,
+      5,
+      8,
+      11,
+      14,
+      19,
+      17,
+      16,
+      17,
+      17,
+      14,
+      12,
+      10,
+      7,
+      12,
+      6,
+      5,
+      2,
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75675429,
+    "n_players": 4,
+    "n_turns": 500,
+    "peak_ships": 859,
+    "peak_turn": 95,
+    "collapse_turn": 131,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10,
+          "-1": 664
+        },
+        "all_planets": {
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "-1": 28
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 565,
+        "my_planets": 8,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 497,
+          "1": 469,
+          "2": 565,
+          "3": 381,
+          "-1": 258
+        },
+        "all_planets": {
+          "0": 8,
+          "1": 7,
+          "2": 8,
+          "3": 4,
+          "-1": 9
+        },
+        "my_player_id": 2,
+        "n_actions": 3,
+        "fleets_count": 44
+      },
+      "100": {
+        "my_ships": 713,
+        "my_planets": 6,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 902,
+          "1": 892,
+          "2": 713,
+          "3": 782
+        },
+        "all_planets": {
+          "0": 8,
+          "1": 12,
+          "2": 6,
+          "3": 6
+        },
+        "my_player_id": 2,
+        "n_actions": 3,
+        "fleets_count": 44
+      },
+      "121": {
+        "my_ships": 554,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 857,
+          "1": 1316,
+          "2": 554,
+          "3": 964
+        },
+        "all_planets": {
+          "0": 8,
+          "1": 16,
+          "2": 4,
+          "3": 4
+        },
+        "my_player_id": 2,
+        "n_actions": 2,
+        "fleets_count": 27
+      },
+      "131": {
+        "my_ships": 390,
+        "my_planets": 6,
+        "total_planets": 32,
+        "all_ships": {
+          "2": 390,
+          "1": 1468,
+          "0": 753,
+          "3": 878
+        },
+        "all_planets": {
+          "2": 6,
+          "1": 15,
+          "0": 8,
+          "3": 3
+        },
+        "my_player_id": 2,
+        "n_actions": 1,
+        "fleets_count": 19
+      },
+      "150": {
+        "my_ships": 461,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "2": 461,
+          "1": 2188,
+          "0": 906,
+          "3": 1004,
+          "-1": 104
+        },
+        "all_planets": {
+          "2": 4,
+          "1": 20,
+          "0": 5,
+          "3": 3,
+          "-1": 4
+        },
+        "my_player_id": 2,
+        "n_actions": 2,
+        "fleets_count": 22
+      },
+      "200": {
+        "my_ships": 107,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 4288,
+          "2": 107,
+          "3": 986
+        },
+        "all_planets": {
+          "1": 30,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 2,
+        "n_actions": 0,
+        "fleets_count": 2
+      }
+    },
+    "my_ships_t10": [
+      10,
+      65,
+      162,
+      264,
+      421,
+      565,
+      717,
+      653,
+      781,
+      787,
+      713,
+      724,
+      585,
+      455,
+      516,
+      461,
+      363,
+      331,
+      178,
+      165,
+      107,
+      157,
+      96,
+      33,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      45,
+      123,
+      240,
+      335,
+      469,
+      566,
+      651,
+      784,
+      941,
+      892,
+      893,
+      1256,
+      1502,
+      1784,
+      2188,
+      2359,
+      2698,
+      3038,
+      3603,
+      4288,
+      5388,
+      6345,
+      7422,
+      8539,
+      9689,
+      10839,
+      11989,
+      13139,
+      14289,
+      15439,
+      16589,
+      17739,
+      18889,
+      20039,
+      21189,
+      22339,
+      23489,
+      24639,
+      25789,
+      26939,
+      28089,
+      29239,
+      30389,
+      31539,
+      32689,
+      33839,
+      34989,
+      36139,
+      37289
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      3,
+      5,
+      8,
+      8,
+      9,
+      8,
+      10,
+      9,
+      6,
+      9,
+      5,
+      6,
+      7,
+      4,
+      4,
+      3,
+      2,
+      2,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75675181,
+    "n_players": 2,
+    "n_turns": 282,
+    "peak_ships": 2177,
+    "peak_turn": 154,
+    "collapse_turn": 219,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 28,
+        "all_ships": {
+          "-1": 656,
+          "0": 10,
+          "1": 10
+        },
+        "all_planets": {
+          "-1": 26,
+          "0": 1,
+          "1": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 480,
+        "my_planets": 9,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 480,
+          "1": 474,
+          "-1": 547
+        },
+        "all_planets": {
+          "0": 9,
+          "1": 8,
+          "-1": 15
+        },
+        "my_player_id": 0,
+        "n_actions": 2,
+        "fleets_count": 51
+      },
+      "100": {
+        "my_ships": 1252,
+        "my_planets": 15,
+        "total_planets": 28,
+        "all_ships": {
+          "1": 1692,
+          "0": 1252
+        },
+        "all_planets": {
+          "1": 13,
+          "0": 15
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 43
+      },
+      "150": {
+        "my_ships": 2029,
+        "my_planets": 18,
+        "total_planets": 28,
+        "all_ships": {
+          "1": 2629,
+          "0": 2029,
+          "-1": 60
+        },
+        "all_planets": {
+          "1": 10,
+          "0": 18,
+          "-1": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 57
+      },
+      "200": {
+        "my_ships": 1210,
+        "my_planets": 11,
+        "total_planets": 28,
+        "all_ships": {
+          "1": 2854,
+          "0": 1210
+        },
+        "all_planets": {
+          "1": 17,
+          "0": 11
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 33
+      },
+      "209": {
+        "my_ships": 1187,
+        "my_planets": 9,
+        "total_planets": 28,
+        "all_ships": {
+          "1": 3219,
+          "0": 1187
+        },
+        "all_planets": {
+          "1": 19,
+          "0": 9
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 26
+      },
+      "219": {
+        "my_ships": 1073,
+        "my_planets": 8,
+        "total_planets": 28,
+        "all_ships": {
+          "1": 3604,
+          "0": 1073
+        },
+        "all_planets": {
+          "1": 20,
+          "0": 8
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 17
+      }
+    },
+    "my_ships_t10": [
+      10,
+      50,
+      76,
+      137,
+      206,
+      480,
+      628,
+      771,
+      987,
+      1117,
+      1252,
+      1417,
+      1595,
+      1848,
+      1845,
+      2029,
+      1836,
+      1788,
+      1813,
+      1352,
+      1210,
+      1204,
+      1089,
+      919,
+      544,
+      232,
+      29,
+      16,
+      16
+    ],
+    "winner_ships_t10": [
+      10,
+      50,
+      76,
+      126,
+      275,
+      474,
+      680,
+      950,
+      1168,
+      1432,
+      1692,
+      1957,
+      2134,
+      2378,
+      2314,
+      2629,
+      2583,
+      2687,
+      2835,
+      2763,
+      2854,
+      3290,
+      3676,
+      4144,
+      4510,
+      4923,
+      5404,
+      6238,
+      7108
+    ],
+    "my_planets_t10": [
+      1,
+      1,
+      2,
+      4,
+      8,
+      9,
+      10,
+      12,
+      17,
+      14,
+      15,
+      17,
+      18,
+      17,
+      17,
+      18,
+      18,
+      20,
+      18,
+      16,
+      11,
+      9,
+      8,
+      6,
+      4,
+      2,
+      1,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75674901,
+    "n_players": 4,
+    "n_turns": 142,
+    "peak_ships": 292,
+    "peak_turn": 45,
+    "collapse_turn": 81,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 24,
+        "all_ships": {
+          "-1": 472,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 20,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 256,
+        "my_planets": 3,
+        "total_planets": 24,
+        "all_ships": {
+          "1": 473,
+          "2": 440,
+          "0": 256,
+          "3": 381,
+          "-1": 76
+        },
+        "all_planets": {
+          "1": 8,
+          "2": 6,
+          "0": 3,
+          "3": 6,
+          "-1": 5
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 85
+      },
+      "71": {
+        "my_ships": 224,
+        "my_planets": 5,
+        "total_planets": 24,
+        "all_ships": {
+          "1": 861,
+          "2": 754,
+          "0": 224,
+          "3": 386
+        },
+        "all_planets": {
+          "1": 11,
+          "2": 7,
+          "0": 5,
+          "3": 5
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 68
+      },
+      "81": {
+        "my_ships": 143,
+        "my_planets": 1,
+        "total_planets": 24,
+        "all_ships": {
+          "1": 913,
+          "2": 827,
+          "0": 143,
+          "3": 285
+        },
+        "all_planets": {
+          "1": 14,
+          "2": 9,
+          "0": 1,
+          "3": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 53
+      },
+      "100": {
+        "my_ships": 10,
+        "my_planets": 0,
+        "total_planets": 24,
+        "all_ships": {
+          "1": 1294,
+          "2": 418,
+          "3": 78,
+          "0": 10
+        },
+        "all_planets": {
+          "1": 18,
+          "2": 6
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 44
+      }
+    },
+    "my_ships_t10": [
+      10,
+      47,
+      127,
+      198,
+      271,
+      256,
+      245,
+      223,
+      192,
+      115,
+      10,
+      0,
+      0,
+      0,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      42,
+      89,
+      171,
+      338,
+      473,
+      658,
+      836,
+      927,
+      1239,
+      1294,
+      1745,
+      2330,
+      3096,
+      4024
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      2,
+      3,
+      4,
+      3,
+      3,
+      5,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75674731,
+    "n_players": 2,
+    "n_turns": 205,
+    "peak_ships": 1131,
+    "peak_turn": 93,
+    "collapse_turn": 176,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 36,
+        "all_ships": {
+          "-1": 780,
+          "0": 10,
+          "1": 10
+        },
+        "all_planets": {
+          "-1": 34,
+          "0": 1,
+          "1": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 348,
+        "my_planets": 6,
+        "total_planets": 36,
+        "all_ships": {
+          "-1": 562,
+          "0": 348,
+          "1": 289
+        },
+        "all_planets": {
+          "-1": 26,
+          "0": 6,
+          "1": 8
+        },
+        "my_player_id": 0,
+        "n_actions": 2,
+        "fleets_count": 45
+      },
+      "100": {
+        "my_ships": 1034,
+        "my_planets": 16,
+        "total_planets": 36,
+        "all_ships": {
+          "1": 1258,
+          "0": 1034
+        },
+        "all_planets": {
+          "1": 20,
+          "0": 16
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 104
+      },
+      "150": {
+        "my_ships": 805,
+        "my_planets": 8,
+        "total_planets": 36,
+        "all_ships": {
+          "1": 2212,
+          "0": 805,
+          "-1": 16
+        },
+        "all_planets": {
+          "1": 28,
+          "0": 8,
+          "-1": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 68
+      },
+      "166": {
+        "my_ships": 738,
+        "my_planets": 8,
+        "total_planets": 36,
+        "all_ships": {
+          "1": 2754,
+          "0": 738
+        },
+        "all_planets": {
+          "1": 32,
+          "0": 8
+        },
+        "my_player_id": 0,
+        "n_actions": 2,
+        "fleets_count": 65
+      },
+      "176": {
+        "my_ships": 547,
+        "my_planets": 5,
+        "total_planets": 36,
+        "all_ships": {
+          "1": 3068,
+          "0": 547
+        },
+        "all_planets": {
+          "1": 35,
+          "0": 5
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 97
+      },
+      "200": {
+        "my_ships": 33,
+        "my_planets": 0,
+        "total_planets": 36,
+        "all_ships": {
+          "1": 4420,
+          "0": 33
+        },
+        "all_planets": {
+          "1": 36
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 23
+      }
+    },
+    "my_ships_t10": [
+      10,
+      52,
+      112,
+      154,
+      235,
+      348,
+      510,
+      787,
+      973,
+      1049,
+      1034,
+      1018,
+      1017,
+      990,
+      911,
+      805,
+      769,
+      697,
+      414,
+      48,
+      33
+    ],
+    "winner_ships_t10": [
+      10,
+      52,
+      112,
+      133,
+      184,
+      289,
+      481,
+      828,
+      1113,
+      1235,
+      1258,
+      1322,
+      1398,
+      1647,
+      1949,
+      2212,
+      2569,
+      2866,
+      3218,
+      3534,
+      4420
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      2,
+      3,
+      5,
+      6,
+      10,
+      17,
+      15,
+      16,
+      16,
+      16,
+      12,
+      11,
+      10,
+      8,
+      7,
+      7,
+      4,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75674582,
+    "n_players": 2,
+    "n_turns": 156,
+    "peak_ships": 920,
+    "peak_turn": 93,
+    "collapse_turn": 119,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 10,
+          "-1": 550,
+          "1": 10
+        },
+        "all_planets": {
+          "0": 1,
+          "-1": 30,
+          "1": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 136,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 136,
+          "-1": 574,
+          "1": 131
+        },
+        "all_planets": {
+          "0": 4,
+          "-1": 28,
+          "1": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 2,
+        "fleets_count": 25
+      },
+      "100": {
+        "my_ships": 845,
+        "my_planets": 10,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 845,
+          "1": 1268,
+          "-1": 96
+        },
+        "all_planets": {
+          "0": 10,
+          "1": 20,
+          "-1": 2
+        },
+        "my_player_id": 0,
+        "n_actions": 4,
+        "fleets_count": 111
+      },
+      "109": {
+        "my_ships": 670,
+        "my_planets": 6,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 670,
+          "1": 1478,
+          "-1": 53
+        },
+        "all_planets": {
+          "0": 6,
+          "1": 25,
+          "-1": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 4,
+        "fleets_count": 101
+      },
+      "119": {
+        "my_ships": 455,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 455,
+          "1": 1935,
+          "-1": 53
+        },
+        "all_planets": {
+          "0": 4,
+          "1": 27,
+          "-1": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 119
+      },
+      "150": {
+        "my_ships": 3,
+        "my_planets": 0,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 4135,
+          "-1": 184,
+          "0": 3
+        },
+        "all_planets": {
+          "1": 32,
+          "-1": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 3
+      }
+    },
+    "my_ships_t10": [
+      10,
+      30,
+      50,
+      70,
+      90,
+      136,
+      263,
+      436,
+      673,
+      892,
+      845,
+      656,
+      367,
+      110,
+      12,
+      3
+    ],
+    "winner_ships_t10": [
+      10,
+      30,
+      50,
+      70,
+      94,
+      131,
+      260,
+      457,
+      730,
+      1079,
+      1268,
+      1511,
+      1924,
+      2482,
+      3264,
+      4135
+    ],
+    "my_planets_t10": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      4,
+      6,
+      10,
+      15,
+      12,
+      10,
+      4,
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75674486,
+    "n_players": 4,
+    "n_turns": 221,
+    "peak_ships": 173,
+    "peak_turn": 42,
+    "collapse_turn": 52,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 28,
+        "all_ships": {
+          "-1": 748,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 24,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "42": {
+        "my_ships": 173,
+        "my_planets": 3,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 252,
+          "1": 260,
+          "2": 311,
+          "-1": 396,
+          "3": 173
+        },
+        "all_planets": {
+          "0": 4,
+          "1": 5,
+          "2": 5,
+          "-1": 11,
+          "3": 3
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 49
+      },
+      "50": {
+        "my_ships": 109,
+        "my_planets": 1,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 335,
+          "1": 322,
+          "2": 328,
+          "-1": 370,
+          "3": 109
+        },
+        "all_planets": {
+          "0": 5,
+          "1": 7,
+          "2": 6,
+          "-1": 13,
+          "3": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 1,
+        "fleets_count": 61
+      },
+      "52": {
+        "my_ships": 68,
+        "my_planets": 2,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 340,
+          "1": 335,
+          "2": 289,
+          "-1": 348,
+          "3": 68
+        },
+        "all_planets": {
+          "0": 4,
+          "1": 6,
+          "2": 9,
+          "-1": 11,
+          "3": 2
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 51
+      },
+      "100": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 422,
+          "1": 871,
+          "2": 519,
+          "-1": 56
+        },
+        "all_planets": {
+          "0": 5,
+          "1": 13,
+          "2": 9,
+          "-1": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 40
+      },
+      "150": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 28,
+        "all_ships": {
+          "0": 462,
+          "1": 1323,
+          "2": 619,
+          "-1": 124
+        },
+        "all_planets": {
+          "0": 4,
+          "1": 15,
+          "2": 8,
+          "-1": 5
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 47
+      },
+      "200": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 28,
+        "all_ships": {
+          "1": 2715,
+          "2": 97,
+          "0": 109
+        },
+        "all_planets": {
+          "1": 25,
+          "2": 1,
+          "0": 2
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 49
+      }
+    },
+    "my_ships_t10": [
+      10,
+      23,
+      93,
+      141,
+      158,
+      109,
+      88,
+      89,
+      58,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      50,
+      71,
+      113,
+      229,
+      322,
+      339,
+      377,
+      569,
+      693,
+      871,
+      1131,
+      1408,
+      1261,
+      1371,
+      1323,
+      1358,
+      1597,
+      1920,
+      2259,
+      2715,
+      3341,
+      4011
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      2,
+      2,
+      3,
+      1,
+      2,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75674419,
+    "n_players": 4,
+    "n_turns": 188,
+    "peak_ships": 361,
+    "peak_turn": 55,
+    "collapse_turn": 129,
+    "winner_idx": 2,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 24,
+        "all_ships": {
+          "-1": 428,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 20,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 331,
+        "my_planets": 6,
+        "total_planets": 24,
+        "all_ships": {
+          "-1": 251,
+          "0": 322,
+          "1": 331,
+          "2": 286,
+          "3": 360
+        },
+        "all_planets": {
+          "-1": 9,
+          "0": 3,
+          "1": 6,
+          "2": 5,
+          "3": 5
+        },
+        "my_player_id": 1,
+        "n_actions": 3,
+        "fleets_count": 72
+      },
+      "100": {
+        "my_ships": 262,
+        "my_planets": 3,
+        "total_planets": 24,
+        "all_ships": {
+          "3": 494,
+          "-1": 104,
+          "0": 115,
+          "1": 262,
+          "2": 579
+        },
+        "all_planets": {
+          "3": 10,
+          "-1": 2,
+          "0": 3,
+          "1": 3,
+          "2": 6
+        },
+        "my_player_id": 1,
+        "n_actions": 1,
+        "fleets_count": 70
+      },
+      "119": {
+        "my_ships": 317,
+        "my_planets": 2,
+        "total_planets": 24,
+        "all_ships": {
+          "3": 537,
+          "-1": 84,
+          "0": 111,
+          "1": 317,
+          "2": 721
+        },
+        "all_planets": {
+          "3": 8,
+          "-1": 2,
+          "0": 2,
+          "1": 2,
+          "2": 10
+        },
+        "my_player_id": 1,
+        "n_actions": 1,
+        "fleets_count": 82
+      },
+      "129": {
+        "my_ships": 173,
+        "my_planets": 2,
+        "total_planets": 24,
+        "all_ships": {
+          "3": 548,
+          "-1": 52,
+          "1": 173,
+          "2": 794,
+          "0": 67
+        },
+        "all_planets": {
+          "3": 7,
+          "-1": 1,
+          "1": 2,
+          "2": 14
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 83
+      },
+      "150": {
+        "my_ships": 166,
+        "my_planets": 2,
+        "total_planets": 24,
+        "all_ships": {
+          "2": 1293,
+          "3": 542,
+          "-1": 140,
+          "1": 166
+        },
+        "all_planets": {
+          "2": 14,
+          "3": 7,
+          "-1": 5,
+          "1": 2
+        },
+        "my_player_id": 1,
+        "n_actions": 1,
+        "fleets_count": 80
+      }
+    },
+    "my_ships_t10": [
+      10,
+      41,
+      90,
+      197,
+      297,
+      331,
+      350,
+      287,
+      261,
+      260,
+      262,
+      305,
+      266,
+      174,
+      177,
+      166,
+      86,
+      107,
+      33
+    ],
+    "winner_ships_t10": [
+      10,
+      30,
+      73,
+      140,
+      187,
+      286,
+      350,
+      384,
+      433,
+      472,
+      579,
+      597,
+      706,
+      827,
+      965,
+      1293,
+      1319,
+      1597,
+      1965
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      3,
+      4,
+      4,
+      6,
+      5,
+      4,
+      4,
+      5,
+      3,
+      4,
+      3,
+      2,
+      2,
+      2,
+      1,
+      1,
+      0
+    ]
+  },
+  {
+    "episode_id": 75674122,
+    "n_players": 4,
+    "n_turns": 214,
+    "peak_ships": 487,
+    "peak_turn": 148,
+    "collapse_turn": 182,
+    "winner_idx": 2,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 20,
+        "all_ships": {
+          "-1": 380,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 16,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 149,
+        "my_planets": 2,
+        "total_planets": 20,
+        "all_ships": {
+          "-1": 284,
+          "0": 191,
+          "2": 137,
+          "3": 149,
+          "1": 277
+        },
+        "all_planets": {
+          "-1": 10,
+          "0": 5,
+          "2": 3,
+          "3": 2,
+          "1": 4
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 19
+      },
+      "100": {
+        "my_ships": 313,
+        "my_planets": 3,
+        "total_planets": 20,
+        "all_ships": {
+          "0": 339,
+          "-1": 138,
+          "2": 625,
+          "1": 348,
+          "3": 313
+        },
+        "all_planets": {
+          "0": 4,
+          "-1": 3,
+          "2": 7,
+          "1": 3,
+          "3": 3
+        },
+        "my_player_id": 3,
+        "n_actions": 1,
+        "fleets_count": 39
+      },
+      "150": {
+        "my_ships": 463,
+        "my_planets": 5,
+        "total_planets": 20,
+        "all_ships": {
+          "2": 1414,
+          "1": 133,
+          "-1": 82,
+          "3": 463,
+          "0": 181
+        },
+        "all_planets": {
+          "2": 11,
+          "1": 2,
+          "-1": 5,
+          "3": 5,
+          "0": 1
+        },
+        "my_player_id": 3,
+        "n_actions": 1,
+        "fleets_count": 55
+      },
+      "172": {
+        "my_ships": 318,
+        "my_planets": 2,
+        "total_planets": 20,
+        "all_ships": {
+          "2": 1727,
+          "3": 318,
+          "0": 22
+        },
+        "all_planets": {
+          "2": 22,
+          "3": 2
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 63
+      },
+      "182": {
+        "my_ships": 240,
+        "my_planets": 3,
+        "total_planets": 20,
+        "all_ships": {
+          "2": 2201,
+          "3": 240
+        },
+        "all_planets": {
+          "2": 21,
+          "3": 3
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 67
+      },
+      "200": {
+        "my_ships": 128,
+        "my_planets": 0,
+        "total_planets": 20,
+        "all_ships": {
+          "2": 3034,
+          "3": 128
+        },
+        "all_planets": {
+          "2": 20
+        },
+        "my_player_id": 3,
+        "n_actions": 0,
+        "fleets_count": 8
+      }
+    },
+    "my_ships_t10": [
+      10,
+      20,
+      15,
+      55,
+      81,
+      149,
+      195,
+      207,
+      189,
+      218,
+      313,
+      418,
+      363,
+      372,
+      440,
+      463,
+      451,
+      377,
+      271,
+      154,
+      128,
+      53
+    ],
+    "winner_ships_t10": [
+      10,
+      20,
+      30,
+      43,
+      76,
+      137,
+      174,
+      288,
+      418,
+      375,
+      625,
+      633,
+      687,
+      932,
+      1143,
+      1414,
+      1500,
+      1703,
+      2124,
+      2420,
+      3034,
+      3599
+    ],
+    "my_planets_t10": [
+      1,
+      1,
+      2,
+      2,
+      3,
+      2,
+      2,
+      4,
+      4,
+      3,
+      3,
+      4,
+      4,
+      3,
+      5,
+      5,
+      6,
+      3,
+      3,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75674020,
+    "n_players": 4,
+    "n_turns": 205,
+    "peak_ships": 330,
+    "peak_turn": 60,
+    "collapse_turn": 84,
+    "winner_idx": 3,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 768,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 28,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 225,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 238,
+          "1": 225,
+          "2": 296,
+          "3": 258,
+          "-1": 295
+        },
+        "all_planets": {
+          "0": 5,
+          "1": 4,
+          "2": 8,
+          "3": 7,
+          "-1": 12
+        },
+        "my_player_id": 1,
+        "n_actions": 1,
+        "fleets_count": 39
+      },
+      "74": {
+        "my_ships": 253,
+        "my_planets": 3,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 248,
+          "3": 584,
+          "2": 384,
+          "-1": 172,
+          "1": 253
+        },
+        "all_planets": {
+          "0": 8,
+          "3": 13,
+          "2": 7,
+          "-1": 5,
+          "1": 3
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 39
+      },
+      "84": {
+        "my_ships": 158,
+        "my_planets": 2,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 296,
+          "3": 744,
+          "2": 486,
+          "-1": 135,
+          "1": 158
+        },
+        "all_planets": {
+          "0": 5,
+          "3": 13,
+          "2": 8,
+          "-1": 4,
+          "1": 2
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 54
+      },
+      "100": {
+        "my_ships": 159,
+        "my_planets": 3,
+        "total_planets": 32,
+        "all_ships": {
+          "0": 304,
+          "3": 874,
+          "2": 428,
+          "-1": 66,
+          "1": 159
+        },
+        "all_planets": {
+          "0": 4,
+          "3": 15,
+          "2": 8,
+          "-1": 2,
+          "1": 3
+        },
+        "my_player_id": 1,
+        "n_actions": 1,
+        "fleets_count": 60
+      },
+      "150": {
+        "my_ships": 12,
+        "my_planets": 0,
+        "total_planets": 32,
+        "all_ships": {
+          "3": 2102,
+          "2": 582,
+          "-1": 44,
+          "1": 12
+        },
+        "all_planets": {
+          "3": 25,
+          "2": 7,
+          "-1": 4
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 25
+      },
+      "200": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 32,
+        "all_ships": {
+          "3": 5434,
+          "2": 18
+        },
+        "all_planets": {
+          "3": 32
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 3
+      }
+    },
+    "my_ships_t10": [
+      10,
+      34,
+      94,
+      150,
+      165,
+      225,
+      330,
+      248,
+      196,
+      187,
+      159,
+      50,
+      66,
+      96,
+      109,
+      12,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      50,
+      97,
+      165,
+      262,
+      258,
+      427,
+      544,
+      624,
+      835,
+      874,
+      965,
+      1097,
+      1488,
+      1842,
+      2102,
+      2726,
+      3536,
+      3833,
+      4561,
+      5434
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      2,
+      2,
+      3,
+      4,
+      5,
+      3,
+      3,
+      3,
+      3,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75674022,
+    "n_players": 4,
+    "n_turns": 195,
+    "peak_ships": 261,
+    "peak_turn": 100,
+    "collapse_turn": 113,
+    "winner_idx": 0,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 20,
+        "all_ships": {
+          "-1": 668,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 16,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 63,
+        "my_planets": 2,
+        "total_planets": 20,
+        "all_ships": {
+          "-1": 524,
+          "0": 204,
+          "3": 268,
+          "1": 63,
+          "2": 187
+        },
+        "all_planets": {
+          "-1": 10,
+          "0": 5,
+          "3": 4,
+          "1": 2,
+          "2": 3
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 16
+      },
+      "100": {
+        "my_ships": 261,
+        "my_planets": 3,
+        "total_planets": 20,
+        "all_ships": {
+          "-1": 320,
+          "0": 408,
+          "2": 140,
+          "3": 312,
+          "1": 261
+        },
+        "all_planets": {
+          "-1": 4,
+          "0": 6,
+          "2": 3,
+          "3": 4,
+          "1": 3
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 31
+      },
+      "103": {
+        "my_ships": 144,
+        "my_planets": 2,
+        "total_planets": 20,
+        "all_ships": {
+          "-1": 320,
+          "0": 392,
+          "2": 163,
+          "3": 187,
+          "1": 144
+        },
+        "all_planets": {
+          "-1": 4,
+          "0": 7,
+          "2": 3,
+          "3": 4,
+          "1": 2
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 22
+      },
+      "113": {
+        "my_ships": 113,
+        "my_planets": 2,
+        "total_planets": 20,
+        "all_ships": {
+          "-1": 320,
+          "0": 557,
+          "2": 131,
+          "3": 225,
+          "1": 113
+        },
+        "all_planets": {
+          "-1": 4,
+          "0": 8,
+          "2": 3,
+          "3": 3,
+          "1": 2
+        },
+        "my_player_id": 1,
+        "n_actions": 2,
+        "fleets_count": 23
+      },
+      "150": {
+        "my_ships": 17,
+        "my_planets": 0,
+        "total_planets": 20,
+        "all_ships": {
+          "0": 1293,
+          "-1": 452,
+          "3": 316,
+          "1": 17
+        },
+        "all_planets": {
+          "0": 15,
+          "-1": 7,
+          "3": 2
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 36
+      }
+    },
+    "my_ships_t10": [
+      10,
+      17,
+      57,
+      96,
+      92,
+      63,
+      116,
+      178,
+      202,
+      194,
+      261,
+      146,
+      103,
+      55,
+      36,
+      17,
+      0,
+      0,
+      0,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      17,
+      57,
+      109,
+      166,
+      204,
+      271,
+      335,
+      317,
+      324,
+      408,
+      495,
+      604,
+      633,
+      961,
+      1293,
+      1514,
+      1948,
+      2547,
+      3087
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      3,
+      2,
+      1,
+      2,
+      3,
+      4,
+      5,
+      3,
+      3,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75673924,
+    "n_players": 4,
+    "n_turns": 186,
+    "peak_ships": 139,
+    "peak_turn": 57,
+    "collapse_turn": 74,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 1104,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 28,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 97,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 1088,
+          "0": 97,
+          "1": 168,
+          "3": 120,
+          "2": 37
+        },
+        "all_planets": {
+          "-1": 21,
+          "0": 4,
+          "1": 6,
+          "3": 4,
+          "2": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 19
+      },
+      "64": {
+        "my_ships": 121,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 985,
+          "1": 269,
+          "3": 215,
+          "2": 42,
+          "0": 121
+        },
+        "all_planets": {
+          "-1": 17,
+          "1": 10,
+          "3": 6,
+          "2": 2,
+          "0": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 27
+      },
+      "74": {
+        "my_ships": 66,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 975,
+          "1": 352,
+          "3": 269,
+          "2": 36,
+          "0": 66
+        },
+        "all_planets": {
+          "-1": 17,
+          "1": 12,
+          "3": 5,
+          "2": 1,
+          "0": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 30
+      },
+      "100": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 792,
+          "1": 640,
+          "3": 423
+        },
+        "all_planets": {
+          "-1": 12,
+          "1": 14,
+          "3": 6
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 41
+      },
+      "150": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 580,
+          "1": 1327,
+          "3": 162
+        },
+        "all_planets": {
+          "-1": 12,
+          "1": 24
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 44
+      }
+    },
+    "my_ships_t10": [
+      10,
+      29,
+      59,
+      78,
+      73,
+      97,
+      129,
+      113,
+      45,
+      35,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      28,
+      58,
+      88,
+      110,
+      168,
+      202,
+      405,
+      428,
+      519,
+      640,
+      786,
+      785,
+      915,
+      1129,
+      1327,
+      1404,
+      1706,
+      2158
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      2,
+      2,
+      4,
+      4,
+      2,
+      1,
+      2,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75673784,
+    "n_players": 4,
+    "n_turns": 219,
+    "peak_ships": 129,
+    "peak_turn": 68,
+    "collapse_turn": 84,
+    "winner_idx": 3,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 28,
+        "all_ships": {
+          "-1": 760,
+          "0": 10,
+          "1": 10,
+          "2": 10,
+          "3": 10
+        },
+        "all_planets": {
+          "-1": 24,
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 66,
+        "my_planets": 3,
+        "total_planets": 28,
+        "all_ships": {
+          "-1": 540,
+          "3": 265,
+          "2": 125,
+          "0": 51,
+          "1": 66
+        },
+        "all_planets": {
+          "-1": 12,
+          "3": 8,
+          "2": 6,
+          "0": 3,
+          "1": 3
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 8
+      },
+      "74": {
+        "my_ships": 104,
+        "my_planets": 2,
+        "total_planets": 28,
+        "all_ships": {
+          "2": 317,
+          "0": 73,
+          "3": 600,
+          "-1": 352,
+          "1": 104
+        },
+        "all_planets": {
+          "2": 12,
+          "0": 3,
+          "3": 11,
+          "-1": 4,
+          "1": 2
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 15
+      },
+      "84": {
+        "my_ships": 56,
+        "my_planets": 1,
+        "total_planets": 28,
+        "all_ships": {
+          "2": 482,
+          "3": 675,
+          "1": 56,
+          "-1": 352,
+          "0": 38
+        },
+        "all_planets": {
+          "2": 11,
+          "3": 11,
+          "1": 1,
+          "-1": 4,
+          "0": 1
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 30
+      },
+      "100": {
+        "my_ships": 31,
+        "my_planets": 0,
+        "total_planets": 28,
+        "all_ships": {
+          "2": 599,
+          "3": 652,
+          "-1": 141,
+          "1": 31,
+          "0": 4
+        },
+        "all_planets": {
+          "2": 12,
+          "3": 14,
+          "-1": 2
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 29
+      },
+      "150": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 28,
+        "all_ships": {
+          "2": 574,
+          "3": 1030,
+          "-1": 8
+        },
+        "all_planets": {
+          "2": 12,
+          "3": 16,
+          "-1": 4
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 37
+      },
+      "200": {
+        "my_ships": 0,
+        "my_planets": 0,
+        "total_planets": 28,
+        "all_ships": {
+          "3": 2956,
+          "2": 22
+        },
+        "all_planets": {
+          "3": 28
+        },
+        "my_player_id": 1,
+        "n_actions": 0,
+        "fleets_count": 3
+      }
+    },
+    "my_ships_t10": [
+      10,
+      22,
+      43,
+      48,
+      53,
+      66,
+      89,
+      114,
+      114,
+      46,
+      31,
+      22,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "winner_ships_t10": [
+      10,
+      30,
+      65,
+      145,
+      207,
+      265,
+      470,
+      549,
+      692,
+      793,
+      652,
+      718,
+      765,
+      839,
+      973,
+      1030,
+      1105,
+      1465,
+      1867,
+      2357,
+      2956,
+      3589
+    ],
+    "my_planets_t10": [
+      1,
+      2,
+      2,
+      3,
+      2,
+      3,
+      4,
+      3,
+      2,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  {
+    "episode_id": 75673197,
+    "n_players": 2,
+    "n_turns": 235,
+    "peak_ships": 430,
+    "peak_turn": 124,
+    "collapse_turn": 161,
+    "winner_idx": 1,
+    "snapshots": {
+      "0": {
+        "my_ships": 10,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 992,
+          "0": 10,
+          "1": 10
+        },
+        "all_planets": {
+          "-1": 30,
+          "0": 1,
+          "1": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 0
+      },
+      "50": {
+        "my_ships": 114,
+        "my_planets": 6,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 886,
+          "0": 114,
+          "1": 114
+        },
+        "all_planets": {
+          "-1": 24,
+          "0": 6,
+          "1": 6
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 12
+      },
+      "100": {
+        "my_ships": 352,
+        "my_planets": 11,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 645,
+          "0": 352,
+          "1": 371
+        },
+        "all_planets": {
+          "-1": 12,
+          "0": 11,
+          "1": 9
+        },
+        "my_player_id": 0,
+        "n_actions": 2,
+        "fleets_count": 75
+      },
+      "150": {
+        "my_ships": 268,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 672,
+          "1": 683,
+          "0": 268
+        },
+        "all_planets": {
+          "-1": 11,
+          "1": 21,
+          "0": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 1,
+        "fleets_count": 53
+      },
+      "151": {
+        "my_ships": 243,
+        "my_planets": 4,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 648,
+          "1": 716,
+          "0": 243
+        },
+        "all_planets": {
+          "-1": 11,
+          "1": 21,
+          "0": 4
+        },
+        "my_player_id": 0,
+        "n_actions": 2,
+        "fleets_count": 52
+      },
+      "161": {
+        "my_ships": 214,
+        "my_planets": 7,
+        "total_planets": 32,
+        "all_ships": {
+          "-1": 537,
+          "1": 886,
+          "0": 214
+        },
+        "all_planets": {
+          "-1": 10,
+          "1": 19,
+          "0": 7
+        },
+        "my_player_id": 0,
+        "n_actions": 2,
+        "fleets_count": 66
+      },
+      "200": {
+        "my_ships": 20,
+        "my_planets": 1,
+        "total_planets": 32,
+        "all_ships": {
+          "1": 1623,
+          "-1": 184,
+          "0": 20
+        },
+        "all_planets": {
+          "1": 28,
+          "-1": 3,
+          "0": 1
+        },
+        "my_player_id": 0,
+        "n_actions": 0,
+        "fleets_count": 82
+      }
+    },
+    "my_ships_t10": [
+      10,
+      20,
+      28,
+      46,
+      49,
+      114,
+      168,
+      270,
+      359,
+      353,
+      352,
+      390,
+      407,
+      360,
+      275,
+      268,
+      250,
+      222,
+      166,
+      157,
+      20,
+      13,
+      13,
+      8
+    ],
+    "winner_ships_t10": [
+      10,
+      20,
+      28,
+      46,
+      49,
+      114,
+      168,
+      270,
+      359,
+      353,
+      371,
+      404,
+      411,
+      402,
+      502,
+      683,
+      867,
+      1098,
+      1227,
+      1514,
+      1623,
+      2006,
+      2345,
+      2841
+    ],
+    "my_planets_t10": [
+      1,
+      1,
+      2,
+      3,
+      5,
+      6,
+      8,
+      9,
+      9,
+      9,
+      11,
+      11,
+      9,
+      10,
+      7,
+      4,
+      5,
+      5,
+      3,
+      2,
+      1,
+      0,
+      0,
+      0
+    ]
+  }
+]

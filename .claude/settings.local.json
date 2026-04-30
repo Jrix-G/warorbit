@@ -94,6 +94,7 @@
       "PowerShell(python -c \"import train_v7_fast as t; print\\('DIM:',t.DIM,'SCORER:',t.SCORER_DIM,'HEUR:',len\\(t.HEURISTIC_SPECS\\)\\); import numpy as np; w,h = t.decode\\(np.zeros\\(t.DIM\\)\\); print\\('decoded heur with p=0:', h\\)\")",
       "Bash(PYTHONIOENCODING=utf-8 python *)",
       "Bash(cat C:\\\\\\\\Users\\\\\\\\Capitaine\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--Users-Capitaine-Documents-GitHub-warorbit\\\\\\\\d8b678b4-2157-490d-91fb-99168f40ab65\\\\\\\\tasks\\\\\\\\bomflxbov.output)"
+      "Bash(npx @playwright/mcp install-browser chrome-for-testing)"
     ]
   }
 }
