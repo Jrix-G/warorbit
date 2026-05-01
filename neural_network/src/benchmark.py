@@ -8,7 +8,6 @@ import torch
 from .baselines import GreedyNearestWeakestAgent, RandomAgent
 from .encoder import encode_game_state
 from .policy import build_action_candidates, choose_action, reconstruct_action
-from .reward import compute_reward
 from .self_play import _advance_game, make_synthetic_game
 
 
@@ -30,10 +29,35 @@ def _action_for(agent, game: Dict[str, Any], config: Dict[str, Any]) -> tuple[in
     return _model_action(agent, game, config)
 
 
-def _run_match(agent_a, agent_b, config: Dict[str, Any], seed: int, max_turns: int) -> float:
+def _player_score(game: Dict[str, Any], player_id: int) -> float:
+    planets = game.get("planets", [])
+    fleets = game.get("fleets", [])
+    owned_planets = [p for p in planets if p["owner"] == player_id]
+    owned_fleets = [f for f in fleets if f["owner"] == player_id]
+    return float(
+        100.0 * len(owned_planets)
+        + 2.5 * sum(p.get("production", 0.0) for p in owned_planets)
+        + sum(p.get("ships", 0.0) for p in owned_planets)
+        + sum(f.get("ships", 0.0) for f in owned_fleets)
+    )
+
+
+def _final_verdict(game: Dict[str, Any]) -> int:
+    players = list(game.get("player_ids", [0, 1]))
+    alive = [pid for pid in players if any(p["owner"] == pid for p in game.get("planets", [])) or any(f["owner"] == pid for f in game.get("fleets", []))]
+    if len(alive) == 1:
+        return int(alive[0])
+    if len(alive) == 0:
+        return -1
+    score0 = _player_score(game, players[0])
+    score1 = _player_score(game, players[1])
+    if abs(score0 - score1) < 1e-6:
+        return -1
+    return int(players[0] if score0 > score1 else players[1])
+
+
+def _run_match(agent_a, agent_b, config: Dict[str, Any], seed: int, max_turns: int) -> Dict[str, float]:
     game = make_synthetic_game(seed)
-    total_a = 0.0
-    total_b = 0.0
     for turn in range(max_turns):
         game_a = dict(game)
         game_a["my_id"] = 0
@@ -43,12 +67,18 @@ def _run_match(agent_a, agent_b, config: Dict[str, Any], seed: int, max_turns: i
         action_b = _action_for(agent_b, game_b, config)
         next_game = _advance_game(game, action_a, turn)
         next_game = _advance_game(next_game, action_b, turn)
-        total_a += compute_reward(game_a, {"ships": action_a[2]}, next_game, terminal=bool(next_game.get("terminal")))
-        total_b += compute_reward(game_b, {"ships": action_b[2]}, next_game, terminal=bool(next_game.get("terminal")))
         game = next_game
         if game.get("terminal"):
             break
-    return total_a - total_b
+    winner = _final_verdict(game)
+    return {
+        "winner": float(winner),
+        "a_win": float(winner == 0),
+        "b_win": float(winner == 1),
+        "draw": float(winner == -1),
+        "episode_length": float(max_turns if not game.get("terminal") else game.get("turn", max_turns)),
+        "avg_reward": float(_player_score(game, 0) - _player_score(game, 1)),
+    }
 
 
 def _run_symmetric_match(agent_a, agent_b, config: Dict[str, Any], seed: int, max_turns: int) -> Dict[str, float]:
@@ -57,9 +87,11 @@ def _run_symmetric_match(agent_a, agent_b, config: Dict[str, Any], seed: int, ma
     return {
         "first": first,
         "second": second,
-        "avg_delta": 0.5 * (first - second),
-        "win_first": float(first > 0),
-        "win_second": float(second > 0),
+        "win_first": float(first["a_win"]),
+        "win_second": float(second["a_win"]),
+        "draw_first": float(first["draw"]),
+        "draw_second": float(second["draw"]),
+        "avg_reward": 0.5 * (first["avg_reward"] - second["avg_reward"]),
     }
 
 
@@ -67,24 +99,27 @@ def benchmark_model(model, config: Dict[str, Any], games: int = 8, symmetric: bo
     seeds = [seed + i for i in range(games)]
     if symmetric:
         results = [_run_symmetric_match(model, RandomAgent(), config, s, int(config.get("max_turns", 100))) for s in seeds]
-        deltas = [r["avg_delta"] for r in results]
         wins = [r["win_first"] for r in results] + [r["win_second"] for r in results]
-        avg_len = float(int(config.get("max_turns", 100)))
+        draws = [r["draw_first"] for r in results] + [r["draw_second"] for r in results]
+        avg_reward = [r["avg_reward"] for r in results]
+        avg_len = float(np.mean([r["first"]["episode_length"] for r in results] + [r["second"]["episode_length"] for r in results]))
         return {
             "games": float(games * 2),
-            "avg_reward": float(np.mean(deltas) if deltas else 0.0),
+            "avg_reward": float(np.mean(avg_reward) if avg_reward else 0.0),
             "winrate": float(np.mean(wins) if wins else 0.0),
-            "reward_std": float(np.std(deltas) if deltas else 0.0),
+            "draw_rate": float(np.mean(draws) if draws else 0.0),
+            "reward_std": float(np.std(avg_reward) if avg_reward else 0.0),
             "avg_episode_length": avg_len,
             "seeds": seeds,
         }
     rewards = [_run_match(model, RandomAgent(), config, seed=s, max_turns=int(config.get("max_turns", 100))) for s in seeds]
     return {
         "games": float(games),
-        "avg_reward": float(np.mean(rewards) if rewards else 0.0),
-        "winrate": float(np.mean([r > 0 for r in rewards]) if rewards else 0.0),
-        "reward_std": float(np.std(rewards) if rewards else 0.0),
-        "avg_episode_length": float(int(config.get("max_turns", 100))),
+        "avg_reward": float(np.mean([r["avg_reward"] for r in rewards]) if rewards else 0.0),
+        "winrate": float(np.mean([r["a_win"] for r in rewards]) if rewards else 0.0),
+        "draw_rate": float(np.mean([r["draw"] for r in rewards]) if rewards else 0.0),
+        "reward_std": float(np.std([r["avg_reward"] for r in rewards]) if rewards else 0.0),
+        "avg_episode_length": float(np.mean([r["episode_length"] for r in rewards]) if rewards else int(config.get("max_turns", 100))),
         "seeds": seeds,
     }
 
@@ -100,6 +135,9 @@ def benchmark_matchups(model, config: Dict[str, Any], episodes: int = 8, seed_of
         "winrate_vs_random": float(np.mean([r["win_first"] for r in nn_vs_random] + [r["win_second"] for r in nn_vs_random]) if nn_vs_random else 0.0),
         "winrate_vs_greedy": float(np.mean([r["win_first"] for r in nn_vs_greedy] + [r["win_second"] for r in nn_vs_greedy]) if nn_vs_greedy else 0.0),
         "random_vs_greedy": float(np.mean([r["win_first"] for r in random_vs_greedy] + [r["win_second"] for r in random_vs_greedy]) if random_vs_greedy else 0.0),
+        "draw_rate_vs_random": float(np.mean([r["draw_first"] for r in nn_vs_random] + [r["draw_second"] for r in nn_vs_random]) if nn_vs_random else 0.0),
+        "draw_rate_vs_greedy": float(np.mean([r["draw_first"] for r in nn_vs_greedy] + [r["draw_second"] for r in nn_vs_greedy]) if nn_vs_greedy else 0.0),
+        "draw_rate_random_vs_greedy": float(np.mean([r["draw_first"] for r in random_vs_greedy] + [r["draw_second"] for r in random_vs_greedy]) if random_vs_greedy else 0.0),
         "winrate_by_position": {
             "agent_a_first": float(np.mean([r["win_first"] for r in nn_vs_random]) if nn_vs_random else 0.0),
             "agent_a_second": float(np.mean([r["win_second"] for r in nn_vs_random]) if nn_vs_random else 0.0),
