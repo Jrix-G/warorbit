@@ -54,6 +54,12 @@ def encode_game_state(game: Any, config: Dict[str, Any]) -> EncodedGame:
         features.extend(build_player_features(pid, game, config))
         player_mask[i] = 1.0
 
+    expected_len = 11 + max_planets * 19 + max_fleets * 10 + max_players * 8
+    if len(features) < expected_len:
+        features.extend([0.0] * (expected_len - len(features)))
+    elif len(features) > expected_len:
+        features = features[:expected_len]
+
     return EncodedGame(
         features=np.asarray(features, dtype=np.float32),
         planet_mask=planet_mask,
@@ -150,4 +156,3 @@ def build_player_features(pid: int, game: Any, config: Dict[str, Any]) -> List[f
         normalize(sum(f["ships"] for f in fleets if f["owner"] == pid), config["ship_scale"]),
         normalize(sum(1 for p in planets if p["owner"] == pid and p.get("production", 0) > 0), config["max_planets"]),
     ]
-
