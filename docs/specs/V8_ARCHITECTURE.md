@@ -2,6 +2,115 @@
 
 Goal: avoid the V7 ceiling by moving learning from a late local multiplier to a policy-level ranker over candidate plans, with a value head and DAgger-style dataset aggregation.
 
+---
+
+## Changelog — 2026-04-30 audit V8.2
+
+Audit complet `bot_v8_2.py` / `train_v8_2.py` / `benchmark_v8_2.py` + corrections.
+
+### Bugs identifiés
+
+**`bot_v8_2.py`**
+- `latent_threat` sommait *tous* les ennemis joignables × 0.30 → en 4p le plancher
+  garrison gonflait ~3× et bloquait l'expansion.
+- `garrison_floor` identique en 4p early et 4p mid → `prod * 8` early avec 8
+  planètes ⇒ ~24 ships locked/planète, raids early impossibles.
+- `build_candidate_features` : tolérance angulaire `0.25 rad` trop serrée
+  (orbits orientent les angles d'interception bien au-delà). La majorité des
+  moves restaient non-classifiés ⇒ features `targets_attack/expand/defense`
+  s'effondraient à 0 ⇒ ranker sans signal catégoriel.
+- `agent(...) except Exception: return []` masquait toute erreur en forfait
+  silencieux du tour, sans fallback V7.
+- `reserve_hold` et `4p_conservation` quasi-redondants
+  (`block_offense + defense_boost`) ; différenciés uniquement par
+  `suppress_rear_staging` et magnitude.
+
+**`train_v8_2.py`**
+- `ProcessPoolExecutor` recréé à chaque `evaluate_params` → 8 spawns / gen +
+  ré-imports notebooks (3000+ lignes) ⇒ racine du 14 min/gen observé.
+- Eval seeds variaient avec `seed + 50000 + generation` ⇒ eval gen-N et
+  gen-(N+5) sur tirages d'adversaires différents ⇒ promotion "best" sur
+  seeds chanceux.
+- Pas de séparation 2p / 4p dans les métriques.
+- Promotion best : tout gain numérique, pas de plancher de non-régression
+  par mode.
+- `pairs=4` → 8 échantillons rank-shaped : SE ≈ 18% sur le gradient.
+- `max_steps=500` pendant training : ES n'a pas besoin de jouer la fin de
+  partie pour apprendre l'ordering des plans.
+- `improved=1` au gen 1 même quand eval=0 (best initial -1) ⇒ log trompeur.
+- `best_wr_*` lu de `best_path` même avec `--no-resume`.
+
+**`benchmark_v8_2.py`**
+- Pas de WR 2p / 4p séparé.
+- Pas de temps par game ni p95.
+- Pas d'histogramme plan-choice (impossible de vérifier mode-collapse).
+- Pas de pool persistante.
+
+### Corrections appliquées
+
+**`bot_v8_2.py`**
+- `latent_threat` → top-K (K=1) plus fort ennemi joignable, pas la somme.
+  Constantes : `THREAT_LATENT_TOP_K = 1`, `THREAT_LATENT_DISCOUNT = 0.30`.
+- `garrison_floor` → multiplier `GARRISON_FLOOR_4P_EARLY_RATIO = 0.55` quand
+  `world.is_four_player and world.step < FOUR_P_EARLY_TURN_LIMIT`.
+- `build_candidate_features` → projection forward (`proj > 0`) +
+  `perp ≤ p.radius + 6`, abandon de la tolérance angulaire fixe ; couvre les
+  angles d'interception orbital correctement.
+- `agent` → fallback `bot_v7.agent(obs, config)` au lieu de `[]` sur exception.
+
+**`train_v8_2.py`** (réécriture complète)
+- `multiprocessing.Pool` **persistante** (`spawn`) avec `initializer=_worker_init`
+  ⇒ notebooks importés une seule fois par worker.
+- Un seul `pool.map` par génération : `2 × pairs × games_per_eval` tasks
+  (+ `eval_games` quand `gen % --eval-every == 0`).
+- Eval seeds **fixes** : `seed + 50000 + i`. Comparable gen-à-gen.
+- Métriques 2p / 4p séparées : reward, WR par mode, n_games par mode.
+- Promotion best : `gain ≥ --min-improvement` ET pas de régression par mode
+  > `--min-mode-floor`.
+- `--max-steps` séparé de `--eval-max-steps`.
+- Nouveaux flags : `--eval-every`, `--eval-four-player-ratio`,
+  `--min-improvement`, `--min-mode-floor`, `--log-jsonl`.
+- Log JSONL `evaluations/v8_2_train.jsonl` (gen, train_*, eval_*, best_*,
+  grad_norm, promoted, elapsed_min).
+- `--no-resume` ignore aussi `best_path`.
+
+**`benchmark_v8_2.py`** (réécriture complète)
+- Pool persistante spawn + worker initializer.
+- WR 2p, 4p, global ; median + p95 temps par game.
+- Histogramme plan-choice via candidate-log callback.
+- 4p picks rotatifs (anchor + 2 buddies) au lieu de répétition.
+
+**Nouveaux fichiers**
+- `run_v8_2_train_vps.sh` : wrapper 10h calibré 2 vCPU avec timestamp logs.
+
+### Tests passés
+
+```
+py_compile bot_v8_2.py benchmark_v8_2.py train_v8_2.py            OK
+benchmark mixed passive greedy --max-steps 80 --workers 1         2/0/0 (2p)
+benchmark mixed bot_v7 --max-steps 80 --workers 1                 0/1/0 (poids zéro, attendu)
+train smoke 0.1 min --no-resume                                   gen=1 promo OK
+train resume 0.05 min                                             gen=2 reprise OK
+train 3 min pairs=4 ggames=2 eval=16 workers=4 max=220 4p=0.5     gen=1 en 4:35 wall
+```
+
+### Estimations 10h après corrections
+
+| Hardware  | workers | gens/10h | evals | gen wall |
+|-----------|---------|----------|-------|----------|
+| 8-core    | 8       | 170-200  | 40-50 | ~3 min   |
+| 2 vCPU    | 2       | 100-120  | 20-24 | ~5-6 min |
+
+Gain plausible local (60-game eval pool 8 notebooks) :
+**WR 4p +5 à +15 pts**, **WR 2p -3 à +5 pts**, **global +3 à +10 pts**.
+Kaggle ELO conversion : **+50 à +150**, distribution longue traîne, ~20%
+chance zéro mouvement.
+
+Le gros lift vient déjà des fixes hard-coded `#0/#1/#4/#5` dans `bot_v8_2`
+(42% WR Kaggle vs ~21% V7 en 4p mesuré). ES sur ranker = incrémental.
+
+---
+
 ## V8 Prerequisites — V7 Bug Fixes
 
 Before any training, three hard bugs in V7's candidate generation must be fixed.

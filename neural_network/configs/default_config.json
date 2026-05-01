@@ -1,0 +1,24 @@
+{
+  "seed": 42,
+  "board_scale": 100.0,
+  "ship_scale": 2000.0,
+  "production_scale": 10.0,
+  "radius_scale": 10.0,
+  "horizon_scale": 100.0,
+  "planet_id_scale": 64.0,
+  "max_planets": 64,
+  "max_fleets": 128,
+  "max_players": 4,
+  "hidden_dim": 64,
+  "learning_rate": 0.001,
+  "batch_size": 16,
+  "train_steps": 50,
+  "self_play_episodes": 8,
+  "benchmark_games": 8,
+  "checkpoint_dir": "neural_network/checkpoints",
+  "log_dir": "neural_network/logs",
+  "best_checkpoint": "neural_network/checkpoints/best.npz",
+  "latest_checkpoint": "neural_network/checkpoints/latest.npz",
+  "export_path": "neural_network/checkpoints/export.npz"
+}
+
