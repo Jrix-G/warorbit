@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict
 import json
 import numpy as np
+import torch
 
 
 def save_checkpoint(path: str | Path, state: Dict[str, np.ndarray], metadata: Dict[str, Any]) -> None:
@@ -14,9 +15,9 @@ def save_checkpoint(path: str | Path, state: Dict[str, np.ndarray], metadata: Di
         np.savez_compressed(f, **state, metadata=json.dumps(metadata))
 
 
-def load_checkpoint(path: str | Path) -> tuple[Dict[str, np.ndarray], Dict[str, Any]]:
+def load_checkpoint(path: str | Path) -> tuple[Dict[str, torch.Tensor], Dict[str, Any]]:
     data = np.load(Path(path), allow_pickle=False)
-    state = {k: data[k] for k in data.files if k != "metadata"}
+    state = {k: torch.as_tensor(data[k]) for k in data.files if k != "metadata"}
     metadata = json.loads(str(data["metadata"]))
     return state, metadata
 
