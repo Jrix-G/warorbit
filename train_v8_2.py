@@ -220,6 +220,12 @@ def _summarise(rewards: List[Tuple[float, str, int, float, float]]):
     return mean, wr2, wr4, len(r2), len(r4)
 
 
+def _median_score(rewards: List[Tuple[float, str, int, float, float]]) -> float:
+    if not rewards:
+        return 0.0
+    return float(np.median([r for r, *_ in rewards]))
+
+
 # ---------------------------------------------------------------------------
 # Main training loop.
 # ---------------------------------------------------------------------------
@@ -369,6 +375,7 @@ def main() -> None:
             train_mean, train_wr_2p, train_wr_4p, n_train_2p, n_train_4p = _summarise(results)
 
             eval_mean = train_mean
+            eval_median = train_mean
             eval_wr_2p = train_wr_2p
             eval_wr_4p = train_wr_4p
             improved = False
@@ -383,6 +390,8 @@ def main() -> None:
                               for opps, our_idx, seed, max_steps in eval_sched]
                 eval_results = list(map_fn(_worker_play, eval_tasks))
                 eval_mean, eval_wr_2p, eval_wr_4p, n_eval_2p, n_eval_4p = _summarise(eval_results)
+                eval_median = _median_score(eval_results)
+                eval_floor = min(eval_wr_2p, eval_wr_4p) if (n_eval_2p and n_eval_4p) else min(eval_wr_2p, eval_wr_4p)
 
                 # Floor checks only kick in once we have a real best (best_score >= 0).
                 if best_score < 0:
@@ -394,7 +403,9 @@ def main() -> None:
 
                 gain = eval_mean - best_score
                 non_regressing = (eval_wr_2p >= regress_floor_2p) and (eval_wr_4p >= regress_floor_4p)
-                if gain >= args.min_improvement and non_regressing:
+                stable_gain = (0.5 * eval_mean + 0.5 * eval_median) - best_score
+                if (gain >= args.min_improvement and non_regressing and eval_median >= best_score - 0.02) or \
+                   (stable_gain >= args.min_improvement and non_regressing and eval_floor >= min(regress_floor_2p, regress_floor_4p)):
                     best_score = eval_mean
                     best_wr_2p = eval_wr_2p
                     best_wr_4p = eval_wr_4p
@@ -411,11 +422,16 @@ def main() -> None:
                         "score": best_score,
                         "wr_2p": best_wr_2p,
                         "wr_4p": best_wr_4p,
+                        "eval_median": eval_median,
                     })
                 elif gain > 0 and not non_regressing:
                     print(f"  [skip] eval gained {gain:+.3f} but mode-floor regressed "
                           f"(2p {eval_wr_2p:.3f} vs best {best_wr_2p:.3f}, "
                           f"4p {eval_wr_4p:.3f} vs best {best_wr_4p:.3f})",
+                          flush=True)
+                elif gain > 0:
+                    print(f"  [skip] eval improved mean={eval_mean:.3f} median={eval_median:.3f} "
+                          f"but not enough for promotion (best={best_score:.3f}, stable_gain={stable_gain:+.3f})",
                           flush=True)
 
             _save_flat(latest_path, params, best_score, generation, vars(args))
@@ -436,6 +452,7 @@ def main() -> None:
                     "train_wr_2p": train_wr_2p,
                     "train_wr_4p": train_wr_4p,
                     "eval_mean": eval_mean,
+                    "eval_median": eval_median,
                     "eval_wr_2p": eval_wr_2p,
                     "eval_wr_4p": eval_wr_4p,
                     "best": best_score,
