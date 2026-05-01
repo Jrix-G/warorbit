@@ -33,6 +33,15 @@ python neural_network/scripts/run_30min_analysis.py --duration-minutes 1
 python neural_network/scripts/run_30min_analysis.py --duration-minutes 30
 ```
 
+## 4P Notebook Training
+
+```bash
+python neural_network/scripts/run_notebook_4p_training.py --duration-minutes 30 --eval-episodes 20
+```
+
+This runs the model in 4-player matches against the extracted notebook zoo in
+`opponents/`, with 4p forced on for both training and evaluation.
+
 ## Benchmark
 
 ```bash
