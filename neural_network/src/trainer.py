@@ -47,7 +47,7 @@ def run_training(config: Dict[str, Any], resume: bool = True) -> Dict[str, Any]:
     log_path = Path(config["log_dir"]) / "training.jsonl"
     if resume and latest.exists():
         state, meta = load_checkpoint(latest)
-        model.load_state_dict(state)
+        model.load_state_dict(_state_dict_to_torch(state))
     best_score = -1e9
     for step in range(int(config["train_steps"])):
         episode = play_episode(model, config, seed=int(config["seed"]) + step)
@@ -66,3 +66,7 @@ def _infer_input_dim(config: Dict[str, Any]) -> int:
     sample = make_synthetic_game(seed=int(config["seed"]))
     encoded = encode_game_state(sample, config)
     return int(encoded.features.size)
+
+
+def _state_dict_to_torch(state: Dict[str, Any]) -> Dict[str, torch.Tensor]:
+    return {k: torch.as_tensor(v) for k, v in state.items()}
