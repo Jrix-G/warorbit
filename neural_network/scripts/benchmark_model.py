@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 from neural_network.src.utils import load_json
 from neural_network.src.model import NeuralNetworkModel, ModelConfig
 from neural_network.src.trainer import _infer_input_dim
-from neural_network.src.benchmark import benchmark_model
+from neural_network.src.benchmark import benchmark_model, benchmark_matchups
 from neural_network.src.storage import load_checkpoint
 
 
@@ -29,8 +29,10 @@ def main():
     checkpoint = Path(args.checkpoint)
     if checkpoint.exists():
         state, _ = load_checkpoint(checkpoint)
-        model.load_state_dict({k: torch.tensor(v) for k, v in state.items()})
-    print(json.dumps(benchmark_model(model, cfg, games=args.episodes), indent=2))
+        model.load_state_dict(state)
+    result = benchmark_model(model, cfg, games=args.episodes)
+    result.update(benchmark_matchups(model, cfg, episodes=args.episodes))
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
