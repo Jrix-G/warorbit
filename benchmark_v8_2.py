@@ -31,6 +31,7 @@ _WORKER_RUN = None
 _WORKER_ZOO = None
 _WORKER_V7 = None
 _PLAN_COUNTER: Counter = Counter()
+_CANDIDATE_COUNTER: Counter = Counter()
 
 
 def _silent_imports():
@@ -47,13 +48,15 @@ def _silent_imports():
 
 
 def _worker_init():
-    global _WORKER_BOT, _WORKER_RUN, _WORKER_ZOO, _WORKER_V7, _PLAN_COUNTER
+    global _WORKER_BOT, _WORKER_RUN, _WORKER_ZOO, _WORKER_V7, _PLAN_COUNTER, _CANDIDATE_COUNTER
     _WORKER_BOT, _WORKER_V7, _WORKER_RUN, _WORKER_ZOO = _silent_imports()
     _PLAN_COUNTER = Counter()
+    _CANDIDATE_COUNTER = Counter()
 
     def _log(d):
         names = d.get("candidate_names") or []
         chosen = int(d.get("chosen", 0))
+        _CANDIDATE_COUNTER.update(names)
         if 0 <= chosen < len(names):
             _PLAN_COUNTER[names[chosen]] += 1
 
@@ -69,9 +72,12 @@ def _agent_for(name: str):
 
 
 def _worker_play(task):
+    global _PLAN_COUNTER, _CANDIDATE_COUNTER
     label, opp_names, our_index, seed, max_steps = task
     if _WORKER_BOT is None:
         _worker_init()
+    _PLAN_COUNTER = Counter()
+    _CANDIDATE_COUNTER = Counter()
     agents = []
     opp_iter = iter(opp_names)
     for slot in range(len(opp_names) + 1):
@@ -90,7 +96,8 @@ def _worker_play(task):
     else:
         outcome = -1
     plan_snapshot = dict(_PLAN_COUNTER)
-    return label, outcome, elapsed, int(result.get("steps", 0)), plan_snapshot
+    candidate_snapshot = dict(_CANDIDATE_COUNTER)
+    return label, outcome, elapsed, int(result.get("steps", 0)), plan_snapshot, candidate_snapshot
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +224,8 @@ def main() -> None:
     per_label: Dict[str, Stats] = defaultdict(Stats)
     total = Stats()
     plan_total: Counter = Counter()
-    for label, outcome, elapsed, steps, plan_snapshot in outcomes:
+    candidate_total: Counter = Counter()
+    for label, outcome, elapsed, steps, plan_snapshot, candidate_snapshot in outcomes:
         stats = per_label[label]
         stats.seconds.append(elapsed)
         stats.steps.append(steps)
@@ -233,6 +241,7 @@ def main() -> None:
             stats.draws += 1
             total.draws += 1
         plan_total.update(plan_snapshot)
+        candidate_total.update(candidate_snapshot)
 
     for label in sorted(per_label):
         s = per_label[label]
@@ -260,6 +269,12 @@ def main() -> None:
         print("Plan-choice histogram:")
         for plan, count in sorted(plan_total.items(), key=lambda kv: -kv[1]):
             pct = 100.0 * count / max(1, total_picks)
+            print(f"  {plan:24s} {count:6d}  {pct:5.1f}%")
+    if not args.no_plan_histogram and candidate_total:
+        total_seen = sum(candidate_total.values())
+        print("Candidate availability histogram:")
+        for plan, count in sorted(candidate_total.items(), key=lambda kv: -kv[1]):
+            pct = 100.0 * count / max(1, total_seen)
             print(f"  {plan:24s} {count:6d}  {pct:5.1f}%")
 
 

@@ -87,20 +87,28 @@ FOUR_P_REAR_STAGING_MIN_TURN = 60
 
 # Fix #5 — 4p offense throttle
 ACTIVE_FRONT_THRESHOLD = 2
-THROTTLE_GARRISON_RATIO = 0.25
-THROTTLE_TOP2_PRESSURE_RATIO = 0.80
-THROTTLE_RELEASE_TURNS = 10        # consecutive low-pressure turns to exit throttle
+THROTTLE_GARRISON_RATIO = 0.28
+THROTTLE_TOP2_PRESSURE_RATIO = 0.75
+THROTTLE_RELEASE_TURNS = 8         # consecutive low-pressure turns to exit throttle
 
 # 4p plan triggers
 LATE_BLITZ_TURN = 280
-ELIMINATE_WEAKEST_FRACTION = 0.35  # weakest enemy < this fraction of my ships
-OPPORTUNISTIC_DEPLETED_PROD_MULT = 3.0  # target.ships < production * this
+LATE_BLITZ_EARLY_TURN = 90       # expose the finisher inside 120-turn ES games
+LATE_BLITZ_MIN_GARRISON_RATIO = 0.36
+LATE_BLITZ_MAX_ACTIVE_FRONTS = 1
+LATE_BLITZ_MIN_SHIP_LEAD = 1.05
+LATE_BLITZ_MIN_PROD_LEAD = 1.05
+ELIMINATE_WEAKEST_FRACTION = 0.40  # weakest enemy < this fraction of my ships
+OPPORTUNISTIC_DEPLETED_PROD_MULT = 2.25  # target.ships < production * this
 
 # Ranker dimensions
 N_STATE_FEATURES = 24
 N_CANDIDATE_FEATURES = 12
 N_PLANS_MAX = 9                    # baseline + attack + expand + defense + reserve + 4 4p variants
 RANKER_TEMPERATURE = 1.0
+EARLY_4P_EXPAND_PLANET_TARGET = 6
+EARLY_4P_EXPAND_OVERRIDE_TURN = 70
+EARLY_4P_EXPAND_MIN_GARRISON_RATIO = 0.28
 
 
 # ---------------------------------------------------------------------------
@@ -383,6 +391,47 @@ def _adjust_keep_needed(world: WorldModel, planet, ctx: PlanContext, base_keep: 
     return max(base_keep, floor, latent)
 
 
+def _allow_4p_late_blitz(world: WorldModel, n_fronts: int, g_ratio: float) -> bool:
+    """Late blitz stays late by default, but can activate earlier in a clearly favorable 4p endgame."""
+    if world.step > LATE_BLITZ_TURN:
+        return True
+    if world.step < LATE_BLITZ_EARLY_TURN:
+        return False
+    if n_fronts > LATE_BLITZ_MAX_ACTIVE_FRONTS:
+        return False
+    if g_ratio < LATE_BLITZ_MIN_GARRISON_RATIO:
+        return False
+    strongest_enemy = max(
+        (s for owner, s in world.owner_strength.items() if owner not in (-1, world.player)),
+        default=0,
+    )
+    strongest_enemy_prod = max(
+        (p for owner, p in world.owner_production.items() if owner not in (-1, world.player)),
+        default=0,
+    )
+    ship_lead = world.my_total / max(1, strongest_enemy)
+    prod_lead = world.my_prod / max(1, strongest_enemy_prod)
+    return ship_lead >= LATE_BLITZ_MIN_SHIP_LEAD or prod_lead >= LATE_BLITZ_MIN_PROD_LEAD
+
+
+def _has_4p_opportunistic_target(world: WorldModel) -> bool:
+    """Only expose opportunistic mode when there is an actual depleted contested target."""
+    for target in world.planets:
+        if target.owner == world.player:
+            continue
+        is_depleted = target.ships < target.production * OPPORTUNISTIC_DEPLETED_PROD_MULT
+        if not is_depleted:
+            continue
+        has_enemy_inbound = any(
+            owner not in (-1, world.player)
+            for _, owner, ships in world.arrivals_by_planet.get(target.id, [])
+            if ships > 0
+        )
+        if target.owner not in (-1, world.player) or has_enemy_inbound:
+            return True
+    return False
+
+
 def _v8_2_plan(world: WorldModel, ctx: PlanContext) -> Tuple[List[List], List[int]]:
     """Returns (moves, sources_ships_sent). Pure heuristic plan with V8.2 fixes + variant bias."""
     modes = _build_modes(world)
@@ -452,11 +501,13 @@ def _v8_2_plan(world: WorldModel, ctx: PlanContext) -> Tuple[List[List], List[in
                     if target.owner not in (-1, ctx.only_targets_owner):
                         continue
                 if ctx.only_depleted_targets:
-                    # opportunistic: only contested planets or recently-fought
+                    # opportunistic: only truly depleted planets that are contested
+                    # or already changed hands. This avoids chasing soft neutrals.
                     is_depleted = target.ships < target.production * OPPORTUNISTIC_DEPLETED_PROD_MULT
                     has_enemy_inbound = any(o not in (-1, world.player)
                                             for _, o, _ in world.arrivals_by_planet.get(target.id, []))
-                    if not (is_depleted or has_enemy_inbound):
+                    recently_fought = target.owner not in (-1, world.player) or has_enemy_inbound
+                    if not (is_depleted and recently_fought):
                         continue
 
                 rough_ships = max(1, min(src_available, max(PARTIAL_SOURCE_MIN_SHIPS, int(target.ships) + 1)))
@@ -912,12 +963,20 @@ def _generate_candidates(world: WorldModel) -> List[Tuple[str, List[List]]]:
                                                 suppress_rear_staging=True))[0]))
 
     if is_4p:
-        # 5. 4p_opportunistic
-        plans.append(("4p_opportunistic",
-                      _v8_2_plan(world, PlanContext("4p_opportunistic",
-                                                    only_depleted_targets=True,
-                                                    attack_boost=1.10,
-                                                    expand_boost=1.10))[0]))
+        # 5. 4p_opportunistic. When no scavenging target exists, keep this as
+        # a guarded tempo plan so old rankers do not collapse into passivity.
+        if _has_4p_opportunistic_target(world):
+            plans.append(("4p_opportunistic",
+                          _v8_2_plan(world, PlanContext("4p_opportunistic",
+                                                        only_depleted_targets=True,
+                                                        attack_boost=1.10,
+                                                        expand_boost=1.10))[0]))
+        else:
+            plans.append(("4p_opportunistic",
+                          _v8_2_plan(world, PlanContext("4p_opportunistic",
+                                                        attack_boost=0.95,
+                                                        expand_boost=1.25,
+                                                        defense_boost=1.05))[0]))
         # 6. 4p_eliminate_weakest — only if a player is weak enough to focus down.
         weakest = world.weakest_enemy_id
         weakest_strength = world.owner_strength.get(weakest, 0) if weakest is not None else 0
@@ -925,15 +984,16 @@ def _generate_candidates(world: WorldModel) -> List[Tuple[str, List[List]]]:
             plans.append(("4p_eliminate_weakest",
                           _v8_2_plan(world, PlanContext("4p_eliminate_weakest",
                                                          only_targets_owner=weakest,
-                                                        attack_boost=1.70,
-                                                        expand_boost=0.75))[0]))
-        # 7. 4p_conservation — explicit no-offense plan (different from reserve_hold via defense boost)
+                                                         attack_boost=1.80,
+                                                         expand_boost=0.70))[0]))
+        # 7. 4p_conservation — explicit no-offense plan, but still allows rear-to-front redistribution
+        conservation_boost = 1.85 if len(compute_active_fronts(world)) < 3 else 2.05
         plans.append(("4p_conservation",
                       _v8_2_plan(world, PlanContext("4p_conservation", block_offense=True,
-                                                    defense_boost=1.60,
-                                                    suppress_rear_staging=True))[0]))
+                                                    defense_boost=conservation_boost,
+                                                    suppress_rear_staging=False))[0]))
         # 8. 4p_late_blitz
-        if world.step > LATE_BLITZ_TURN:
+        if _allow_4p_late_blitz(world, len(compute_active_fronts(world)), garrison_ratio_now(world)):
             plans.append(("4p_late_blitz",
                           _v8_2_plan(world, PlanContext("4p_late_blitz",
                                                         attack_boost=1.80,
@@ -1047,6 +1107,26 @@ def value_estimate(state_feat: np.ndarray) -> float:
     return float(_VALUE_W @ state_feat) + float(_VALUE_B)
 
 
+def _select_candidate_index(candidates: List[Tuple[str, List[List]]], scores: List[float],
+                            cand_feats: List[np.ndarray], world: WorldModel) -> int:
+    if (world.is_four_player
+            and world.step < EARLY_4P_EXPAND_OVERRIDE_TURN
+            and len(world.my_planets) < EARLY_4P_EXPAND_PLANET_TARGET
+            and not compute_active_fronts(world)
+            and garrison_ratio_now(world) >= EARLY_4P_EXPAND_MIN_GARRISON_RATIO):
+        for i, (plan_name, moves) in enumerate(candidates):
+            if plan_name == "expand_focus" and moves:
+                return i
+
+    best_idx = 0
+    best_score = scores[0]
+    for i in range(1, len(scores)):
+        if scores[i] > best_score:
+            best_score = scores[i]
+            best_idx = i
+    return best_idx
+
+
 # Public deterministic planner useful for tests and ablations. It returns the
 # current ranker-selected V8.2 candidate plan for an already-built WorldModel.
 def plan_moves_v8_2(world: WorldModel) -> List[List]:
@@ -1054,13 +1134,8 @@ def plan_moves_v8_2(world: WorldModel) -> List[List]:
     if not candidates:
         return []
     state_feat = build_state_features(world)
-    scores, _ = score_candidates(state_feat, candidates, world)
-    best_idx = 0
-    best_score = scores[0]
-    for i in range(1, len(scores)):
-        if scores[i] > best_score:
-            best_score = scores[i]
-            best_idx = i
+    scores, cand_feats = score_candidates(state_feat, candidates, world)
+    best_idx = _select_candidate_index(candidates, scores, cand_feats, world)
     return candidates[best_idx][1]
 
 
@@ -1081,13 +1156,7 @@ def agent(obs, config=None):
             return candidates[0][1]
         state_feat = build_state_features(world)
         scores, cand_feats = score_candidates(state_feat, candidates, world)
-        # Argmax with tie-break on first candidate (V7 baseline) — guarantees safe warm-start
-        best_idx = 0
-        best_score = scores[0]
-        for i in range(1, len(scores)):
-            if scores[i] > best_score:
-                best_score = scores[i]
-                best_idx = i
+        best_idx = _select_candidate_index(candidates, scores, cand_feats, world)
         if _CANDIDATE_LOG_CB is not None:
             try:
                 _CANDIDATE_LOG_CB({

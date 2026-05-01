@@ -222,6 +222,9 @@ A planet is a candidate if: `target.ships < target.production * 3` (just changed
 or an enemy fleet is en route to it (they will fight, leaving it depleted).
 Ships sent = minimum needed to take the post-battle residual.
 Effect: the bot scavenges from other players' wars instead of initiating its own.
+When no such target exists, V8.2 keeps the plan available as a guarded 4p tempo
+plan. Existing rankers often score this row highly; mapping the no-opportunity
+case to controlled expansion avoids turning that preference into passivity.
 
 #### `4p_eliminate_weakest`
 Concentrate all offensive resources against the single weakest enemy
@@ -368,6 +371,9 @@ Within 4p, oversample states where `active_fronts >= 2` and `garrison_ratio < 0.
 At `step > 280` in 4p, most resources have been spent by other players.
 Add a `4p_late_blitz` candidate: all offense, ignore garrison floor.
 This is only valid late because early use triggers the overextend pattern.
+For shorter validation/training horizons, it can be enabled from the midgame
+only when the position is already clearly favorable, garrison is healthy, and
+multi-front pressure is low.
 The model learns to activate it via `turn_phase` in `E_s`.
 
 ```python
@@ -500,6 +506,11 @@ expansion, attack, defense, reserve, and 4p-specific plans.
   delayed until turn 60.
 - Fix #5: 4p pressure throttle blocks offense when multiple active fronts or
   top-enemy pressure make overextension likely.
+- Early 4p override: when the bot has fewer than 6 planets before turn 70,
+  has no active fronts, and still has an acceptable garrison ratio,
+  `expand_focus` can override the learned ranker. This addresses the documented
+  early_4p_crush pattern without disabling defensive throttles or the final
+  garrison cap.
 
 ### Candidate plans
 
@@ -517,8 +528,9 @@ V8.2 currently emits up to nine candidate plans:
 8 4p_late_blitz
 ```
 
-The 4p variants are only available in four-player states, and `4p_late_blitz`
-only appears after turn 280.
+The 4p variants are only available in four-player states. `4p_late_blitz`
+appears after turn 280 unconditionally, and can appear earlier inside short
+training horizons only behind a favorable-position gate.
 
 ### Ranker and value head
 
