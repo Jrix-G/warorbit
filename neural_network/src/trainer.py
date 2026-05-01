@@ -83,8 +83,9 @@ def run_training(config: Dict[str, Any], resume: bool = True) -> Dict[str, Any]:
     best = Path(config["best_checkpoint"])
     candidate = Path(config.get("candidate_checkpoint", str(best.parent / "candidate.npz")))
     log_path = Path(config["log_dir"]) / "training.jsonl"
-    if resume and latest.exists():
-        state, _meta = load_checkpoint(latest)
+    resume_path = Path(config.get("resume_checkpoint", str(latest)))
+    if resume and resume_path.exists():
+        state, _meta = load_checkpoint(resume_path)
         model.load_state_dict(_state_dict_to_torch(state))
     best_score = -1e9
     best_record: Dict[str, Any] = {}
@@ -108,18 +109,25 @@ def run_training(config: Dict[str, Any], resume: bool = True) -> Dict[str, Any]:
             "train_ratio_4p": ratio4,
             "train_mode": "4p" if ratio4 >= 0.5 else "2p",
         }
-        append_jsonl(log_path, record)
-        save_checkpoint(candidate, model.state_dict(), record)
-        save_checkpoint(latest, model.state_dict(), record)
-
         margin = float(config.get("promotion_margin", 0.05))
         min_std = float(config.get("promotion_min_eval_std", 0.25))
+        promoted = False
+        promotion_reason = "no promotion"
         if benchmark["eval_mean"] > best_score + margin or (benchmark["eval_mean"] > best_score and benchmark["eval_std"] <= min_std):
             best_score = benchmark["eval_mean"]
             best_record = record
             save_checkpoint(best, model.state_dict(), record)
-
+            promoted = True
+            promotion_reason = (
+                f"eval_mean improved to {benchmark['eval_mean']:.4f} "
+                f"(std={benchmark['eval_std']:.4f}, margin={margin:.4f})"
+            )
+        record["checkpoint_promoted"] = promoted
+        record["promotion_reason"] = promotion_reason
         record["best_score"] = best_score
+        append_jsonl(log_path, record)
+        save_checkpoint(candidate, model.state_dict(), record)
+        save_checkpoint(latest, model.state_dict(), record)
     return {
         "best_score": best_score,
         "latest": str(latest),
