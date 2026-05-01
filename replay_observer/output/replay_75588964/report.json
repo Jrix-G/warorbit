@@ -1,0 +1,1388 @@
+{
+  "run_id": "replay_75588964",
+  "url": "https://www.kaggle.com/competitions/orbit-wars/submissions?submissionId=52128366&episodeId=75588964#",
+  "started_at": "2026-04-28T10:54:47.742710Z",
+  "seconds": 25.0,
+  "interval": 2.0,
+  "network_hits": [
+    {
+      "url": "https://www.kaggle.com/competitions/orbit-wars/submissions?submissionId=52128366&episodeId=75588964",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0001_https_www.kaggle.com_competitions_orbit-wars_submissions_submissionId_52128366_episodeId_75588964.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/static/json/manifest.json",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0002_https_www.kaggle.com_static_json_manifest.json.txt"
+    },
+    {
+      "url": "https://region1.google-analytics.com/g/collect?v=2&tid=G-T7QHS60L4Q&gtm=45je64o1v9104087209za200zd9104087209&_p=1777373689016&gcd=13l3l3l2l1l1&npa=1&dma_cps=a&dma=1&_eu=AEAAAAQ&ae=a&are=1&cid=143945920.1777373536&frm=0&pscdl=noapi&rcb=2&sr=1280x900&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=0~115938465~115938468~117266401~117512542&sid=1777373535&sct=1&seg=1&dl=https%3A%2F%2Fwww.kaggle.com%2Fcompetitions%2Forbit-wars%2Fsubmissions%3FsubmissionId%3D52128366%26episodeId%3D75588964&dt=Orbit%20Wars%20%7C%20Kaggle&en=scroll&ep.optimize_id=GTM-52LNT9S&ep.displayFeaturesTask=&ep.content_group1=Competitions&epn.percent_scrolled=90&_et=6&up.logged_in=true&tfd=487",
+      "status": 204,
+      "content_type": "text/plain",
+      "body_error": "Response.text: Protocol error (Network.getResponseBody): No data found for resource with given identifier"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/diagnostics.MetricsService/RecordPageLoadMetrics",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_diagnostics.MetricsService_RecordPageLoadMetrics.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.CompetitionService/GetCompetition",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_competitions.CompetitionService_GetCompetition.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetCurrentUserTheme",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_users.UsersService_GetCurrentUserTheme.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.ModerationPublicService/ListViolationDescriptions",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_users.ModerationPublicService_ListViolationDescriptions.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.UserService/GetUser",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_competitions.UserService_GetUser.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetCurrentUser",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_users.UsersService_GetCurrentUser.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.RecentlyViewedService/GetRecentlyViewedItems",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0011_https_www.kaggle.com_api_i_users.RecentlyViewedService_GetRecentlyViewedItems.txt"
+    },
+    {
+      "url": "https://storage.googleapis.com/kaggle-media/competitions/orbit-wars-large-slow.gif?GoogleAccessId=web-data@kaggle-161607.iam.gserviceaccount.com&Expires=1777376630&Signature=R7dh5zGEgFg%2FaakqfJlXf3H7knJeCm9cjpB8R0LrE9mdIGkwxT77iGN%2BWn5WI6NFo68TWC0%2FKvV77Gzv0rjgO3OoliN0V8m5wOqwH24q7SUGCfNPlEvx1pXHiYGOIWiO4rDuObLr%2B2AkRvEuNJDEEyUBuLRgGCMOYdGMPU5dJ1i2jT1nUhd1L2Liz7pTEO%2Fcwj2XCZw8StY5PG%2B5boVyC1ElTOLx3xJhFCdgmnrVE6yHDXOn0AVa%2FUWTmj6GAcRY%2BNxJ3mb0l%2FT27SkO%2FEsFHO6IP%2FFVEpBsdScrfCEJArg02mUbbE0SRZb%2BAdmihZwzsM28PWtBVtxsTLFBj%2Fo8Tw%3D%3D",
+      "status": 200,
+      "content_type": "image/gif",
+      "body_error": "'utf-8' codec can't decode byte 0xf7 in position 10: invalid start byte"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.NudgeService/CheckForNudge",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0013_https_www.kaggle.com_api_i_users.NudgeService_CheckForNudge.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.RecentlyViewedService/GetRecentlyViewedItems",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0013_https_www.kaggle.com_api_i_users.RecentlyViewedService_GetRecentlyViewedItems.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.BookmarkService/ListAllBookmarks",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0021_https_www.kaggle.com_api_i_users.BookmarkService_ListAllBookmarks.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.PageService/GetPage",
+      "status": 403,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.PageService_GetPage.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.PageService/GetPage",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.PageService_GetPage.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetUser",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_users.UsersService_GetUser.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisode",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.EpisodeService_GetEpisode.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.RecentlyViewedService/GetRecentlyViewedItems",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_users.RecentlyViewedService_GetRecentlyViewedItems.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.RecentlyViewedService/GetRecentlyViewedItems",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_users.RecentlyViewedService_GetRecentlyViewedItems.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.SubmissionService/ListSubmissions",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.SubmissionService_ListSubmissions.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/notifications.NotificationsService/GetUserNotifications",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_notifications.NotificationsService_GetUserNotifications.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/active_events.ActiveEventService/GetActiveEventsFirebaseConfig",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_active_events.ActiveEventService_GetActiveEventsFirebaseConfig.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisodeReplay",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.EpisodeService_GetEpisodeReplay.txt"
+    },
+    {
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk",
+      "status": 200,
+      "content_type": "application/json; charset=UTF-8",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0028_https_identitytoolkit.googleapis.com_v1_accounts_lookup_key_AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk.txt"
+    },
+    {
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk",
+      "status": 200,
+      "content_type": "application/json; charset=UTF-8",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0028_https_identitytoolkit.googleapis.com_v1_accounts_signInWithCustomToken_key_AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk.txt"
+    },
+    {
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk",
+      "status": 200,
+      "content_type": "application/json; charset=UTF-8",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0028_https_identitytoolkit.googleapis.com_v1_accounts_lookup_key_AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk.txt"
+    },
+    {
+      "url": "https://www.kaggleusercontent.com/episode-visualizers/orbit_wars/index.json",
+      "status": 200,
+      "content_type": "application/octet-stream",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0028_https_www.kaggleusercontent.com_episode-visualizers_orbit_wars_index.json.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.AccountService/GenerateAnalyticsToken",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0029_https_www.kaggle.com_api_i_users.AccountService_GenerateAnalyticsToken.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/ListEpisodes",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0030_https_www.kaggle.com_api_i_competitions.EpisodeService_ListEpisodes.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisode",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0031_https_www.kaggle.com_api_i_competitions.EpisodeService_GetEpisode.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisodeReplay",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0033_https_www.kaggle.com_api_i_competitions.EpisodeService_GetEpisodeReplay.txt"
+    },
+    {
+      "url": "https://region1.google-analytics.com/g/collect?v=2&tid=G-T7QHS60L4Q&gtm=45je64o1v9104087209za200zd9104087209&_p=1777373689016&gcd=13l3l3l2l1l1&npa=1&dma_cps=a&dma=1&_eu=AAAAAAQ&are=1&cid=143945920.1777373536&frm=0&pscdl=noapi&rcb=2&sr=1280x900&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&tag_exp=0~115938465~115938468~117266401~117512542&sid=1777373535&sct=1&seg=1&dl=https%3A%2F%2Fwww.kaggle.com%2Fcompetitions%2Forbit-wars%2Fsubmissions%3FsubmissionId%3D52128366%26episodeId%3D75588964&dt=Orbit%20Wars%20%7C%20Kaggle&dp=%2Fcompetitions%2Forbit-wars%2Fsubmissions&_s=2&tfd=5491",
+      "status": 204,
+      "content_type": "text/plain",
+      "body_error": "Response.text: Protocol error (Network.getResponseBody): No data found for resource with given identifier"
+    },
+    {
+      "url": "https://www.kaggleusercontent.com/episode-visualizers/orbit_wars/default/index.html",
+      "status": 200,
+      "content_type": "text/html",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0035_https_www.kaggleusercontent.com_episode-visualizers_orbit_wars_default_index.html.txt"
+    },
+    {
+      "url": "https://www.kaggleusercontent.com/episode-visualizers/orbit_wars/default/assets/index-BVVl5ZTZ.js",
+      "status": 200,
+      "content_type": "text/javascript",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0035_https_www.kaggleusercontent.com_episode-visualizers_orbit_wars_default_assets_index-BVVl5ZTZ.js.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.AccountService/GenerateAnalyticsToken",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0036_https_www.kaggle.com_api_i_users.AccountService_GenerateAnalyticsToken.txt"
+    }
+  ],
+  "json_responses": [
+    {
+      "url": "https://www.kaggle.com/static/json/manifest.json",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0002_https_www.kaggle.com_static_json_manifest.json.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "short_name",
+        "name",
+        "icons",
+        "start_url",
+        "display",
+        "theme_color",
+        "background_color"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/diagnostics.MetricsService/RecordPageLoadMetrics",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_diagnostics.MetricsService_RecordPageLoadMetrics.json",
+      "top_level_type": "dict",
+      "top_level_keys": []
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.CompetitionService/GetCompetition",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_competitions.CompetitionService_GetCompetition.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "id",
+        "competitionName",
+        "title",
+        "briefDescription",
+        "dateEnabled",
+        "deadline",
+        "hasLeaderboard",
+        "leaderboardPercentage",
+        "maxDailySubmissions",
+        "numScoredSubmissions",
+        "numPrizes",
+        "forumId",
+        "userRankMultiplier",
+        "dateCreated",
+        "competitionHostSegmentId",
+        "maxTeamSize",
+        "medalsAllowed",
+        "teamMergerExplicitDeadline",
+        "prohibitNewEntrantsExplicitDeadline",
+        "kernelsPublishingDisabledDeadline",
+        "organizationId",
+        "hasCoverImageUrl",
+        "hasScripts",
+        "totalTeams",
+        "totalCompetitors",
+        "totalSubmissions",
+        "rulesRequired",
+        "clonedFromCompetitionId",
+        "evaluationAlgorithm",
+        "categories",
+        "organization",
+        "launched",
+        "createdByUserId",
+        "license",
+        "hostName",
+        "scoreTruncationNumDecimals",
+        "totalJoinedUsers",
+        "requiresIdentityVerification",
+        "submissionSizeLimitMb",
+        "reward",
+        "simulation"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetCurrentUserTheme",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_users.UsersService_GetCurrentUserTheme.json",
+      "top_level_type": "dict",
+      "top_level_keys": []
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.ModerationPublicService/ListViolationDescriptions",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_users.ModerationPublicService_ListViolationDescriptions.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "policyViolations"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.UserService/GetUser",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_competitions.UserService_GetUser.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "user",
+        "isPhoneVerified",
+        "canParticipate",
+        "hasAcceptedRules",
+        "team",
+        "isSharingEmail",
+        "bookmarked",
+        "canUnregister"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetCurrentUser",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0009_https_www.kaggle.com_api_i_users.UsersService_GetCurrentUser.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "id",
+        "displayName",
+        "email",
+        "userName",
+        "thumbnailUrl",
+        "profileUrl",
+        "registerDate",
+        "lastVisitDate",
+        "statusId",
+        "performanceTier",
+        "canAct",
+        "canBeSeen",
+        "thumbnailName",
+        "isPhoneVerified",
+        "isNewUser",
+        "httpAcceptLanguage",
+        "identityVerificationStatus",
+        "phoneVerificationStatus",
+        "countryCode",
+        "progressionOptOut"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.RecentlyViewedService/GetRecentlyViewedItems",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0011_https_www.kaggle.com_api_i_users.RecentlyViewedService_GetRecentlyViewedItems.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "recentlyViewedItems"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.NudgeService/CheckForNudge",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0013_https_www.kaggle.com_api_i_users.NudgeService_CheckForNudge.json",
+      "top_level_type": "dict",
+      "top_level_keys": []
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.RecentlyViewedService/GetRecentlyViewedItems",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0013_https_www.kaggle.com_api_i_users.RecentlyViewedService_GetRecentlyViewedItems.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "recentlyViewedItems"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.BookmarkService/ListAllBookmarks",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0021_https_www.kaggle.com_api_i_users.BookmarkService_ListAllBookmarks.json",
+      "top_level_type": "dict",
+      "top_level_keys": []
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.PageService/GetPage",
+      "status": 403,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.PageService_GetPage.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "error"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.PageService/GetPage",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.PageService_GetPage.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "id",
+        "competitionId",
+        "name",
+        "content",
+        "mimeType",
+        "isPublished",
+        "order",
+        "postTitle",
+        "postId"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetUser",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_users.UsersService_GetUser.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "id",
+        "displayName",
+        "userName",
+        "thumbnailUrl",
+        "profileUrl",
+        "registerDate",
+        "lastVisitDate",
+        "statusId",
+        "performanceTier",
+        "groupIds",
+        "canBeSeen",
+        "thumbnailName",
+        "countryCode",
+        "progressionOptOut"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisode",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.EpisodeService_GetEpisode.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "episode",
+        "teams"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.RecentlyViewedService/GetRecentlyViewedItems",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_users.RecentlyViewedService_GetRecentlyViewedItems.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "recentlyViewedItems"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.RecentlyViewedService/GetRecentlyViewedItems",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_users.RecentlyViewedService_GetRecentlyViewedItems.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "recentlyViewedItems"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.SubmissionService/ListSubmissions",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.SubmissionService_ListSubmissions.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "submissions",
+        "notebooks",
+        "privateEligibleSubmissionIds"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/notifications.NotificationsService/GetUserNotifications",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_notifications.NotificationsService_GetUserNotifications.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "enabled",
+        "countUnviewed",
+        "notifications",
+        "newestNotificationId"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/active_events.ActiveEventService/GetActiveEventsFirebaseConfig",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_active_events.ActiveEventService_GetActiveEventsFirebaseConfig.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "config",
+        "authToken"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisodeReplay",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0024_https_www.kaggle.com_api_i_competitions.EpisodeService_GetEpisodeReplay.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "configuration",
+        "description",
+        "id",
+        "info",
+        "module_version",
+        "name",
+        "rewards",
+        "schema_version",
+        "specification",
+        "statuses",
+        "steps",
+        "title",
+        "version"
+      ]
+    },
+    {
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0028_https_identitytoolkit.googleapis.com_v1_accounts_lookup_key_AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "kind",
+        "users"
+      ]
+    },
+    {
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0028_https_identitytoolkit.googleapis.com_v1_accounts_signInWithCustomToken_key_AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "kind",
+        "idToken",
+        "refreshToken",
+        "expiresIn",
+        "isNewUser"
+      ]
+    },
+    {
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0028_https_identitytoolkit.googleapis.com_v1_accounts_lookup_key_AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "kind",
+        "users"
+      ]
+    },
+    {
+      "url": "https://www.kaggleusercontent.com/episode-visualizers/orbit_wars/index.json",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0028_https_www.kaggleusercontent.com_episode-visualizers_orbit_wars_index.json.json",
+      "top_level_type": "list",
+      "top_level_keys": null
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.AccountService/GenerateAnalyticsToken",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0029_https_www.kaggle.com_api_i_users.AccountService_GenerateAnalyticsToken.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "token"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/ListEpisodes",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0030_https_www.kaggle.com_api_i_competitions.EpisodeService_ListEpisodes.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "episodes",
+        "submissions",
+        "teams"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisode",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0031_https_www.kaggle.com_api_i_competitions.EpisodeService_GetEpisode.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "episode",
+        "teams"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisodeReplay",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0033_https_www.kaggle.com_api_i_competitions.EpisodeService_GetEpisodeReplay.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "configuration",
+        "description",
+        "id",
+        "info",
+        "module_version",
+        "name",
+        "rewards",
+        "schema_version",
+        "specification",
+        "statuses",
+        "steps",
+        "title",
+        "version"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.AccountService/GenerateAnalyticsToken",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/network/0036_https_www.kaggle.com_api_i_users.AccountService_GenerateAnalyticsToken.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "token"
+      ]
+    }
+  ],
+  "screenshots": [
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0000.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0001.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0002.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0003.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0004.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0005.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0006.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0007.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0008.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0009.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/replay_75588964/screenshots/page_0010.png"
+  ],
+  "canvas_screenshots": [],
+  "console": [
+    {
+      "type": "log",
+      "text": " _                       _       \n| |    Welcome to       | |      \n| | __ ___   __ _  __ _ | | ___  \n| |/ /|__ \\ / _` |/ _` || |/ _ \\ \n|   < / _  | (_| | (_| || |  __/ \n|_|\\_\\\\__,_|\\__, |\\__, ||_|\\___| \n             __/ | __/ |         \n            |___/ |___/          \n"
+    },
+    {
+      "type": "warning",
+      "text": "No `HydrateFallback` element provided to render during initial hydration"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 403 ()"
+    },
+    {
+      "type": "log",
+      "text": "[ReplayAdapter] Sending iframeCapabilities: {iframeHandlesUi: true, hasControls: true, hasReasoningLogs: false, managesPlayback: true} ui mode: inline"
+    }
+  ],
+  "errors": [
+    {
+      "networkidle_timeout": true
+    }
+  ],
+  "page_probe": {
+    "url": "https://www.kaggle.com/competitions/orbit-wars/submissions?submissionId=52128366&episodeId=75588964#",
+    "title": "Orbit Wars | Kaggle",
+    "storage": {
+      "localStorage": [
+        {
+          "key": "KAGGLE_FEATURE_FLAGS",
+          "preview": "{\"hash\":\"0b8cc681c1ff4a5bdf538fc9f394ff6cd6ea8ee19dceebd891b5ed4d3269845a\",\"flags\":[\"EnableAgentSatsFe\",\"KernelsOpenInColabLocalUrl\",\"StsDownload\",\"KernelsGooseMode\",\"BenchmarksCrossUserTaskRuns\",\"BenchmarkTaskCreation\",\"BenchmarkTaskImportModels\",\"NavRestructure\",\"RequirePersonaVerificationForBenchmarks\",\"BenchmarkRunIndividualTask\",\"KernelsFirebaseLongPolling\",\"KernelsDraftUploadBlob\",\"KernelsSaveCellOutput\",\"FrontendErrorReporting\",\"AllowForumAttachments\",\"TermsOfServiceBanner\",\"DatasetUploaderDuplicateDetection\"],\"values\":{\"CommunityBenchmarkShelf\":\"2138, 2406, 388, 2863\",\"ModelsDisableGatedAccessModelIds\":\"188868, 121027,91102,39106,121030\",\"SpotlightCommunityCompetition\":\"135180, 136117 ,136475 ,136721, 113155,106680,106809,117462,126777,127282, 124685, 125799, 127283, 130287, 129872, 129871,132732,131778,135157,134719\",\"PersonalBenchmarksPriorityTaskIds\":\"\",\"GameArenaFeaturedEpisodes\":\"{\\\"180\\\": [74920626, 74923653, 74915408], \\\"844\\\": [74954901, 74954774, 74954984], \\\"443\\\": [74833179, 74833087], \\\"349\\\": [74784960, 74692665, 74690392], \\\"436\\\": [73948703, 73948385, 73948222]}\",\"StsMinFiles\":\"200000\",\"FeaturedBenchmarks\":\"996, 4974, 246, 201\",\"StsMinGb\":\"2\",\"HackathonCountdownTimerHours\":\"24\",\"ClientRpcRateLimitQps\":\"40\",\"ClientRpcRateLimitQpm\":\"500\",\"AddFeatureFlagsToPageLoadTag\":\"disabled\",\"KernelEditorAutosaveThrottleMs\":\"30000\",\"GameArenaBenchmarkVersions\":\"844,180,443,437, 2163\",\"KernelsL4GpuComps\":\"133469\",\"FeaturedCommunityCompetitions\":\"130287\",\"FeaturedGameArenaBenchmarkConfig\":\"{\\\"POKER\\\": 180, \\\"CHESS\\\": 437, \\\"WEREWOLF\\\": 443, \\\"CONNECT_X\\\": 844, \\\"CONNECT_5\\\": 2163}\",\"EmergencyAlertBanner\":\"{ \\\"banners\\\": [ { \\\"bannerId\\\": \\\"leonardo-issue-2026-03-20\\\", \\\"messageHtml\\\": \\\"This competition is currently paused for review. Thank you for your patience.\\\", \\\"uriPathRegex\\\": \\\"^/competitions/leonardo-airborne-object-recognition-challenge.*\\\" } ] }\",\"CompetitionMetricTimeoutMinutes\":\"30\",\"DatasetsSendPendingSuggestionsRemindersBatchSize\":\"100\",\"Emergen",
+          "length": 2473
+        },
+        {
+          "key": "KAGGLE_RECENTLY_VIEWED_ITEMS",
+          "preview": "[{\"title\":\"Orbit Wars\",\"url\":\"/competitions/orbit-wars\",\"authorSlug\":\"\",\"thumbnailUrl\":\"https://storage.googleapis.com/kaggle-media/competitions/orbit-wars-large-slow.gif?GoogleAccessId=web-data@kaggle-161607.iam.gserviceaccount.com&Expires=1777376630&Signature=R7dh5zGEgFg%2FaakqfJlXf3H7knJeCm9cjpB8R0LrE9mdIGkwxT77iGN%2BWn5WI6NFo68TWC0%2FKvV77Gzv0rjgO3OoliN0V8m5wOqwH24q7SUGCfNPlEvx1pXHiYGOIWiO4rDuObLr%2B2AkRvEuNJDEEyUBuLRgGCMOYdGMPU5dJ1i2jT1nUhd1L2Liz7pTEO%2Fcwj2XCZw8StY5PG%2B5boVyC1ElTOLx3xJhFCdgmnrVE6yHDXOn0AVa%2FUWTmj6GAcRY%2BNxJ3mb0l%2FT27SkO%2FEsFHO6IP%2FFVEpBsdScrfCEJArg02mUbbE0SRZb%2BAdmihZwzsM28PWtBVtxsTLFBj%2Fo8Tw%3D%3D\",\"id\":138420,\"itemType\":\"competition\",\"mostRecentView\":\"2026-04-28T10:54:49.120Z\"},{\"title\":\"sub1v6\",\"url\":\"/code/jasonmourier/sub1v6\",\"authorSlug\":\"/jasonmourier\",\"thumbnailUrl\":\"https://storage.googleapis.com/kaggle-avatars/thumbnails/default-thumb.png\",\"id\":117116300,\"itemType\":\"kernel\",\"mostRecentView\":\"2026-04-28T09:37:35.168Z\"},{\"title\":\"notebookea57a7e270\",\"url\":\"/code/jasonmourier/notebookea57a7e270\",\"authorSlug\":\"/jasonmourier\",\"thumbnailUrl\":\"https://storage.googleapis.com/kaggle-avatars/thumbnails/default-thumb.png\",\"id\":117078781,\"itemType\":\"kernel\",\"mostRecentView\":\"2026-04-28T08:31:38.470Z\"},{\"title\":\"Getting Started\",\"url\":\"/code/bovard/getting-started\",\"authorSlug\":\"/bovard\",\"thumbnailUrl\":\"https://storage.googleapis.com/kaggle-avatars/thumbnails/50767-kg.jpg\",\"id\":115874612,\"itemType\":\"kernel\",\"mostRecentView\":\"2026-04-27T16:47:27.000Z\"},{\"title\":\"Orbit (Star) Wars | LB: MAX 1224\",\"url\":\"/code/romantamrazov/orbit-star-wars-lb-max-1224\",\"authorSlug\":\"/romantamrazov\",\"thumbnailUrl\":\"https://storage.googleapis.com/kaggle-avatars/thumbnails/24626214-kg.jpg?t=2025-01-25-14-55-32\",\"id\":116178233,\"itemType\":\"kernel\",\"mostRecentView\":\"2026-04-27T13:01:06.000Z\"}]",
+          "length": 1826
+        }
+      ],
+      "sessionStorage": []
+    },
+    "performanceEntries": [
+      {
+        "name": "https://www.kaggle.com/competitions/orbit-wars/submissions?submissionId=52128366&episodeId=75588964#",
+        "initiatorType": "navigation",
+        "duration": 553,
+        "transferSize": 2540
+      },
+      {
+        "name": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisode",
+        "initiatorType": "fetch",
+        "duration": 366.70000000018626,
+        "transferSize": 1779
+      },
+      {
+        "name": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisodeReplay",
+        "initiatorType": "fetch",
+        "duration": 917.5,
+        "transferSize": 478233
+      },
+      {
+        "name": "https://storage.googleapis.com/kaggle-media/competitions/orbit-wars-large-slow.gif?GoogleAccessId=web-data@kaggle-161607.iam.gserviceaccount.com&Expires=1777376630&Signature=R7dh5zGEgFg%2FaakqfJlXf3H7knJeCm9cjpB8R0LrE9mdIGkwxT77iGN%2BWn5WI6NFo68TWC0%2FKvV77Gzv0rjgO3OoliN0V8m5wOqwH24q7SUGCfNPlEvx1pXHiYGOIWiO4rDuObLr%2B2AkRvEuNJDEEyUBuLRgGCMOYdGMPU5dJ1i2jT1nUhd1L2Liz7pTEO%2Fcwj2XCZw8StY5PG%2B5boVyC1ElTOLx3xJhFCdgmnrVE6yHDXOn0AVa%2FUWTmj6GAcRY%2BNxJ3mb0l%2FT27SkO%2FEsFHO6IP%2FFVEpBsdScrfCEJArg02mUbbE0SRZb%2BAdmihZwzsM28PWtBVtxsTLFBj%2Fo8Tw%3D%3D",
+        "initiatorType": "img",
+        "duration": 3.7000000001862645,
+        "transferSize": 0
+      },
+      {
+        "name": "https://www.kaggleusercontent.com/episode-visualizers/orbit_wars/index.json",
+        "initiatorType": "fetch",
+        "duration": 195.79999999981374,
+        "transferSize": 0
+      },
+      {
+        "name": "https://www.kaggle.com/api/i/competitions.EpisodeService/ListEpisodes",
+        "initiatorType": "fetch",
+        "duration": 138,
+        "transferSize": 4291
+      },
+      {
+        "name": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisode",
+        "initiatorType": "fetch",
+        "duration": 137.30000000074506,
+        "transferSize": 1779
+      },
+      {
+        "name": "https://www.kaggle.com/api/i/competitions.EpisodeService/GetEpisodeReplay",
+        "initiatorType": "fetch",
+        "duration": 775.2999999998137,
+        "transferSize": 478233
+      },
+      {
+        "name": "https://region1.google-analytics.com/g/collect?v=2&tid=G-T7QHS60L4Q&gtm=45je64o1v9104087209za200zd9104087209&_p=1777373689016&gcd=13l3l3l2l1l1&npa=1&dma_cps=a&dma=1&_eu=AAAAAAQ&are=1&cid=143945920.1777373536&frm=0&pscdl=noapi&rcb=2&sr=1280x900&uaa=x86&uab=64&uafvl=Chromium%3B145.0.7632.6%7CNot%253AA-Brand%3B99.0.0.0&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&tag_exp=0~115938465~115938468~117266401~117512542&sid=1777373535&sct=1&seg=1&dl=https%3A%2F%2Fwww.kaggle.com%2Fcompetitions%2Forbit-wars%2Fsubmissions%3FsubmissionId%3D52128366%26episodeId%3D75588964&dt=Orbit%20Wars%20%7C%20Kaggle&dp=%2Fcompetitions%2Forbit-wars%2Fsubmissions&_s=2&tfd=5491",
+        "initiatorType": "fetch",
+        "duration": 27.600000000558794,
+        "transferSize": 0
+      },
+      {
+        "name": "https://www.kaggleusercontent.com/episode-visualizers/orbit_wars/default/index.html",
+        "initiatorType": "iframe",
+        "duration": 593.5,
+        "transferSize": 0
+      }
+    ],
+    "canvases": [],
+    "dataElements": [
+      {
+        "tag": "HTML",
+        "attrs": {},
+        "text": "Orbit Wars | Kaggle\n  \n    \n  \n    \n  \n  \n    window[\"pageRequestStartTime\"] = 1777373688631;\n    window[\"pageRequestEndTime\"] = 1777373688643;\n    window[\"initialPageLoadStartTime\"] = new Date().getTime();\n  \n  \n  window.KAGGLE_JUPYTERLAB_PATH = \"/static/assets/jupyterlab-v4/jupyterlab-index-079e68ddcae7b250.html\";\n  \n    \n  \n\n\n  \n\n  \n  \n  \n  \n  \n    const styleSheetIds = [\"async-google-font-1\", \"async-google-font-2\"];\n    styleSheetIds.forEach(function (id) {\n      document.getElementById(id)."
+      },
+      {
+        "tag": "HEAD",
+        "attrs": {},
+        "text": "Orbit Wars | Kaggle\n  \n    \n  \n    \n  \n  \n    window[\"pageRequestStartTime\"] = 1777373688631;\n    window[\"pageRequestEndTime\"] = 1777373688643;\n    window[\"initialPageLoadStartTime\"] = new Date().getTime();\n  \n  \n  window.KAGGLE_JUPYTERLAB_PATH = \"/static/assets/jupyterlab-v4/jupyterlab-index-079e68ddcae7b250.html\";\n  \n    \n  \n\n\n  \n\n  \n  \n  \n  \n  \n    const styleSheetIds = [\"async-google-font-1\", \"async-google-font-2\"];\n    styleSheetIds.forEach(function (id) {\n      document.getElementById(id)."
+      },
+      {
+        "tag": "TITLE",
+        "attrs": {},
+        "text": "Orbit Wars | Kaggle"
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+        },
+        "text": ""
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "Orbit Wars"
+        },
+        "text": ""
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+        },
+        "text": ""
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "https://kaggle.com/orbit-wars"
+        },
+        "text": ""
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "Orbit Wars"
+        },
+        "text": ""
+      },
+      {
+        "tag": "STYLE",
+        "attrs": {
+          "data-styled": "active",
+          "data-styled-version": "6.4.0"
+        },
+        "text": ""
+      },
+      {
+        "tag": "STYLE",
+        "attrs": {
+          "data-emotion": "css-global",
+          "data-s": ""
+        },
+        "text": ""
+      },
+      {
+        "tag": "STYLE",
+        "attrs": {
+          "data-emotion": "css-global",
+          "data-s": ""
+        },
+        "text": ""
+      },
+      {
+        "tag": "STYLE",
+        "attrs": {
+          "data-emotion": "css-global",
+          "data-s": ""
+        },
+        "text": ""
+      },
+      {
+        "tag": "STYLE",
+        "attrs": {
+          "data-emotion": "css",
+          "data-s": ""
+        },
+        "text": ""
+      },
+      {
+        "tag": "BODY",
+        "attrs": {},
+        "text": "menuSkip tocontentCreatesearch​exploreHomeemoji_eventsCompetitionsleaderboardBenchmarkssmart_toyGame ArenacodeData Hubexpand_moreformat_list_bulletedMoreexpand_morenote_altYour Workexpand_lesscodeViewedexpand_lessOrbit Warssub1v6notebookea57a7e270Getting StartedOrbit (Star) Wars | LB: MAX 1224codeEditedexpand_lessnotebook586f1568dcsub1v6notebookbe7d1f9dd0notebookea57a7e270notebook8429c1f650auto_awesome_motionView Active EventsmenuSkip tocontentsearch​Kaggle uses cookies from Google to deliver an"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "menuSkip tocontentCreatesearch​exploreHomeemoji_eventsCompetitionsleaderboardBenchmarkssmart_toyGame ArenacodeData Hubexpand_moreformat_list_bulletedMoreexpand_morenote_altYour Workexpand_lesscodeViewedexpand_lessOrbit Warssub1v6notebookea57a7e270Getting StartedOrbit (Star) Wars | LB: MAX 1224codeEditedexpand_lessnotebook586f1568dcsub1v6notebookbe7d1f9dd0notebookea57a7e270notebook8429c1f650auto_awesome_motionView Active EventsmenuSkip tocontentsearch​Kaggle uses cookies from Google to deliver an"
+      },
+      {
+        "tag": "NAV",
+        "attrs": {},
+        "text": "menuSkip tocontentCreatesearch​exploreHomeemoji_eventsCompetitionsleaderboardBenchmarkssmart_toyGame ArenacodeData Hubexpand_moreformat_list_bulletedMoreexpand_morenote_altYour Workexpand_lesscodeViewedexpand_lessOrbit Warssub1v6notebookea57a7e270Getting StartedOrbit (Star) Wars | LB: MAX 1224codeEditedexpand_lessnotebook586f1568dcsub1v6notebookbe7d1f9dd0notebookea57a7e270notebook8429c1f650auto_awesome_motionView Active Events"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "search​exploreHomeemoji_eventsCompetitionsleaderboardBenchmarkssmart_toyGame ArenacodeData Hubexpand_moreformat_list_bulletedMoreexpand_morenote_altYour Workexpand_lesscodeViewedexpand_lessOrbit Warssub1v6notebookea57a7e270Getting StartedOrbit (Star) Wars | LB: MAX 1224codeEditedexpand_lessnotebook586f1568dcsub1v6notebookbe7d1f9dd0notebookea57a7e270notebook8429c1f650auto_awesome_motionView Active Events"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "search​exploreHomeemoji_eventsCompetitionsleaderboardBenchmarkssmart_toyGame ArenacodeData Hubexpand_moreformat_list_bulletedMoreexpand_morenote_altYour Workexpand_lesscodeViewedexpand_lessOrbit Warssub1v6notebookea57a7e270Getting StartedOrbit (Star) Wars | LB: MAX 1224codeEditedexpand_lessnotebook586f1568dcsub1v6notebookbe7d1f9dd0notebookea57a7e270notebook8429c1f650"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "home"
+        },
+        "text": "exploreHome"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "competitions"
+        },
+        "text": "emoji_eventsCompetitions"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "benchmarks"
+        },
+        "text": "leaderboardBenchmarks"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "game-arena"
+        },
+        "text": "smart_toyGame Arena"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "data-hub"
+        },
+        "text": "codeData Hub"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "more"
+        },
+        "text": "format_list_bulletedMore"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "note_altYour Workexpand_lesscodeViewedexpand_lessOrbit Warssub1v6notebookea57a7e270Getting StartedOrbit (Star) Wars | LB: MAX 1224codeEditedexpand_lessnotebook586f1568dcsub1v6notebookbe7d1f9dd0notebookea57a7e270notebook8429c1f650"
+      },
+      {
+        "tag": "UL",
+        "attrs": {},
+        "text": "note_altYour Workexpand_lesscodeViewedexpand_lessOrbit Warssub1v6notebookea57a7e270Getting StartedOrbit (Star) Wars | LB: MAX 1224codeEditedexpand_lessnotebook586f1568dcsub1v6notebookbe7d1f9dd0notebookea57a7e270notebook8429c1f650"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "your-work"
+        },
+        "text": "note_altYour Work"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "viewed"
+        },
+        "text": "codeViewed"
+      },
+      {
+        "tag": "LI",
+        "attrs": {},
+        "text": "Orbit Warssub1v6notebookea57a7e270Getting StartedOrbit (Star) Wars | LB: MAX 1224"
+      },
+      {
+        "tag": "UL",
+        "attrs": {},
+        "text": "Orbit Warssub1v6notebookea57a7e270Getting StartedOrbit (Star) Wars | LB: MAX 1224"
+      },
+      {
+        "tag": "LI",
+        "attrs": {
+          "aria-label": "Orbit Wars List Item"
+        },
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "aria-label": "Orbit Wars",
+          "href": "/competitions/orbit-wars"
+        },
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "IMG",
+        "attrs": {
+          "src": "https://storage.googleapis.com/kaggle-media/competitions/orbit-wars-large-slow.gif?GoogleAccessId=web-data@kaggle-161607.iam.gserviceaccount.com&Expires=1777376630&Signature=R7dh5zGEgFg%2FaakqfJlXf3H7knJeCm9cjpB8R0LrE9mdIGkwxT77iGN%2BWn5WI6NFo68TWC0%2FKvV77Gzv0rjgO3OoliN0V8m5wOqwH24q7SUGCfNPlEvx1pXHiYGOIWiO4rDuObLr%2B2AkRvEuNJDEEyUBuLRgGCMOYdGMPU5dJ1i2jT1nUhd1L2Liz7pTEO%2Fcwj2XCZw8StY5PG%2B5boVyC1ElTOLx3xJhFCdgmnrVE6yHDXOn0AVa%2FUWTmj6GAcRY%2BNxJ3mb0l%2FT27SkO%2FEsFHO6IP%2FFVEpBsdScrfCEJArg02mUbbE0SRZb%2BAdmihZwzsM28PWtBVtxsTLFBj%2Fo8Tw%3D%3D"
+        },
+        "text": ""
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "P",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "LI",
+        "attrs": {
+          "aria-label": "Orbit (Star) Wars | LB: MAX 1224 List Item"
+        },
+        "text": "Orbit (Star) Wars | LB: MAX 1224"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit (Star) Wars | LB: MAX 1224"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "aria-label": "Orbit (Star) Wars | LB: MAX 1224",
+          "href": "/code/romantamrazov/orbit-star-wars-lb-max-1224"
+        },
+        "text": "Orbit (Star) Wars | LB: MAX 1224"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit (Star) Wars | LB: MAX 1224"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit (Star) Wars | LB: MAX 1224"
+      },
+      {
+        "tag": "P",
+        "attrs": {},
+        "text": "Orbit (Star) Wars | LB: MAX 1224"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "edited"
+        },
+        "text": "codeEdited"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-testid": "avatar-image"
+        },
+        "text": ""
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.Learn moreOK, Got it.Kaggle  · Featured Simulation Competition · 2 months to goSubmit Agentmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesTeamSubmissionsSubmissionsAllSuccessfulErrorsRecentSubmission and DescriptionPublic ScoreinfoEpisodescheck_circlenoteb"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-nosnippet": "true"
+        },
+        "text": "Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Kaggle  · Featured Simulation Competition · 2 months to goSubmit Agentmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesTeamSubmissionsSubmissionsAllSuccessfulErrorsRecentSubmission and DescriptionPublic ScoreinfoEpisodescheck_circlenotebook586f1568dc - Version 4Complete · 1h ago · Notebook notebook586f1568dc | Version 4614.6live_tvcheck_circlesubmission.pyComple"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-testid": "competition-detail-render-tid"
+        },
+        "text": "Kaggle  · Featured Simulation Competition · 2 months to goSubmit Agentmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesTeamSubmissionsSubmissionsAllSuccessfulErrorsRecentSubmission and DescriptionPublic ScoreinfoEpisodescheck_circlenotebook586f1568dc - Version 4Complete · 1h ago · Notebook notebook586f1568dc | Version 4614.6live_tvcheck_circlesubmission.pyComple"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Kaggle  · Featured Simulation Competition · 2 months to goSubmit Agentmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesTeamSubmissionsSubmissionsAllSuccessfulErrorsRecentSubmission and DescriptionPublic ScoreinfoEpisodescheck_circlenotebook586f1568dc - Version 4Complete · 1h ago · Notebook notebook586f1568dc | Version 4614.6live_tvcheck_circlesubmission.pyComple"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Kaggle  · Featured Simulation Competition · 2 months to goSubmit Agentmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-testid": "avatar-image"
+        },
+        "text": ""
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "H1",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "SPAN",
+        "attrs": {},
+        "text": "Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "P",
+        "attrs": {},
+        "text": "Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesTeamSubmissions"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesTeamSubmissions"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesTeamSubmissions"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "H2",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/overview",
+          "data-discover": "true"
+        },
+        "text": "Overview"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/data",
+          "data-discover": "true"
+        },
+        "text": "Data"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/code",
+          "data-discover": "true"
+        },
+        "text": "Code"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/models",
+          "data-discover": "true"
+        },
+        "text": "Models"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/discussion",
+          "data-discover": "true"
+        },
+        "text": "Discussion"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/leaderboard",
+          "data-discover": "true"
+        },
+        "text": "Leaderboard"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/rules",
+          "data-discover": "true"
+        },
+        "text": "Rules"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/team",
+          "data-discover": "true"
+        },
+        "text": "Team"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/submissions",
+          "data-discover": "true"
+        },
+        "text": "Submissions"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-testid": "submissions-page"
+        },
+        "text": "SubmissionsAllSuccessfulErrorsRecentSubmission and DescriptionPublic ScoreinfoEpisodescheck_circlenotebook586f1568dc - Version 4Complete · 1h ago · Notebook notebook586f1568dc | Version 4614.6live_tvcheck_circlesubmission.pyComplete · 3h ago · v6279.9live_tv"
+      },
+      {
+        "tag": "svg",
+        "attrs": {
+          "data-testid": "ArrowDropDownIcon"
+        },
+        "text": ""
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Submission and DescriptionPublic ScoreinfoEpisodescheck_circlenotebook586f1568dc - Version 4Complete · 1h ago · Notebook notebook586f1568dc | Version 4614.6live_tvcheck_circlesubmission.pyComplete · 3h ago · v6279.9live_tv"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Submission and DescriptionPublic ScoreinfoEpisodes"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Episodes"
+      },
+      {
+        "tag": "P",
+        "attrs": {},
+        "text": "Episodes"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-discover": "true"
+        },
+        "text": "notebook586f1568dc - Version 4"
+      },
+      {
+        "tag": "SPAN",
+        "attrs": {
+          "title": "View episodes from this submission",
+          "aria-label": "View episodes from this submission"
+        },
+        "text": "live_tv"
+      },
+      {
+        "tag": "SPAN",
+        "attrs": {
+          "title": "View episodes from this submission",
+          "aria-label": "View episodes from this submission"
+        },
+        "text": "live_tv"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "arrow_backGame HistoryGamesfilter_listFiltersleft_panel_close3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patilleft_panel_openEpis"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-testid": "sentinelStart"
+        },
+        "text": ""
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "arrow_backGame HistoryGamesfilter_listFiltersleft_panel_close3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patilleft_panel_openEpis"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "arrow_backGame HistoryGamesfilter_listFiltersleft_panel_close3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patilleft_panel_openEpis"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "arrow_backGame HistoryGamesfilter_listFiltersleft_panel_close3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patilleft_panel_openEpis"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Gamesfilter_listFiltersleft_panel_close3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patilleft_panel_openEpisode"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Gamesfilter_listFiltersleft_panel_close3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patilleft_panel_openEpisode"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Gamesfilter_listFiltersleft_panel_close3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patilleft_panel_openEpisode"
+      },
+      {
+        "tag": "BUTTON",
+        "attrs": {
+          "aria-label": "Collapse Episodes",
+          "title": "Collapse Episodes"
+        },
+        "text": "left_panel_close"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-virtuoso-scroller": "true"
+        },
+        "text": "3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patil"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-viewport-type": "window"
+        },
+        "text": "3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patil"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-testid": "virtuoso-item-list"
+        },
+        "text": "3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patil"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-index": "0",
+          "data-item-index": "0",
+          "data-known-size": "241"
+        },
+        "text": "3m agomore_vertsmart_toymdirf4nuddin🏆smart_toyDmytro Koziismart_toyJason Mouriersmart_toyLazyman"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-index": "1",
+          "data-item-index": "1",
+          "data-known-size": "239"
+        },
+        "text": "6m agomore_vertsmart_toyJason Mourier🏆smart_toyTheBlitterLessonsmart_toyJesusCastCosmart_toyMuseOfNephorion"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-index": "2",
+          "data-item-index": "2",
+          "data-known-size": "253"
+        },
+        "text": "8m agomore_vertsmart_toynadhir hasan🏆smart_toyold_man_logansmart_toyJason Mouriersmart_toyKatta Revanth Sai Pavan Kumar"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-index": "3",
+          "data-item-index": "3",
+          "data-known-size": "239"
+        },
+        "text": "16m agomore_vertsmart_toyJason Mourier🏆smart_toyPushkar K.Gsmart_toyannkakesmart_toyYash Patil"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "left_panel_openEpisode"
+      },
+      {
+        "tag": "BUTTON",
+        "attrs": {},
+        "text": "left_panel_openEpisode"
+      },
+      {
+        "tag": "SPAN",
+        "attrs": {},
+        "text": "Episode"
+      },
+      {
+        "tag": "IFRAME",
+        "attrs": {
+          "title": "Episode Player",
+          "src": "https://www.kaggleusercontent.com/episode-visualizers/orbit_wars/default/index.html"
+        },
+        "text": ""
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-testid": "sentinelEnd"
+        },
+        "text": ""
+      }
+    ],
+    "windowKeys": []
+  },
+  "saved_storage": "replay_observer/output/kaggle_auth.json",
+  "finished_at": "2026-04-28T10:55:30.078145Z"
+}

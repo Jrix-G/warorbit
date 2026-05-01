@@ -1,46 +1,64 @@
-# Neural Network
+# Neural Network Training
 
-Package autonome pour expérimenter un agent neural sur Orbit Wars.
+This project now uses PyTorch end-to-end.
 
-## Objectif
+## Migration PyTorch
 
-- encoder l'état du jeu ;
-- scorer des actions candidates ;
-- entraîner un modèle léger sur CPU ;
-- lancer du self-play ;
-- benchmarker des checkpoints ;
-- sauvegarder et reprendre un run.
+- `src/model.py` contains a real `torch.nn.Module`.
+- Checkpoints use `state_dict()` / `load_state_dict()`.
+- Training uses autograd, `loss.backward()`, and `optimizer.step()`.
 
-## Structure
+## REINFORCE
 
-- `configs/` : configuration JSON
-- `src/` : code principal
-- `scripts/` : points d'entrée
-- `docs/` : documentation technique
-- `checkpoints/` : modèles sauvegardés
-- `logs/` : journaux d'entraînement
-- `tests/` : tests unitaires
+- Episodes are collected in `src/self_play.py`.
+- `src/trainer.py` stores `log_prob` and rewards.
+- Returns are computed with `gamma`.
+- Loss is `-sum(log_prob * return)`.
 
-## Dépendances
-
-- `numpy`
-- `pytest` pour les tests
-
-Optionnel :
-- `kaggle-environments` si tu veux brancher un environnement externe plus tard
-
-## Commandes
+## Tests
 
 ```bash
-python3 neural_network/scripts/train.py --config neural_network/configs/default_config.json
-python3 neural_network/scripts/self_play_run.py --config neural_network/configs/default_config.json
-python3 neural_network/scripts/benchmark_model.py --config neural_network/configs/default_config.json
-python3 neural_network/scripts/export_model.py --config neural_network/configs/default_config.json
-pytest neural_network/tests
+python -m pytest neural_network/tests/ -v
 ```
 
-## Remarques
+## Short training
 
-- Le package est conçu pour fonctionner sans modifier `bot_v7.py` ou `bot_v8_2.py`.
-- L'agent par défaut est une base de recherche et d'itération, pas encore un bot Kaggle final.
+```bash
+python neural_network/scripts/run_30min_analysis.py --duration-minutes 1
+```
 
+## 30 minute run
+
+```bash
+python neural_network/scripts/run_30min_analysis.py --duration-minutes 30
+```
+
+## Benchmark
+
+```bash
+python neural_network/scripts/benchmark_model.py --episodes 20
+```
+
+## Logs
+
+- `reward_total`
+- `avg_reward`
+- `loss`
+- `grad_norm`
+- `actions_count`
+- `real_actions_count`
+- `do_nothing_rate`
+- `invalid_action_rate`
+- `winner`
+- `episode_length`
+- `winrate_vs_random`
+- `winrate_vs_greedy`
+
+## Success criteria
+
+- `grad_norm > 0`
+- `loss != 0`
+- `real_actions_count > 0`
+- `do_nothing_rate < 80%`
+- reward is not always `-1.0`
+- checkpoints are written

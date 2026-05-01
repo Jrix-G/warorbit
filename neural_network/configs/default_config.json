@@ -11,6 +11,8 @@
   "max_players": 4,
   "hidden_dim": 64,
   "learning_rate": 0.001,
+  "gamma": 0.99,
+  "max_turns": 100,
   "batch_size": 16,
   "train_steps": 50,
   "self_play_episodes": 8,
@@ -21,4 +23,3 @@
   "latest_checkpoint": "neural_network/checkpoints/latest.npz",
   "export_path": "neural_network/checkpoints/export.npz"
 }
-

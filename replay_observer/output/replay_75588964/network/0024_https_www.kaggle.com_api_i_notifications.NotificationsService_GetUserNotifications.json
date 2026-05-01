@@ -1,0 +1,50 @@
+{
+  "enabled": true,
+  "countUnviewed": 2,
+  "notifications": [
+    {
+      "id": 310095863,
+      "relatedItemId": 5,
+      "relatedItemType": "NOTIFICATION_RELATED_ITEM_TYPE_BADGE",
+      "createdDate": "2026-04-28T09:15:05.465523900Z",
+      "imageUrl": "award_star",
+      "title": "New Badge Received",
+      "message": "Congratulations, you've received **Competitor** badge",
+      "actionUrl": "https://www.kaggle.com/progression/badges"
+    },
+    {
+      "id": 310092340,
+      "relatedItemId": 10,
+      "relatedItemType": "NOTIFICATION_RELATED_ITEM_TYPE_BADGE",
+      "createdDate": "2026-04-28T08:30:05.620574900Z",
+      "imageUrl": "award_star",
+      "title": "New Badge Received",
+      "message": "Congratulations, you've received **Simulation Competitor** badge",
+      "actionUrl": "https://www.kaggle.com/progression/badges"
+    },
+    {
+      "id": 310080354,
+      "relatedItemId": 314917181,
+      "relatedItemType": "NOTIFICATION_RELATED_ITEM_TYPE_KERNEL_RUN",
+      "isRead": true,
+      "isViewed": true,
+      "createdDate": "2026-04-28T06:40:27.916010600Z",
+      "imageUrl": "priority_high",
+      "title": "Your notebook failed",
+      "message": "visit **notebookea57a7e270**",
+      "actionUrl": "/code/jasonmourier/notebookea57a7e270"
+    },
+    {
+      "id": 310033695,
+      "relatedItemId": 30,
+      "relatedItemType": "NOTIFICATION_RELATED_ITEM_TYPE_BADGE",
+      "isViewed": true,
+      "createdDate": "2026-04-27T13:19:52.729974300Z",
+      "imageUrl": "award_star",
+      "title": "New Badge Received",
+      "message": "Congratulations, you've received **Python Coder** badge",
+      "actionUrl": "https://www.kaggle.com/progression/badges"
+    }
+  ],
+  "newestNotificationId": 310095863
+}

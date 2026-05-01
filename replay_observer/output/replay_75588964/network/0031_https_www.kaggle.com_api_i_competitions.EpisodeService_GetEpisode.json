@@ -1,0 +1,185 @@
+{
+  "episode": {
+    "id": 75588964,
+    "createTime": "2026-04-28T10:46:04.511256800Z",
+    "endTime": "2026-04-28T10:51:30.982654300Z",
+    "state": "COMPLETED",
+    "type": "EPISODE_TYPE_PUBLIC",
+    "agents": [
+      {
+        "id": 167691375,
+        "submissionId": 51840718,
+        "reward": -1,
+        "initialScore": 678.8116639139562,
+        "updatedScore": 676.2268670144222,
+        "submission": {
+          "id": 51840718,
+          "title": "submission.py",
+          "details": "codex with shooting precision calibration",
+          "submittedUserId": 3278492,
+          "dateSubmitted": "2026-04-19T01:51:12.083Z",
+          "teamId": 15641784,
+          "status": "COMPLETE",
+          "contentLength": 20976,
+          "publicScoreFormatted": "676.2"
+        }
+      },
+      {
+        "id": 167691376,
+        "submissionId": 52128366,
+        "reward": -1,
+        "index": 1,
+        "initialScore": 624.6602132478696,
+        "updatedScore": 614.6148172345062,
+        "submission": {
+          "id": 52128366,
+          "title": "submission.py",
+          "details": "Notebook notebook586f1568dc | Version 4",
+          "submittedUserId": 33943502,
+          "dateSubmitted": "2026-04-28T10:02:41.823Z",
+          "teamId": 15750239,
+          "status": "COMPLETE",
+          "contentLength": 45474,
+          "publicScoreFormatted": "614.6"
+        }
+      },
+      {
+        "id": 167691377,
+        "submissionId": 52061297,
+        "reward": -1,
+        "index": 2,
+        "initialScore": 561.040271138338,
+        "updatedScore": 562.4392415365984,
+        "submission": {
+          "id": 52061297,
+          "title": "submission_v4.py",
+          "details": "V5.1: Fix fleets flying off-map by detecting sun-blocked paths as unreachable. Search all 360 angles for sun avoidance, return None for unreachable targets, score_target returns -inf for them. Updated sim/game.py with sun destruction and continuous collision detection.",
+          "submittedUserId": 1818670,
+          "dateSubmitted": "2026-04-26T10:19:37.463Z",
+          "teamId": 15719704,
+          "status": "COMPLETE",
+          "contentLength": 35007,
+          "publicScoreFormatted": "562.4"
+        }
+      },
+      {
+        "id": 167691378,
+        "submissionId": 52126888,
+        "reward": 1,
+        "index": 3,
+        "initialScore": 718.4832657378302,
+        "updatedScore": 735.6032584870588,
+        "submission": {
+          "id": 52126888,
+          "title": "submission.tar.gz",
+          "details": "V9",
+          "submittedUserId": 30825756,
+          "dateSubmitted": "2026-04-28T09:09:09.907Z",
+          "teamId": 15741371,
+          "status": "COMPLETE",
+          "contentLength": 3092,
+          "publicScoreFormatted": "735.6"
+        }
+      }
+    ],
+    "seed": 452134082
+  },
+  "teams": [
+    {
+      "id": 15641784,
+      "teamName": "Dmytro Kozii",
+      "competitionId": 138420,
+      "teamLeaderId": 3278492,
+      "submissionCount": 2,
+      "lastSubmissionDate": "2026-04-19T01:51:12.083333300Z",
+      "publicLeaderboardSubmissionId": 51840694,
+      "publicLeaderboardScoreFormatted": "687.2",
+      "teamMembers": [
+        {
+          "displayName": "Dmytro Kozii",
+          "thumbnailUrl": "https://storage.googleapis.com/kaggle-avatars/thumbnails/3278492-kg.jpg?t=2025-07-16-00-10-42",
+          "url": "/dmytruto",
+          "userName": "dmytruto",
+          "tier": "EXPERT",
+          "id": 3278492,
+          "profileUrl": "/dmytruto",
+          "performanceTier": "EXPERT",
+          "userId": 3278492,
+          "progressionOptOut": false
+        }
+      ]
+    },
+    {
+      "id": 15719704,
+      "teamName": "Lazyman",
+      "competitionId": 138420,
+      "teamLeaderId": 1818670,
+      "submissionCount": 2,
+      "lastSubmissionDate": "2026-04-26T10:19:37.463333300Z",
+      "publicLeaderboardSubmissionId": 52058155,
+      "publicLeaderboardScoreFormatted": "594.1",
+      "teamMembers": [
+        {
+          "displayName": "Lazyman",
+          "thumbnailUrl": "https://storage.googleapis.com/kaggle-avatars/thumbnails/default-thumb.png",
+          "url": "/lazyman",
+          "userName": "lazyman",
+          "tier": "CONTRIBUTOR",
+          "id": 1818670,
+          "profileUrl": "/lazyman",
+          "performanceTier": "CONTRIBUTOR",
+          "userId": 1818670,
+          "progressionOptOut": false
+        }
+      ]
+    },
+    {
+      "id": 15741371,
+      "teamName": "mdirf4nuddin",
+      "competitionId": 138420,
+      "teamLeaderId": 30825756,
+      "submissionCount": 2,
+      "lastSubmissionDate": "2026-04-28T09:09:09.906666700Z",
+      "publicLeaderboardSubmissionId": 52126888,
+      "publicLeaderboardScoreFormatted": "735.6",
+      "teamMembers": [
+        {
+          "displayName": "mdirf4nuddin",
+          "thumbnailUrl": "https://storage.googleapis.com/kaggle-avatars/thumbnails/default-thumb.png",
+          "url": "/mdirf4nuddin",
+          "userName": "mdirf4nuddin",
+          "tier": "CONTRIBUTOR",
+          "id": 30825756,
+          "profileUrl": "/mdirf4nuddin",
+          "performanceTier": "CONTRIBUTOR",
+          "userId": 30825756,
+          "progressionOptOut": false
+        }
+      ]
+    },
+    {
+      "id": 15750239,
+      "teamName": "Jason Mourier",
+      "competitionId": 138420,
+      "teamLeaderId": 33943502,
+      "submissionCount": 2,
+      "lastSubmissionDate": "2026-04-28T10:02:41.823333300Z",
+      "publicLeaderboardSubmissionId": 52128366,
+      "publicLeaderboardScoreFormatted": "614.6",
+      "teamMembers": [
+        {
+          "displayName": "Jason Mourier",
+          "thumbnailUrl": "https://storage.googleapis.com/kaggle-avatars/thumbnails/default-thumb.png",
+          "url": "/jasonmourier",
+          "userName": "jasonmourier",
+          "tier": "CONTRIBUTOR",
+          "id": 33943502,
+          "profileUrl": "/jasonmourier",
+          "performanceTier": "CONTRIBUTOR",
+          "userId": 33943502,
+          "progressionOptOut": false
+        }
+      ]
+    }
+  ]
+}

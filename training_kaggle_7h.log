@@ -1,0 +1,194 @@
+Resumed from evaluations\scorer_v7_kaggle.npz (gen=105, wr=0.433)
+Kaggle ES training
+Pool: 15 opponents | Eval set: 15
+minutes=420.0 workers=7 pairs=4 episode_steps=220 4p_ratio=0.7
+resume_source=best rollback_on_bad_eval=True
+baseline WR=33% 4p=9/37  2p=6/8 (335.4s)
+gen  106 | avg_r=+0.438 | |p|=2.74 | gen_t=116.4s
+gen  107 | avg_r=+0.438 | |p|=2.74 | gen_t=107.4s
+gen  108 | avg_r=+0.500 | |p|=2.74 | gen_t=122.4s
+gen  109 | avg_r=+0.500 | |p|=2.75 | gen_t=133.1s
+gen  110 | avg_r=+0.625 | |p|=2.75 | gen_t=117.7s
+eval WR=44% 4p=14/37  2p=6/8 (276.7s) best
+gen  111 | avg_r=+0.375 | |p|=2.76 | gen_t=90.3s
+gen  112 | avg_r=+0.625 | |p|=2.76 | gen_t=76.7s
+gen  113 | avg_r=+0.312 | |p|=2.76 | gen_t=123.0s
+gen  114 | avg_r=+0.375 | |p|=2.76 | gen_t=115.6s
+gen  115 | avg_r=+0.438 | |p|=2.76 | gen_t=126.1s
+gen  116 | avg_r=+0.375 | |p|=2.76 | gen_t=104.7s
+gen  117 | avg_r=+0.312 | |p|=2.76 | gen_t=129.4s
+gen  118 | avg_r=+0.688 | |p|=2.76 | gen_t=104.9s
+gen  119 | avg_r=+0.438 | |p|=2.76 | gen_t=181.6s
+gen  120 | avg_r=+0.188 | |p|=2.76 | gen_t=95.3s
+eval WR=44% 4p=15/37  2p=5/8 (334.4s)
+gen  121 | avg_r=+0.562 | |p|=2.76 | gen_t=88.7s
+gen  122 | avg_r=+0.250 | |p|=2.76 | gen_t=89.4s
+gen  123 | avg_r=+0.438 | |p|=2.76 | gen_t=139.7s
+gen  124 | avg_r=+0.688 | |p|=2.76 | gen_t=85.6s
+gen  125 | avg_r=+0.188 | |p|=2.76 | gen_t=96.6s
+gen  126 | avg_r=+0.375 | |p|=2.76 | gen_t=147.9s
+gen  127 | avg_r=+0.312 | |p|=2.77 | gen_t=178.9s
+gen  128 | avg_r=+0.312 | |p|=2.78 | gen_t=116.7s
+gen  129 | avg_r=+0.250 | |p|=2.78 | gen_t=128.5s
+gen  130 | avg_r=+0.500 | |p|=2.79 | gen_t=130.6s
+eval WR=40% 4p=12/37  2p=6/8 (275.9s) rollback sigma_scale=0.60
+gen  131 | avg_r=+0.375 | |p|=2.75 | gen_t=126.0s
+gen  132 | avg_r=+0.438 | |p|=2.75 | gen_t=84.9s
+gen  133 | avg_r=+0.312 | |p|=2.75 | gen_t=124.8s
+gen  134 | avg_r=+0.500 | |p|=2.75 | gen_t=83.8s
+gen  135 | avg_r=+0.438 | |p|=2.75 | gen_t=103.9s
+gen  136 | avg_r=+0.312 | |p|=2.76 | gen_t=139.4s
+gen  137 | avg_r=+0.500 | |p|=2.76 | gen_t=119.2s
+gen  138 | avg_r=+0.625 | |p|=2.77 | gen_t=152.1s
+gen  139 | avg_r=+0.438 | |p|=2.77 | gen_t=108.2s
+gen  140 | avg_r=+0.375 | |p|=2.78 | gen_t=114.2s
+eval WR=36% 4p=11/37  2p=5/8 (322.3s) rollback sigma_scale=0.36
+gen  141 | avg_r=+0.500 | |p|=2.75 | gen_t=86.2s
+gen  142 | avg_r=+0.438 | |p|=2.75 | gen_t=125.3s
+gen  143 | avg_r=+0.312 | |p|=2.74 | gen_t=115.1s
+gen  144 | avg_r=+0.312 | |p|=2.72 | gen_t=76.4s
+gen  145 | avg_r=+0.625 | |p|=2.70 | gen_t=134.9s
+gen  146 | avg_r=+0.438 | |p|=2.68 | gen_t=71.5s
+gen  147 | avg_r=+0.375 | |p|=2.65 | gen_t=137.0s
+gen  148 | avg_r=+0.500 | |p|=2.65 | gen_t=92.9s
+gen  149 | avg_r=+0.562 | |p|=2.64 | gen_t=116.8s
+gen  150 | avg_r=+0.312 | |p|=2.63 | gen_t=127.6s
+eval WR=53% 4p=18/37  2p=6/8 (340.4s) best
+gen  151 | avg_r=+0.562 | |p|=2.61 | gen_t=100.5s
+gen  152 | avg_r=+0.625 | |p|=2.59 | gen_t=91.8s
+gen  153 | avg_r=+0.125 | |p|=2.57 | gen_t=155.1s
+gen  154 | avg_r=+0.375 | |p|=2.56 | gen_t=82.8s
+gen  155 | avg_r=+0.625 | |p|=2.56 | gen_t=88.9s
+gen  156 | avg_r=+0.250 | |p|=2.56 | gen_t=82.8s
+gen  157 | avg_r=+0.312 | |p|=2.57 | gen_t=176.3s
+gen  158 | avg_r=+0.562 | |p|=2.58 | gen_t=93.2s
+gen  159 | avg_r=+0.250 | |p|=2.60 | gen_t=132.2s
+gen  160 | avg_r=+0.375 | |p|=2.58 | gen_t=80.8s
+eval WR=42% 4p=15/37  2p=4/8 (311.7s) rollback sigma_scale=0.25
+gen  161 | avg_r=+0.438 | |p|=2.62 | gen_t=71.8s
+gen  162 | avg_r=+0.250 | |p|=2.62 | gen_t=125.2s
+gen  163 | avg_r=+0.500 | |p|=2.62 | gen_t=128.0s
+gen  164 | avg_r=+0.438 | |p|=2.63 | gen_t=124.0s
+gen  165 | avg_r=+0.312 | |p|=2.62 | gen_t=73.8s
+gen  166 | avg_r=+0.250 | |p|=2.62 | gen_t=112.7s
+gen  167 | avg_r=+0.438 | |p|=2.62 | gen_t=107.7s
+gen  168 | avg_r=+0.438 | |p|=2.61 | gen_t=132.7s
+gen  169 | avg_r=+0.438 | |p|=2.62 | gen_t=131.9s
+gen  170 | avg_r=+0.562 | |p|=2.62 | gen_t=156.9s
+eval WR=49% 4p=16/37  2p=6/8 (300.7s) rollback sigma_scale=0.25
+gen  171 | avg_r=+0.375 | |p|=2.63 | gen_t=139.8s
+gen  172 | avg_r=+0.312 | |p|=2.63 | gen_t=105.2s
+gen  173 | avg_r=+0.438 | |p|=2.65 | gen_t=78.2s
+gen  174 | avg_r=+0.375 | |p|=2.67 | gen_t=105.6s
+gen  175 | avg_r=+0.375 | |p|=2.69 | gen_t=107.0s
+gen  176 | avg_r=+0.562 | |p|=2.69 | gen_t=105.8s
+gen  177 | avg_r=+0.625 | |p|=2.69 | gen_t=99.3s
+gen  178 | avg_r=+0.375 | |p|=2.69 | gen_t=135.4s
+gen  179 | avg_r=+0.438 | |p|=2.69 | gen_t=80.4s
+gen  180 | avg_r=+0.250 | |p|=2.69 | gen_t=145.1s
+eval WR=47% 4p=15/37  2p=6/8 (293.4s) rollback sigma_scale=0.25
+gen  181 | avg_r=+0.312 | |p|=2.62 | gen_t=146.9s
+gen  182 | avg_r=+0.375 | |p|=2.63 | gen_t=132.1s
+gen  183 | avg_r=+0.562 | |p|=2.65 | gen_t=124.0s
+gen  184 | avg_r=+0.500 | |p|=2.67 | gen_t=70.6s
+gen  185 | avg_r=+0.250 | |p|=2.69 | gen_t=132.1s
+gen  186 | avg_r=+0.438 | |p|=2.71 | gen_t=102.4s
+gen  187 | avg_r=+0.375 | |p|=2.72 | gen_t=154.0s
+gen  188 | avg_r=+0.438 | |p|=2.74 | gen_t=101.7s
+gen  189 | avg_r=+0.375 | |p|=2.74 | gen_t=130.9s
+gen  190 | avg_r=+0.562 | |p|=2.72 | gen_t=123.5s
+eval WR=38% 4p=13/37  2p=4/8 (370.6s) rollback sigma_scale=0.25
+gen  191 | avg_r=+0.500 | |p|=2.62 | gen_t=105.7s
+gen  192 | avg_r=+0.375 | |p|=2.61 | gen_t=167.8s
+gen  193 | avg_r=+0.438 | |p|=2.59 | gen_t=136.3s
+gen  194 | avg_r=+0.562 | |p|=2.55 | gen_t=109.1s
+gen  195 | avg_r=+0.500 | |p|=2.53 | gen_t=136.3s
+gen  196 | avg_r=+0.562 | |p|=2.52 | gen_t=91.5s
+gen  197 | avg_r=+0.500 | |p|=2.54 | gen_t=78.3s
+gen  198 | avg_r=+0.750 | |p|=2.57 | gen_t=121.3s
+gen  199 | avg_r=+0.500 | |p|=2.59 | gen_t=138.4s
+gen  200 | avg_r=+0.562 | |p|=2.60 | gen_t=124.7s
+eval WR=31% 4p=9/37  2p=5/8 (305.4s) rollback sigma_scale=0.25
+gen  201 | avg_r=+0.438 | |p|=2.63 | gen_t=101.9s
+gen  202 | avg_r=+0.375 | |p|=2.64 | gen_t=102.8s
+gen  203 | avg_r=+0.562 | |p|=2.65 | gen_t=100.0s
+gen  204 | avg_r=+0.562 | |p|=2.65 | gen_t=99.3s
+gen  205 | avg_r=+0.375 | |p|=2.66 | gen_t=143.0s
+gen  206 | avg_r=+0.375 | |p|=2.67 | gen_t=204.3s
+gen  207 | avg_r=+0.500 | |p|=2.71 | gen_t=116.0s
+gen  208 | avg_r=+0.312 | |p|=2.75 | gen_t=118.3s
+gen  209 | avg_r=+0.250 | |p|=2.80 | gen_t=135.8s
+gen  210 | avg_r=+0.312 | |p|=2.86 | gen_t=115.7s
+eval WR=31% 4p=9/37  2p=5/8 (327.7s) rollback sigma_scale=0.25
+gen  211 | avg_r=+0.438 | |p|=2.62 | gen_t=93.8s
+gen  212 | avg_r=+0.562 | |p|=2.62 | gen_t=147.5s
+gen  213 | avg_r=+0.375 | |p|=2.62 | gen_t=138.7s
+gen  214 | avg_r=+0.500 | |p|=2.59 | gen_t=96.3s
+gen  215 | avg_r=+0.188 | |p|=2.56 | gen_t=116.5s
+gen  216 | avg_r=+0.375 | |p|=2.56 | gen_t=166.2s
+gen  217 | avg_r=+0.438 | |p|=2.55 | gen_t=115.1s
+gen  218 | avg_r=+0.812 | |p|=2.55 | gen_t=103.6s
+gen  219 | avg_r=+0.500 | |p|=2.56 | gen_t=121.4s
+gen  220 | avg_r=+0.312 | |p|=2.57 | gen_t=143.9s
+eval WR=36% 4p=12/37  2p=4/8 (333.5s) rollback sigma_scale=0.25
+gen  221 | avg_r=+0.500 | |p|=2.63 | gen_t=120.1s
+gen  222 | avg_r=+0.688 | |p|=2.65 | gen_t=92.8s
+gen  223 | avg_r=+0.250 | |p|=2.67 | gen_t=134.9s
+gen  224 | avg_r=+0.438 | |p|=2.69 | gen_t=78.7s
+gen  225 | avg_r=+0.312 | |p|=2.70 | gen_t=96.9s
+gen  226 | avg_r=+0.312 | |p|=2.71 | gen_t=134.0s
+gen  227 | avg_r=+0.438 | |p|=2.72 | gen_t=125.1s
+gen  228 | avg_r=+0.375 | |p|=2.73 | gen_t=95.1s
+gen  229 | avg_r=+0.250 | |p|=2.74 | gen_t=120.1s
+gen  230 | avg_r=+0.312 | |p|=2.75 | gen_t=109.9s
+eval WR=36% 4p=11/37  2p=5/8 (308.8s) rollback sigma_scale=0.25
+gen  231 | avg_r=+0.250 | |p|=2.63 | gen_t=150.2s
+gen  232 | avg_r=+0.438 | |p|=2.64 | gen_t=110.4s
+gen  233 | avg_r=+0.312 | |p|=2.63 | gen_t=89.5s
+gen  234 | avg_r=+0.375 | |p|=2.64 | gen_t=103.3s
+gen  235 | avg_r=+0.625 | |p|=2.65 | gen_t=104.3s
+gen  236 | avg_r=+0.562 | |p|=2.66 | gen_t=84.2s
+gen  237 | avg_r=+0.438 | |p|=2.68 | gen_t=162.3s
+gen  238 | avg_r=+0.312 | |p|=2.70 | gen_t=124.0s
+gen  239 | avg_r=+0.312 | |p|=2.71 | gen_t=84.8s
+gen  240 | avg_r=+0.562 | |p|=2.72 | gen_t=110.2s
+eval WR=27% 4p=7/37  2p=5/8 (353.2s) rollback sigma_scale=0.25
+gen  241 | avg_r=+0.250 | |p|=2.63 | gen_t=105.9s
+gen  242 | avg_r=+0.500 | |p|=2.64 | gen_t=96.2s
+gen  243 | avg_r=+0.250 | |p|=2.64 | gen_t=106.9s
+gen  244 | avg_r=+0.250 | |p|=2.66 | gen_t=82.5s
+gen  245 | avg_r=+0.375 | |p|=2.69 | gen_t=132.2s
+gen  246 | avg_r=+0.312 | |p|=2.72 | gen_t=106.4s
+gen  247 | avg_r=+0.188 | |p|=2.75 | gen_t=132.7s
+gen  248 | avg_r=+0.375 | |p|=2.79 | gen_t=134.7s
+gen  249 | avg_r=+0.500 | |p|=2.82 | gen_t=92.4s
+gen  250 | avg_r=+0.375 | |p|=2.85 | gen_t=104.9s
+eval WR=47% 4p=15/37  2p=6/8 (275.0s) rollback sigma_scale=0.25
+gen  251 | avg_r=+0.312 | |p|=2.61 | gen_t=128.2s
+gen  252 | avg_r=+0.250 | |p|=2.60 | gen_t=144.1s
+gen  253 | avg_r=+0.312 | |p|=2.58 | gen_t=118.0s
+gen  254 | avg_r=+0.375 | |p|=2.56 | gen_t=112.6s
+gen  255 | avg_r=+0.375 | |p|=2.56 | gen_t=116.0s
+gen  256 | avg_r=+0.188 | |p|=2.56 | gen_t=162.8s
+gen  257 | avg_r=+0.438 | |p|=2.57 | gen_t=91.9s
+gen  258 | avg_r=+0.375 | |p|=2.58 | gen_t=165.1s
+gen  259 | avg_r=+0.625 | |p|=2.58 | gen_t=102.3s
+gen  260 | avg_r=+0.375 | |p|=2.60 | gen_t=92.5s
+eval WR=36% 4p=11/37  2p=5/8 (308.9s) rollback sigma_scale=0.25
+gen  261 | avg_r=+0.312 | |p|=2.61 | gen_t=128.9s
+gen  262 | avg_r=+0.438 | |p|=2.60 | gen_t=136.2s
+gen  263 | avg_r=+0.688 | |p|=2.59 | gen_t=101.5s
+gen  264 | avg_r=+0.562 | |p|=2.60 | gen_t=66.1s
+gen  265 | avg_r=+0.688 | |p|=2.60 | gen_t=115.6s
+gen  266 | avg_r=+0.312 | |p|=2.60 | gen_t=90.5s
+gen  267 | avg_r=+0.312 | |p|=2.59 | gen_t=99.8s
+gen  268 | avg_r=+0.500 | |p|=2.58 | gen_t=106.0s
+gen  269 | avg_r=+0.625 | |p|=2.56 | gen_t=131.1s
+gen  270 | avg_r=+0.312 | |p|=2.54 | gen_t=134.0s
+eval WR=33% 4p=11/37  2p=4/8 (330.8s) rollback sigma_scale=0.25
+gen  271 | avg_r=+0.375 | |p|=2.62 | gen_t=140.6s
+gen  272 | avg_r=+0.312 | |p|=2.62 | gen_t=124.4s
+gen  273 | avg_r=+0.438 | |p|=2.64 | gen_t=139.0s
+final WR=33% 4p=10/37  2p=5/8 (337.7s)
+Done. 273 generations in 25560.9s
+Best WR: 53%

@@ -1,56 +1,58 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
-import numpy as np
+from typing import Any, Dict
 
-from .utils import softmax, sigmoid
+import torch
+from torch import nn
 
 
 @dataclass
 class ModelConfig:
     input_dim: int
-    hidden_dim: int = 64
-    source_dim: int = 64
-    target_dim: int = 64
-    mission_dim: int = 5
-    amount_dim: int = 6
+    hidden_dim: int = 128
 
 
-class NeuralNetworkModel:
-    def __init__(self, cfg: ModelConfig, rng: np.random.Generator | None = None):
+class NeuralNetworkModel(nn.Module):
+    def __init__(self, cfg: ModelConfig):
+        super().__init__()
         self.cfg = cfg
-        self.rng = rng or np.random.default_rng(42)
-        h = cfg.hidden_dim
-        self.w1 = self.rng.normal(0, 0.1, size=(cfg.input_dim, h)).astype(np.float32)
-        self.b1 = np.zeros((h,), dtype=np.float32)
-        self.w2 = self.rng.normal(0, 0.1, size=(h, h)).astype(np.float32)
-        self.b2 = np.zeros((h,), dtype=np.float32)
-        self.w_policy = self.rng.normal(0, 0.1, size=(h, 1 + cfg.mission_dim + cfg.amount_dim)).astype(np.float32)
-        self.b_policy = np.zeros((1 + cfg.mission_dim + cfg.amount_dim,), dtype=np.float32)
-        self.w_value = self.rng.normal(0, 0.1, size=(h, 1)).astype(np.float32)
-        self.b_value = np.zeros((1,), dtype=np.float32)
+        self.encoder = nn.Sequential(
+            nn.Linear(cfg.input_dim, cfg.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(cfg.hidden_dim, cfg.hidden_dim),
+            nn.ReLU(),
+        )
+        self.candidate_head = nn.Sequential(
+            nn.Linear(cfg.hidden_dim + 16, cfg.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(cfg.hidden_dim, 1),
+        )
+        self.value_head = nn.Sequential(
+            nn.Linear(cfg.hidden_dim, cfg.hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(cfg.hidden_dim // 2, 1),
+        )
 
-    def forward(self, x: np.ndarray) -> Dict[str, np.ndarray]:
-        if x.ndim == 1:
-            x = x[None, :]
-        z1 = np.tanh(x @ self.w1 + self.b1)
-        z2 = np.tanh(z1 @ self.w2 + self.b2)
-        policy = z2 @ self.w_policy + self.b_policy
-        value = z2 @ self.w_value + self.b_value
-        return {"policy_logits": policy, "value": value.squeeze(-1), "latent": z2}
+    def forward(self, state_features: torch.Tensor, candidate_features: torch.Tensor | None = None) -> Dict[str, torch.Tensor]:
+        if state_features.dim() == 1:
+            state_features = state_features.unsqueeze(0)
+        latent = self.encoder(state_features.float())
+        value = self.value_head(latent).squeeze(-1)
+        result = {"value": value, "latent": latent}
+        if candidate_features is not None:
+            if candidate_features.dim() == 2:
+                candidate_features = candidate_features.unsqueeze(0)
+            if candidate_features.size(0) != latent.size(0):
+                raise ValueError("candidate_features batch size must match state batch size")
+            latent_expanded = latent.unsqueeze(1).expand(-1, candidate_features.size(1), -1)
+            score_input = torch.cat([latent_expanded, candidate_features.float()], dim=-1)
+            policy_logits = self.candidate_head(score_input).squeeze(-1)
+            result["policy_logits"] = policy_logits
+        return result
 
-    def parameters(self):
-        return [self.w1, self.b1, self.w2, self.b2, self.w_policy, self.b_policy, self.w_value, self.b_value]
+    def save_state_dict(self) -> Dict[str, Any]:
+        return self.state_dict()
 
-    def state_dict(self) -> Dict[str, np.ndarray]:
-        return {k: v.copy() for k, v in {
-            "w1": self.w1, "b1": self.b1, "w2": self.w2, "b2": self.b2,
-            "w_policy": self.w_policy, "b_policy": self.b_policy,
-            "w_value": self.w_value, "b_value": self.b_value,
-        }.items()}
-
-    def load_state_dict(self, state: Dict[str, np.ndarray]) -> None:
-        for k, v in state.items():
-            setattr(self, k, np.asarray(v, dtype=np.float32))
-
+    def load_state(self, state: Dict[str, Any]) -> None:
+        self.load_state_dict(state)

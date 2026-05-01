@@ -1,0 +1,14 @@
+2026/04/29-16:50:24.232 743a3 Reusing MANIFEST /home/jason/Documents/warorbit/replay_observer/output/kaggle_profile/Default/IndexedDB/https_www.kaggle.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/04/29-16:50:24.232 743a3 Recovering log #97
+2026/04/29-16:50:24.232 743a3 Reusing old log /home/jason/Documents/warorbit/replay_observer/output/kaggle_profile/Default/IndexedDB/https_www.kaggle.com_0.indexeddb.leveldb/000097.log 
+2026/04/29-16:50:24.233 743a3 Delete type=2 #95
+2026/04/29-16:50:24.282 743a3 Level-0 table #102: started
+2026/04/29-16:50:24.283 743a3 Level-0 table #102: 5587 bytes OK
+2026/04/29-16:50:24.284 743a3 Delete type=0 #97
+2026/04/29-16:50:24.284 743a3 Manual compaction at level-0 from '\x00\x1d\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x1e\x00\x00\x00' @ 0 : 0; will stop at '\x00\x1d\x00\x00\x05' @ 1593 : 1
+2026/04/29-16:50:24.285 743a3 Compacting 1@0 + 1@1 files
+2026/04/29-16:50:24.285 743a3 Generated table #103@0: 24 keys, 2334 bytes
+2026/04/29-16:50:24.285 743a3 Compacted 1@0 + 1@1 files => 2334 bytes
+2026/04/29-16:50:24.286 743a3 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/04/29-16:50:24.287 743a3 Delete type=2 #102
+2026/04/29-16:50:24.287 743a3 Manual compaction at level-0 from '\x00\x1d\x00\x00\x05' @ 1593 : 1 .. '\x00\x1e\x00\x00\x00' @ 0 : 0; will stop at (end)

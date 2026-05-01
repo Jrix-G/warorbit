@@ -1,0 +1,169 @@
+{
+  "policyViolations": [
+    {
+      "id": "CSAM",
+      "name": "ChildSexualAbuseMaterial",
+      "description": "Content containing CSAM",
+      "coveredUnderDsa": true
+    },
+    {
+      "id": "TERRORIST_CONTENT",
+      "name": "TerroristContent",
+      "description": "Content containing pro-terror material",
+      "coveredUnderDsa": true
+    },
+    {
+      "id": "SPAM_CONTENT",
+      "name": "SpamContent",
+      "description": "Content that does not belong on Kaggle",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Content unrelated to Kaggle"
+    },
+    {
+      "id": "COPYRIGHT_INFRINGEMENT",
+      "name": "CopyrightInfringement",
+      "description": "Content that infringes upon an existing copyright",
+      "coveredUnderDsa": true
+    },
+    {
+      "id": "SPAM_WIDESPREAD",
+      "name": "SpamWidespread",
+      "description": "Content that is considered widespread and high-volume spam",
+      "publicUiDescription": "Widespread and high-volume spam"
+    },
+    {
+      "id": "LOW_QUALITY",
+      "name": "LowQuality",
+      "description": "Content that is not of genuine value to the community",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Not of genuine value to the community"
+    },
+    {
+      "id": "ABUSIVE_BEHAVIOR",
+      "name": "AbusiveBehavior",
+      "description": "Content that is offensive or harassing in nature",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Offensive or harassing in nature"
+    },
+    {
+      "id": "PLAGIARISM",
+      "name": "Plagiarism",
+      "description": "Content that is plagiarized",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Plagiarism"
+    },
+    {
+      "id": "NSFW_CONTENT",
+      "name": "NsfwContent",
+      "description": "Content that is sexually suggestive or explicit (i.e. NSFW)",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Sexually suggestive or explicit (i.e. NSFW)"
+    },
+    {
+      "id": "UNFRIENDLY",
+      "name": "Unfriendly",
+      "description": "Content that is unfriendly or unprofessional",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Unfriendly or unprofessional"
+    },
+    {
+      "id": "VOTE_MANIPULATION",
+      "name": "VoteManipulation",
+      "description": "Vote manipulation",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Vote manipulation"
+    },
+    {
+      "id": "UNRELATED_DATASETS",
+      "name": "UnrelatedDatasets",
+      "description": "Attaching unrelated datasets to a notebook",
+      "entityType": "NOTEBOOK",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Unrelated datasets attached"
+    },
+    {
+      "id": "CHEATING",
+      "name": "Cheating",
+      "description": "Cheating on competitions",
+      "entityType": "USER",
+      "publicUiDescription": "Cheating on competitions"
+    },
+    {
+      "id": "DUPLICATE_ACCOUNT",
+      "name": "DuplicateAccount",
+      "description": "Creating multiple Kaggle accounts",
+      "entityType": "USER",
+      "publicUiDescription": "Multiple Kaggle accounts"
+    },
+    {
+      "id": "LLM_CONTENT",
+      "name": "LlmContent",
+      "description": "Discussion content that does not adhere to the AI-generated content guidelines",
+      "entityType": "FORUM_MESSAGE",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Disallowed AI-generated content"
+    },
+    {
+      "id": "SELF_PROMOTION",
+      "name": "SelfPromotion",
+      "description": "Discussion content that does not adhere to the self-promotion guidelines",
+      "entityType": "FORUM_MESSAGE",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Self-promotion"
+    },
+    {
+      "id": "WRONG_FORUM_OR_TOPIC",
+      "name": "WrongForumOrTopic",
+      "description": "Discussion content that has been posted in the wrong forum or topic",
+      "entityType": "FORUM_MESSAGE",
+      "publicUiDescription": "Wrong forum or topic"
+    },
+    {
+      "id": "JOB_INQUIRY",
+      "name": "JobInquiry",
+      "description": "Discussion content that includes job inquiries or postings",
+      "entityType": "FORUM_MESSAGE",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Includes job inquiries or postings"
+    },
+    {
+      "id": "DUPLICATE_POST",
+      "name": "DuplicatePost",
+      "description": "Discussion content that is duplicative of other content by the same user",
+      "entityType": "FORUM_MESSAGE",
+      "publicUiDescription": "Duplicative content by the same user"
+    },
+    {
+      "id": "COPIED_POST",
+      "name": "CopiedPost",
+      "description": "Discussion content that is highly similar to another user's existing post",
+      "entityType": "FORUM_MESSAGE",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Highly similar to another user's existing post"
+    },
+    {
+      "id": "FREQUENT_SPAM_CONTENT",
+      "name": "FrequentSpamContent",
+      "description": "Frequently sharing low-quality forum posts or comments",
+      "entityType": "USER",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Frequent low-quality posts/comments"
+    },
+    {
+      "id": "FREQUENT_SELF_PROMOTION",
+      "name": "FrequentSelfPromotion",
+      "description": "Frequently sharing self-promoting comments",
+      "entityType": "USER",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Frequent self-promoting comments"
+    },
+    {
+      "id": "RESOURCE_ABUSE",
+      "name": "ResourceAbuse",
+      "description": "Resource abuse",
+      "entityType": "NOTEBOOK",
+      "coveredUnderDsa": true,
+      "publicUiDescription": "Resource abuse"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "config": {
+    "apiKey": "AIzaSyD260rHHEeMVDGVqyWq0yszmLJ-5Cgkqrk",
+    "authDomain": "kaggle-metastore.firebaseapp.com",
+    "databaseUrl": "https://kaggle-metastore.firebaseio.com",
+    "projectId": "kaggle-metastore",
+    "storageBucket": "kaggle-metastore.appspot.com",
+    "messagingSenderId": "918573732781",
+    "appId": "1:918573732781:web:a51c692b02fbe555f18724",
+    "proxyDomain": "kkb-production.jupyter-proxy.kaggle.net"
+  },
+  "authToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiIzMzk0MzUwMiIsImlzcyI6InNpZ25lckBrYWdnbGUtbWV0YXN0b3JlLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwic3ViIjoic2lnbmVyQGthZ2dsZS1tZXRhc3RvcmUuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJhdWQiOiJodHRwczovL2lkZW50aXR5dG9vbGtpdC5nb29nbGVhcGlzLmNvbS9nb29nbGUuaWRlbnRpdHkuaWRlbnRpdHl0b29sa2l0LnYxLklkZW50aXR5VG9vbGtpdCIsImV4cCI6MTc3NzM3NzI4OSwiaWF0IjoxNzc3MzczNjg5fQ.Oic3Hf72LmZ84_5DwMiZVJARJ2ze40XmYQMGw2GtZjQ3IWwWXqqkDaLJjq5YheWEVsvdm-9HewguxKIMlnEu5gyQnBE1vICT52VlPx1hIih-fvcsxQUdfGmG2we_ZYnw21Vf8WpP1IysY0TmdwRnjH88q4etk_LL4PpYXRxHuG-Ql7oXBxJZYQI8mb-I_dS5h_LLc3z_uDOMivXoAgBXz6AwU3oQE8DdbnBdBbadOeMuckPMGzeYLDWSyO4HhdzIxIUFXb5qzX35GjaHT1ntjA3QSsgueilBhWzyeDf7ioJ7dadTaFCX9Ggrv3apZybziXoxbytKR-BzKqV6GXNv_w"
+}

@@ -1,0 +1,594 @@
+{
+  "run_id": "test_75588708",
+  "url": "https://www.kaggle.com/competitions/orbit-wars/submissions?submissionId=52128366&episodeId=75588708#",
+  "started_at": "2026-04-28T10:46:57.179626Z",
+  "seconds": 8.0,
+  "interval": 2.0,
+  "network_hits": [
+    {
+      "url": "https://www.kaggle.com/competitions/orbit-wars/submissions?submissionId=52128366&episodeId=75588708",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0001_https_www.kaggle.com_competitions_orbit-wars_submissions_submissionId_52128366_episodeId_75588708.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetClientFeatureFlags",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0002_https_www.kaggle.com_api_i_users.UsersService_GetClientFeatureFlags.txt"
+    },
+    {
+      "url": "https://region1.google-analytics.com/g/collect?v=2&tid=G-T7QHS60L4Q&gtm=45je64o1v9104087209za200zd9104087209&_p=1777373218596&gcd=13l3l3l2l1l1&npa=1&dma_cps=a&dma=1&are=1&cid=264184515.1777373219&frm=0&pscdl=noapi&rcb=16&sr=1280x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=0~115616986~115938465~115938468~116363097~117266400~117512543~118167059&sid=1777373219&sct=1&seg=0&dl=https%3A%2F%2Fwww.kaggle.com%2Fcompetitions%2Forbit-wars%2Fsubmissions%3FsubmissionId%3D52128366%26episodeId%3D75588708&dt=Orbit%20Wars%20%7C%20Kaggle&dp=%2Fcompetitions%2Forbit-wars%2Fsubmissions&en=page_view&_fv=1&_nsi=1&_ss=1&_ee=1&ep.optimize_id=GTM-52LNT9S&ep.displayFeaturesTask=&ep.content_group1=Competitions&up.logged_in=false&tfd=1249",
+      "status": 204,
+      "content_type": "text/plain",
+      "body_error": "Response.text: Protocol error (Network.getResponseBody): No data found for resource with given identifier"
+    },
+    {
+      "url": "https://region1.google-analytics.com/g/collect?v=2&tid=G-T7QHS60L4Q&gtm=45je64o1v9104087209za200zd9104087209&_p=1777373218596&gcd=13l3l3l2l1l1&npa=1&dma_cps=a&dma=1&_eu=AEAAAAQ&ae=a&are=1&cid=264184515.1777373219&frm=0&pscdl=noapi&rcb=16&sr=1280x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=0~115616986~115938465~115938468~116363097~117266400~117512543~118167059&sid=1777373219&sct=1&seg=0&dl=https%3A%2F%2Fwww.kaggle.com%2Fcompetitions%2Forbit-wars%2Fsubmissions%3FsubmissionId%3D52128366%26episodeId%3D75588708&dt=Orbit%20Wars%20%7C%20Kaggle&dp=%2Fcompetitions%2Forbit-wars%2Fsubmissions&en=scroll&ep.optimize_id=GTM-52LNT9S&ep.displayFeaturesTask=&ep.content_group1=Competitions&epn.percent_scrolled=90&_et=10&tfd=1319",
+      "status": 204,
+      "content_type": "text/plain",
+      "body_error": "Response.text: Protocol error (Network.getResponseBody): No data found for resource with given identifier"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/diagnostics.MetricsService/RecordPageLoadMetrics",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0005_https_www.kaggle.com_api_i_diagnostics.MetricsService_RecordPageLoadMetrics.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.CompetitionService/GetCompetition",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0007_https_www.kaggle.com_api_i_competitions.CompetitionService_GetCompetition.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.UserService/GetUser",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0007_https_www.kaggle.com_api_i_competitions.UserService_GetUser.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetCurrentUser",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0009_https_www.kaggle.com_api_i_users.UsersService_GetCurrentUser.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.ModerationPublicService/ListViolationDescriptions",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0009_https_www.kaggle.com_api_i_users.ModerationPublicService_ListViolationDescriptions.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.PageService/GetPage",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0012_https_www.kaggle.com_api_i_competitions.PageService_GetPage.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.PageService/GetPage",
+      "status": 403,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0012_https_www.kaggle.com_api_i_competitions.PageService_GetPage.txt"
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetUser",
+      "status": 200,
+      "content_type": "application/json",
+      "body_file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0012_https_www.kaggle.com_api_i_users.UsersService_GetUser.txt"
+    },
+    {
+      "url": "https://region1.google-analytics.com/g/collect?v=2&tid=G-T7QHS60L4Q&gtm=45je64o1v9104087209za200zd9104087209&_p=1777373218596&gcd=13l3l3l2l1l1&npa=1&dma_cps=a&dma=1&_eu=AAAAAAQ&are=1&cid=264184515.1777373219&frm=0&pscdl=noapi&rcb=16&sr=1280x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=3&tag_exp=0~115616986~115938465~115938468~116363097~117266400~117512543~118167059&sid=1777373219&sct=1&seg=1&dl=https%3A%2F%2Fwww.kaggle.com%2Fcompetitions%2Forbit-wars%2Fsubmissions%3FsubmissionId%3D52128366%26episodeId%3D75588708&dt=Orbit%20Wars%20%7C%20Kaggle&dp=%2Fcompetitions%2Forbit-wars%2Fsubmissions&en=page_view&_ee=1&ep.optimize_id=GTM-52LNT9S&ep.displayFeaturesTask=&ep.content_group1=Competitions&_et=54&tfd=6320",
+      "status": 204,
+      "content_type": "text/plain",
+      "body_error": "Response.text: Protocol error (Network.getResponseBody): No data found for resource with given identifier"
+    }
+  ],
+  "json_responses": [
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetClientFeatureFlags",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0002_https_www.kaggle.com_api_i_users.UsersService_GetClientFeatureFlags.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "hash",
+        "featureFlags",
+        "featureFlagValues"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/diagnostics.MetricsService/RecordPageLoadMetrics",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0005_https_www.kaggle.com_api_i_diagnostics.MetricsService_RecordPageLoadMetrics.json",
+      "top_level_type": "dict",
+      "top_level_keys": []
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.CompetitionService/GetCompetition",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0007_https_www.kaggle.com_api_i_competitions.CompetitionService_GetCompetition.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "id",
+        "competitionName",
+        "title",
+        "briefDescription",
+        "dateEnabled",
+        "deadline",
+        "hasLeaderboard",
+        "leaderboardPercentage",
+        "maxDailySubmissions",
+        "numScoredSubmissions",
+        "numPrizes",
+        "forumId",
+        "userRankMultiplier",
+        "dateCreated",
+        "competitionHostSegmentId",
+        "maxTeamSize",
+        "medalsAllowed",
+        "teamMergerExplicitDeadline",
+        "prohibitNewEntrantsExplicitDeadline",
+        "kernelsPublishingDisabledDeadline",
+        "organizationId",
+        "hasCoverImageUrl",
+        "hasScripts",
+        "totalTeams",
+        "totalCompetitors",
+        "totalSubmissions",
+        "rulesRequired",
+        "clonedFromCompetitionId",
+        "evaluationAlgorithm",
+        "categories",
+        "organization",
+        "launched",
+        "createdByUserId",
+        "license",
+        "hostName",
+        "scoreTruncationNumDecimals",
+        "totalJoinedUsers",
+        "requiresIdentityVerification",
+        "submissionSizeLimitMb",
+        "reward",
+        "simulation"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.UserService/GetUser",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0007_https_www.kaggle.com_api_i_competitions.UserService_GetUser.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "hasAcceptedRules",
+        "canUnregister"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetCurrentUser",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0009_https_www.kaggle.com_api_i_users.UsersService_GetCurrentUser.json",
+      "top_level_type": "dict",
+      "top_level_keys": []
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.ModerationPublicService/ListViolationDescriptions",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0009_https_www.kaggle.com_api_i_users.ModerationPublicService_ListViolationDescriptions.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "policyViolations"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.PageService/GetPage",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0012_https_www.kaggle.com_api_i_competitions.PageService_GetPage.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "id",
+        "competitionId",
+        "name",
+        "content",
+        "mimeType",
+        "isPublished",
+        "order",
+        "postTitle",
+        "postId"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/competitions.PageService/GetPage",
+      "status": 403,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0012_https_www.kaggle.com_api_i_competitions.PageService_GetPage.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "error"
+      ]
+    },
+    {
+      "url": "https://www.kaggle.com/api/i/users.UsersService/GetUser",
+      "status": 200,
+      "file": "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/network/0012_https_www.kaggle.com_api_i_users.UsersService_GetUser.json",
+      "top_level_type": "dict",
+      "top_level_keys": [
+        "id",
+        "displayName",
+        "userName",
+        "thumbnailUrl",
+        "profileUrl",
+        "registerDate",
+        "lastVisitDate",
+        "statusId",
+        "performanceTier",
+        "groupIds",
+        "canBeSeen",
+        "thumbnailName",
+        "countryCode",
+        "progressionOptOut"
+      ]
+    }
+  ],
+  "screenshots": [
+    "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/screenshots/page_0000.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/screenshots/page_0001.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/screenshots/page_0002.png",
+    "/home/jason/Documents/warorbit/replay_observer/output/test_75588708/screenshots/page_0003.png"
+  ],
+  "canvas_screenshots": [],
+  "console": [
+    {
+      "type": "log",
+      "text": " _                       _       \n| |    Welcome to       | |      \n| | __ ___   __ _  __ _ | | ___  \n| |/ /|__ \\ / _` |/ _` || |/ _ \\ \n|   < / _  | (_| | (_| || |  __/ \n|_|\\_\\\\__,_|\\__, |\\__, ||_|\\___| \n             __/ | __/ |         \n            |___/ |___/          \n"
+    },
+    {
+      "type": "warning",
+      "text": "No `HydrateFallback` element provided to render during initial hydration"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 403 ()"
+    }
+  ],
+  "errors": [],
+  "page_probe": {
+    "url": "https://www.kaggle.com/competitions/orbit-wars/submissions?submissionId=52128366&episodeId=75588708#",
+    "title": "Orbit Wars | Kaggle",
+    "storage": {
+      "localStorage": [
+        {
+          "key": "KAGGLE_FEATURE_FLAGS",
+          "preview": "{\"hash\":\"d94d3ed0d788f71ed0766ca07a8f34e877ff36c38df65a7daca2ee685d0d4dde\",\"flags\":[\"EnableAgentSatsFe\",\"KernelsOpenInColabLocalUrl\",\"StsDownload\",\"KernelsGooseMode\",\"BenchmarksCrossUserTaskRuns\",\"BenchmarkTaskCreation\",\"BenchmarkTaskImportModels\",\"NavRestructure\",\"RequirePersonaVerificationForBenchmarks\",\"BenchmarkRunIndividualTask\",\"KernelsFirebaseLongPolling\",\"FrontendErrorReporting\",\"AllowForumAttachments\",\"TermsOfServiceBanner\",\"DatasetUploaderDuplicateDetection\"],\"values\":{\"CommunityBenchmarkShelf\":\"2138, 2406, 388, 2863\",\"ModelsDisableGatedAccessModelIds\":\"188868, 121027,91102,39106,121030\",\"SpotlightCommunityCompetition\":\"135180, 136117 ,136475 ,136721, 113155,106680,106809,117462,126777,127282, 124685, 125799, 127283, 130287, 129872, 129871,132732,131778,135157,134719\",\"PersonalBenchmarksPriorityTaskIds\":\"\",\"GameArenaFeaturedEpisodes\":\"{\\\"180\\\": [74920626, 74923653, 74915408], \\\"844\\\": [74954901, 74954774, 74954984], \\\"443\\\": [74833179, 74833087], \\\"349\\\": [74784960, 74692665, 74690392], \\\"436\\\": [73948703, 73948385, 73948222]}\",\"StsMinFiles\":\"200000\",\"FeaturedBenchmarks\":\"996, 4974, 246, 201\",\"StsMinGb\":\"2\",\"HackathonCountdownTimerHours\":\"24\",\"ClientRpcRateLimitQps\":\"40\",\"ClientRpcRateLimitQpm\":\"500\",\"AddFeatureFlagsToPageLoadTag\":\"disabled\",\"KernelEditorAutosaveThrottleMs\":\"30000\",\"GameArenaBenchmarkVersions\":\"844,180,443,437, 2163\",\"KernelsL4GpuComps\":\"133469\",\"FeaturedCommunityCompetitions\":\"130287\",\"FeaturedGameArenaBenchmarkConfig\":\"{\\\"POKER\\\": 180, \\\"CHESS\\\": 437, \\\"WEREWOLF\\\": 443, \\\"CONNECT_X\\\": 844, \\\"CONNECT_5\\\": 2163}\",\"EmergencyAlertBanner\":\"{ \\\"banners\\\": [ { \\\"bannerId\\\": \\\"leonardo-issue-2026-03-20\\\", \\\"messageHtml\\\": \\\"This competition is currently paused for review. Thank you for your patience.\\\", \\\"uriPathRegex\\\": \\\"^/competitions/leonardo-airborne-object-recognition-challenge.*\\\" } ] }\",\"CompetitionMetricTimeoutMinutes\":\"30\",\"DatasetsSendPendingSuggestionsRemindersBatchSize\":\"100\",\"EmergencyAlertBannerForUserProfile\":\"\",\"ResourceDirectSh",
+          "length": 2424
+        }
+      ],
+      "sessionStorage": []
+    },
+    "performanceEntries": [
+      {
+        "name": "https://www.kaggle.com/competitions/orbit-wars/submissions?submissionId=52128366&episodeId=75588708#",
+        "initiatorType": "navigation",
+        "duration": 1310.2999999998137,
+        "transferSize": 2506
+      },
+      {
+        "name": "https://region1.google-analytics.com/g/collect?v=2&tid=G-T7QHS60L4Q&gtm=45je64o1v9104087209za200zd9104087209&_p=1777373218596&gcd=13l3l3l2l1l1&npa=1&dma_cps=a&dma=1&_eu=AAAAAAQ&are=1&cid=264184515.1777373219&frm=0&pscdl=noapi&rcb=16&sr=1280x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B99.0.0.0%7CHeadlessChrome%3B145.0.7632.6%7CChromium%3B145.0.7632.6&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=3&tag_exp=0~115616986~115938465~115938468~116363097~117266400~117512543~118167059&sid=1777373219&sct=1&seg=1&dl=https%3A%2F%2Fwww.kaggle.com%2Fcompetitions%2Forbit-wars%2Fsubmissions%3FsubmissionId%3D52128366%26episodeId%3D75588708&dt=Orbit%20Wars%20%7C%20Kaggle&dp=%2Fcompetitions%2Forbit-wars%2Fsubmissions&en=page_view&_ee=1&ep.optimize_id=GTM-52LNT9S&ep.displayFeaturesTask=&ep.content_group1=Competitions&_et=54&tfd=6320",
+        "initiatorType": "fetch",
+        "duration": 100.20000000018626,
+        "transferSize": 0
+      }
+    ],
+    "canvases": [],
+    "dataElements": [
+      {
+        "tag": "HTML",
+        "attrs": {},
+        "text": "Orbit Wars | Kaggle\n  \n    \n  \n    \n  \n  \n    window[\"pageRequestStartTime\"] = 1777373217811;\n    window[\"pageRequestEndTime\"] = 1777373217827;\n    window[\"initialPageLoadStartTime\"] = new Date().getTime();\n  \n  \n  window.KAGGLE_JUPYTERLAB_PATH = \"/static/assets/jupyterlab-v4/jupyterlab-index-079e68ddcae7b250.html\";\n  \n    \n  \n\n\n  \n\n  \n  \n  \n  \n  \n    const styleSheetIds = [\"async-google-font-1\", \"async-google-font-2\"];\n    styleSheetIds.forEach(function (id) {\n      document.getElementById(id)."
+      },
+      {
+        "tag": "HEAD",
+        "attrs": {},
+        "text": "Orbit Wars | Kaggle\n  \n    \n  \n    \n  \n  \n    window[\"pageRequestStartTime\"] = 1777373217811;\n    window[\"pageRequestEndTime\"] = 1777373217827;\n    window[\"initialPageLoadStartTime\"] = new Date().getTime();\n  \n  \n  window.KAGGLE_JUPYTERLAB_PATH = \"/static/assets/jupyterlab-v4/jupyterlab-index-079e68ddcae7b250.html\";\n  \n    \n  \n\n\n  \n\n  \n  \n  \n  \n  \n    const styleSheetIds = [\"async-google-font-1\", \"async-google-font-2\"];\n    styleSheetIds.forEach(function (id) {\n      document.getElementById(id)."
+      },
+      {
+        "tag": "TITLE",
+        "attrs": {},
+        "text": "Orbit Wars | Kaggle"
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+        },
+        "text": ""
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "Orbit Wars"
+        },
+        "text": ""
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+        },
+        "text": ""
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "https://kaggle.com/orbit-wars"
+        },
+        "text": ""
+      },
+      {
+        "tag": "META",
+        "attrs": {
+          "content": "Orbit Wars"
+        },
+        "text": ""
+      },
+      {
+        "tag": "STYLE",
+        "attrs": {
+          "data-styled": "active",
+          "data-styled-version": "6.4.0"
+        },
+        "text": ""
+      },
+      {
+        "tag": "STYLE",
+        "attrs": {
+          "data-emotion": "css-global",
+          "data-s": ""
+        },
+        "text": ""
+      },
+      {
+        "tag": "STYLE",
+        "attrs": {
+          "data-emotion": "css-global",
+          "data-s": ""
+        },
+        "text": ""
+      },
+      {
+        "tag": "STYLE",
+        "attrs": {
+          "data-emotion": "css",
+          "data-s": ""
+        },
+        "text": ""
+      },
+      {
+        "tag": "BODY",
+        "attrs": {},
+        "text": "menuSkip tocontentCreatesearch​exploreHomeemoji_eventsCompetitionsleaderboardBenchmarkssmart_toyGame ArenacodeData Hubexpand_moreformat_list_bulletedMoreexpand_moremenuSkip tocontentsearch​Sign InRegisterKaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.Learn moreOK, Got it.Kaggle  · Featured Simulation Competition · 2 months to goJoin Competitionmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time s"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "menuSkip tocontentCreatesearch​exploreHomeemoji_eventsCompetitionsleaderboardBenchmarkssmart_toyGame ArenacodeData Hubexpand_moreformat_list_bulletedMoreexpand_moremenuSkip tocontentsearch​Sign InRegisterKaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.Learn moreOK, Got it.Kaggle  · Featured Simulation Competition · 2 months to goJoin Competitionmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time s"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "home"
+        },
+        "text": "exploreHome"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "competitions"
+        },
+        "text": "emoji_eventsCompetitions"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "benchmarks"
+        },
+        "text": "leaderboardBenchmarks"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "game-arena"
+        },
+        "text": "smart_toyGame Arena"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "data-hub"
+        },
+        "text": "codeData Hub"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-click-log-id": "more"
+        },
+        "text": "format_list_bulletedMore"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/account/login?phase=startSignInTab&returnUrl=%2Fcompetitions%2Forbit-wars%2Fsubmissions%3FsubmissionId%3D52128366%26episodeId%3D75588708",
+          "data-discover": "true"
+        },
+        "text": "Sign In"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/account/login?phase=startRegisterTab&returnUrl=%2Fcompetitions%2Forbit-wars%2Fsubmissions%3FsubmissionId%3D52128366%26episodeId%3D75588708",
+          "data-discover": "true"
+        },
+        "text": "Register"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.Learn moreOK, Got it.Kaggle  · Featured Simulation Competition · 2 months to goJoin Competitionmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesWe can't find that page.You can search Kaggle above or visit our homepage."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-nosnippet": "true"
+        },
+        "text": "Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Kaggle  · Featured Simulation Competition · 2 months to goJoin Competitionmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesWe can't find that page.You can search Kaggle above or visit our homepage."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-testid": "competition-detail-render-tid"
+        },
+        "text": "Kaggle  · Featured Simulation Competition · 2 months to goJoin Competitionmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesWe can't find that page.You can search Kaggle above or visit our homepage."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Kaggle  · Featured Simulation Competition · 2 months to goJoin Competitionmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players.Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRulesWe can't find that page.You can search Kaggle above or visit our homepage."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Kaggle  · Featured Simulation Competition · 2 months to goJoin Competitionmore_horizOrbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {
+          "data-testid": "avatar-image"
+        },
+        "text": ""
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsConquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "H1",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "SPAN",
+        "attrs": {},
+        "text": "Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "P",
+        "attrs": {},
+        "text": "Conquer planets rotating around a sun in continuous 2D space. A real-time strategy game for 2 or 4 players."
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRules"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRules"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit WarsOverviewDataCodeModelsDiscussionLeaderboardRules"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "DIV",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "H2",
+        "attrs": {},
+        "text": "Orbit Wars"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/overview",
+          "data-discover": "true"
+        },
+        "text": "Overview"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/data",
+          "data-discover": "true"
+        },
+        "text": "Data"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/code",
+          "data-discover": "true"
+        },
+        "text": "Code"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/models",
+          "data-discover": "true"
+        },
+        "text": "Models"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/discussion",
+          "data-discover": "true"
+        },
+        "text": "Discussion"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/leaderboard",
+          "data-discover": "true"
+        },
+        "text": "Leaderboard"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "href": "/competitions/orbit-wars/rules",
+          "data-discover": "true"
+        },
+        "text": "Rules"
+      },
+      {
+        "tag": "A",
+        "attrs": {
+          "data-discover": "true"
+        },
+        "text": "visit our homepage"
+      }
+    ],
+    "windowKeys": []
+  },
+  "finished_at": "2026-04-28T10:47:09.614989Z"
+}
