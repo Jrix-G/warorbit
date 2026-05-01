@@ -71,10 +71,12 @@ def _run_match(agent_a, agent_b, config: Dict[str, Any], seed: int, max_turns: i
         if game.get("terminal"):
             break
     winner = _final_verdict(game)
+    a_player = 0
+    b_player = 1
     return {
         "winner": float(winner),
-        "a_win": float(winner == 0),
-        "b_win": float(winner == 1),
+        "a_win": float(winner == a_player),
+        "b_win": float(winner == b_player),
         "draw": float(winner == -1),
         "episode_length": float(max_turns if not game.get("terminal") else game.get("turn", max_turns)),
         "avg_reward": float(_player_score(game, 0) - _player_score(game, 1)),
