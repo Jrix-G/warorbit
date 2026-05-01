@@ -204,6 +204,27 @@ def _load_flat(path: Path):
     return params, best_score, generation
 
 
+def _migrate_flat_params(bot, params: np.ndarray) -> np.ndarray:
+    """Pad old ranker checkpoints when bot_v8_2 adds plan rows."""
+    params = np.asarray(params, dtype=np.float32).ravel()
+    expected = bot.N_PLANS_MAX * bot.N_STATE_FEATURES + bot.N_CANDIDATE_FEATURES + bot.N_STATE_FEATURES + 1
+    if params.size == expected:
+        return params
+
+    tail = bot.N_CANDIDATE_FEATURES + bot.N_STATE_FEATURES + 1
+    old_state_size = params.size - tail
+    if old_state_size <= 0 or old_state_size % bot.N_STATE_FEATURES != 0:
+        raise ValueError(f"Cannot migrate ranker vector size {params.size} to {expected}")
+    old_rows = old_state_size // bot.N_STATE_FEATURES
+    if old_rows > bot.N_PLANS_MAX:
+        raise ValueError(f"Cannot migrate {old_rows} plan rows into {bot.N_PLANS_MAX}")
+
+    migrated_state = np.zeros((bot.N_PLANS_MAX, bot.N_STATE_FEATURES), dtype=np.float32)
+    migrated_state[:old_rows] = params[:old_state_size].reshape(old_rows, bot.N_STATE_FEATURES)
+    migrated = np.concatenate([migrated_state.ravel(), params[old_state_size:]]).astype(np.float32)
+    return migrated
+
+
 def _export_bot_checkpoint(bot, params: np.ndarray, path: str, meta: dict) -> None:
     _set_flat_weights(bot, params)
     bot.save_checkpoint(path, meta=meta)
@@ -289,6 +310,7 @@ def main() -> None:
     best_path = Path(args.best_checkpoint)
     if args.resume and latest_path.exists():
         params, best_score, generation = _load_flat(latest_path)
+        params = _migrate_flat_params(bot_v8_2, params)
         print(f"Resumed {latest_path} generation={generation} best_score={best_score:.4f}", flush=True)
     else:
         params = _flatten_weights(bot_v8_2)
@@ -503,6 +525,7 @@ def main() -> None:
     if best_path.exists() and best_score >= 0:
         try:
             export_params, _, export_generation = _load_flat(best_path)
+            export_params = _migrate_flat_params(bot_v8_2, export_params)
         except Exception:
             export_params = params
             export_generation = generation

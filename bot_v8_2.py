@@ -104,11 +104,16 @@ OPPORTUNISTIC_DEPLETED_PROD_MULT = 2.25  # target.ships < production * this
 # Ranker dimensions
 N_STATE_FEATURES = 24
 N_CANDIDATE_FEATURES = 12
-N_PLANS_MAX = 9                    # baseline + attack + expand + defense + reserve + 4 4p variants
+N_PLANS_MAX = 10                   # baseline + attack + expand + defense + reserve + 5 4p variants
 RANKER_TEMPERATURE = 1.0
 EARLY_4P_EXPAND_PLANET_TARGET = 6
 EARLY_4P_EXPAND_OVERRIDE_TURN = 70
 EARLY_4P_EXPAND_MIN_GARRISON_RATIO = 0.28
+CONVERSION_PUSH_MIN_TURN = 60
+CONVERSION_PUSH_MIN_GARRISON_RATIO = 0.30
+CONVERSION_PUSH_MAX_ACTIVE_FRONTS = 2
+CONVERSION_PUSH_MIN_SHIP_LEAD = 1.03
+CONVERSION_PUSH_MIN_PROD_LEAD = 1.03
 
 
 # ---------------------------------------------------------------------------
@@ -134,6 +139,7 @@ PLAN_NAMES = (
     "4p_eliminate_weakest", # 6  (4p only)
     "4p_conservation",      # 7  (4p only)
     "4p_late_blitz",        # 8  (4p only, t > LATE_BLITZ_TURN)
+    "4p_conversion_push",   # 9  (4p only, favorable midgame conversion)
 )
 
 
@@ -412,6 +418,44 @@ def _allow_4p_late_blitz(world: WorldModel, n_fronts: int, g_ratio: float) -> bo
     ship_lead = world.my_total / max(1, strongest_enemy)
     prod_lead = world.my_prod / max(1, strongest_enemy_prod)
     return ship_lead >= LATE_BLITZ_MIN_SHIP_LEAD or prod_lead >= LATE_BLITZ_MIN_PROD_LEAD
+
+
+def _conversion_push_owner(world: WorldModel, n_fronts: Optional[int] = None,
+                           g_ratio: Optional[float] = None) -> Optional[int]:
+    """Return the enemy owner to pressure when a stable 4p lead should convert."""
+    if not world.is_four_player or world.step < CONVERSION_PUSH_MIN_TURN:
+        return None
+    if n_fronts is None:
+        n_fronts = len(compute_active_fronts(world))
+    if g_ratio is None:
+        g_ratio = garrison_ratio_now(world)
+    if n_fronts > CONVERSION_PUSH_MAX_ACTIVE_FRONTS or g_ratio < CONVERSION_PUSH_MIN_GARRISON_RATIO:
+        return None
+
+    enemy_strengths = [
+        (owner, strength)
+        for owner, strength in world.owner_strength.items()
+        if owner not in (-1, world.player)
+    ]
+    if not enemy_strengths:
+        return None
+    strongest_owner, strongest_strength = max(enemy_strengths, key=lambda item: item[1])
+    strongest_prod = max(
+        (prod for owner, prod in world.owner_production.items() if owner not in (-1, world.player)),
+        default=0,
+    )
+    ship_lead = world.my_total / max(1, strongest_strength)
+    prod_lead = world.my_prod / max(1, strongest_prod)
+    max_enemy_planets = max(
+        (sum(1 for p in world.planets if p.owner == owner) for owner, _ in enemy_strengths),
+        default=0,
+    )
+    planet_lead = len(world.my_planets) - max_enemy_planets
+    if (ship_lead >= CONVERSION_PUSH_MIN_SHIP_LEAD
+            or prod_lead >= CONVERSION_PUSH_MIN_PROD_LEAD
+            or planet_lead >= 2):
+        return int(strongest_owner)
+    return None
 
 
 def _has_4p_opportunistic_target(world: WorldModel) -> bool:
@@ -999,6 +1043,15 @@ def _generate_candidates(world: WorldModel) -> List[Tuple[str, List[List]]]:
                                                         attack_boost=1.80,
                                                         suppress_garrison_floor=True,
                                                         suppress_garrison_ratio_cap=True))[0]))
+        # 9. 4p_conversion_push — convert a stable lead before a weak enemy/blitz exists.
+        conversion_owner = _conversion_push_owner(world, len(compute_active_fronts(world)), garrison_ratio_now(world))
+        if conversion_owner is not None:
+            plans.append(("4p_conversion_push",
+                          _v8_2_plan(world, PlanContext("4p_conversion_push",
+                                                        only_targets_owner=conversion_owner,
+                                                        attack_boost=2.05,
+                                                        expand_boost=1.05,
+                                                        defense_boost=0.95))[0]))
 
     return plans
 
@@ -1078,7 +1131,7 @@ def build_candidate_features(plan_name: str, moves: List[List], world: WorldMode
         1.0 if plan_name == "v7_baseline" else 0.0,                  # 7
         1.0 if plan_name.startswith("4p_") else 0.0,                 # 8
         1.0 if plan_name in ("defense_focus", "reserve_hold", "4p_conservation") else 0.0,  # 9
-        1.0 if plan_name in ("attack_focus", "4p_eliminate_weakest", "4p_late_blitz") else 0.0,  # 10
+        1.0 if plan_name in ("attack_focus", "4p_eliminate_weakest", "4p_late_blitz", "4p_conversion_push") else 0.0,  # 10
         1.0,                                                         # 11 bias
     ], dtype=np.float32)
     return feat
@@ -1124,6 +1177,16 @@ def _select_candidate_index(candidates: List[Tuple[str, List[List]]], scores: Li
         if scores[i] > best_score:
             best_score = scores[i]
             best_idx = i
+    if _conversion_push_owner(world) is not None:
+        chosen_name, chosen_moves = candidates[best_idx]
+        chosen_attack_ratio = float(cand_feats[best_idx][2])
+        chosen_is_generic = chosen_name in ("v7_baseline", "attack_focus", "4p_opportunistic")
+        chosen_is_passive = chosen_name in ("defense_focus", "reserve_hold", "4p_conservation")
+        chosen_lacks_attack = bool(chosen_moves) and chosen_attack_ratio <= 0.05
+        for i, (plan_name, moves) in enumerate(candidates):
+            if plan_name == "4p_conversion_push" and moves and float(cand_feats[i][2]) > 0.05:
+                if chosen_is_generic or chosen_is_passive or chosen_lacks_attack or not chosen_moves:
+                    return i
     return best_idx
 
 
@@ -1210,8 +1273,15 @@ def load_checkpoint(path: Optional[str] = None) -> bool:
         return False
     try:
         data = np.load(str(p))
+        state_w = np.asarray(data["state_w"], dtype=np.float32)
+        if state_w.shape != (N_PLANS_MAX, N_STATE_FEATURES):
+            migrated = np.zeros((N_PLANS_MAX, N_STATE_FEATURES), dtype=np.float32)
+            rows = min(state_w.shape[0], N_PLANS_MAX)
+            cols = min(state_w.shape[1], N_STATE_FEATURES)
+            migrated[:rows, :cols] = state_w[:rows, :cols]
+            state_w = migrated
         set_ranker_weights(
-            state_w=data["state_w"],
+            state_w=state_w,
             candidate_w=data["candidate_w"],
             value_w=data["value_w"],
             value_b=float(data["value_b"][0]),

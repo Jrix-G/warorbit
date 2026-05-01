@@ -1,0 +1,5 @@
+Resumed evaluations\v8_2_ranker_train_latest.npz generation=37 best_score=0.3250
+gen=0038 train=0.375 (2p 0.000/0 4p 0.375/16) eval=0.167 (2p 0.000 4p 0.167) best=0.325 grad=39.93 promo=0 elapsed_min=11.7
+gen=0039 train=0.375 (2p 0.000/0 4p 0.375/16) eval=0.250 (2p 0.000 4p 0.250) best=0.325 grad=41.64 promo=0 elapsed_min=23.7
+gen=0040 train=0.562 (2p 0.000/0 4p 0.562/16) eval=0.167 (2p 0.000 4p 0.167) best=0.325 grad=46.55 promo=0 elapsed_min=33.6
+Saved latest=evaluations\v8_2_ranker_train_latest.npz best=evaluations\v8_2_ranker_train_best.npz bot_checkpoint=C:\Users\Capitaine\Documents\GitHub\warorbit\evaluations\v8_2_ranker.npz

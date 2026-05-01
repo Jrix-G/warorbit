@@ -1,0 +1,1 @@
+{"gen": 1, "train_mean": 0.0, "train_wr_2p": 0.0, "train_wr_4p": 0.0, "eval_mean": 0.0, "eval_median": 0.0, "eval_wr_2p": 0.0, "eval_wr_4p": 0.0, "best": 0.0, "best_wr_2p": -1.0, "best_wr_4p": 0.0, "grad_norm": 221.52276611328125, "promoted": true, "elapsed_min": 0.6586929440498352}

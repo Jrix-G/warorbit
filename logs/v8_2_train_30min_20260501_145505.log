@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "C:\Users\Capitaine\Documents\GitHub\warorbit\train_v8_2.py", line 36, in <module>
+    import numpy as np
+ModuleNotFoundError: No module named 'numpy'
