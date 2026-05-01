@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -51,23 +51,71 @@ def _run_match(agent_a, agent_b, config: Dict[str, Any], seed: int, max_turns: i
     return total_a - total_b
 
 
-def benchmark_model(model, config: Dict[str, Any], games: int = 8) -> Dict[str, float]:
-    rewards = [_run_match(model, RandomAgent(), config, seed=i, max_turns=int(config.get("max_turns", 100))) for i in range(games)]
+def _run_symmetric_match(agent_a, agent_b, config: Dict[str, Any], seed: int, max_turns: int) -> Dict[str, float]:
+    first = _run_match(agent_a, agent_b, config, seed, max_turns)
+    second = _run_match(agent_b, agent_a, config, seed, max_turns)
+    return {
+        "first": first,
+        "second": second,
+        "avg_delta": 0.5 * (first - second),
+        "win_first": float(first > 0),
+        "win_second": float(second > 0),
+    }
+
+
+def benchmark_model(model, config: Dict[str, Any], games: int = 8, symmetric: bool = False, seed: int = 0) -> Dict[str, float]:
+    seeds = [seed + i for i in range(games)]
+    if symmetric:
+        results = [_run_symmetric_match(model, RandomAgent(), config, s, int(config.get("max_turns", 100))) for s in seeds]
+        deltas = [r["avg_delta"] for r in results]
+        wins = [r["win_first"] for r in results] + [r["win_second"] for r in results]
+        avg_len = float(int(config.get("max_turns", 100)))
+        return {
+            "games": float(games * 2),
+            "avg_reward": float(np.mean(deltas) if deltas else 0.0),
+            "winrate": float(np.mean(wins) if wins else 0.0),
+            "reward_std": float(np.std(deltas) if deltas else 0.0),
+            "avg_episode_length": avg_len,
+            "seeds": seeds,
+        }
+    rewards = [_run_match(model, RandomAgent(), config, seed=s, max_turns=int(config.get("max_turns", 100))) for s in seeds]
     return {
         "games": float(games),
         "avg_reward": float(np.mean(rewards) if rewards else 0.0),
         "winrate": float(np.mean([r > 0 for r in rewards]) if rewards else 0.0),
+        "reward_std": float(np.std(rewards) if rewards else 0.0),
+        "avg_episode_length": float(int(config.get("max_turns", 100))),
+        "seeds": seeds,
     }
 
 
-def benchmark_matchups(model, config: Dict[str, Any], episodes: int = 8) -> Dict[str, float]:
+def benchmark_matchups(model, config: Dict[str, Any], episodes: int = 8, seed_offset: int = 0) -> Dict[str, float]:
     random_agent = RandomAgent()
     greedy_agent = GreedyNearestWeakestAgent()
-    nn_vs_random = [_run_match(model, random_agent, config, i, int(config.get("max_turns", 100))) for i in range(episodes)]
-    nn_vs_greedy = [_run_match(model, greedy_agent, config, i + 1000, int(config.get("max_turns", 100))) for i in range(episodes)]
-    random_vs_greedy = [_run_match(random_agent, greedy_agent, config, i + 2000, int(config.get("max_turns", 100))) for i in range(episodes)]
+    seeds = [seed_offset + i for i in range(episodes)]
+    nn_vs_random = [_run_symmetric_match(model, random_agent, config, s, int(config.get("max_turns", 100))) for s in seeds]
+    nn_vs_greedy = [_run_symmetric_match(model, greedy_agent, config, s + 1000, int(config.get("max_turns", 100))) for s in seeds]
+    random_vs_greedy = [_run_symmetric_match(random_agent, greedy_agent, config, s + 2000, int(config.get("max_turns", 100))) for s in seeds]
     return {
-        "winrate_vs_random": float(np.mean([r > 0 for r in nn_vs_random]) if nn_vs_random else 0.0),
-        "winrate_vs_greedy": float(np.mean([r > 0 for r in nn_vs_greedy]) if nn_vs_greedy else 0.0),
-        "random_vs_greedy": float(np.mean([r > 0 for r in random_vs_greedy]) if random_vs_greedy else 0.0),
+        "winrate_vs_random": float(np.mean([r["win_first"] for r in nn_vs_random] + [r["win_second"] for r in nn_vs_random]) if nn_vs_random else 0.0),
+        "winrate_vs_greedy": float(np.mean([r["win_first"] for r in nn_vs_greedy] + [r["win_second"] for r in nn_vs_greedy]) if nn_vs_greedy else 0.0),
+        "random_vs_greedy": float(np.mean([r["win_first"] for r in random_vs_greedy] + [r["win_second"] for r in random_vs_greedy]) if random_vs_greedy else 0.0),
+        "winrate_by_position": {
+            "agent_a_first": float(np.mean([r["win_first"] for r in nn_vs_random]) if nn_vs_random else 0.0),
+            "agent_a_second": float(np.mean([r["win_second"] for r in nn_vs_random]) if nn_vs_random else 0.0),
+        },
+        "adversaries": {
+            "random": {"episodes": episodes, "seeds": seeds},
+            "greedy": {"episodes": episodes, "seeds": [s + 1000 for s in seeds]},
+        },
+    }
+
+
+def compare_checkpoints(model_a, model_b, config: Dict[str, Any], games: int = 8) -> Dict[str, float]:
+    deltas = [_run_match(model_a, model_b, config, seed=i, max_turns=int(config.get("max_turns", 100))) for i in range(games)]
+    return {
+        "games": float(games),
+        "avg_reward_delta": float(np.mean(deltas) if deltas else 0.0),
+        "winrate_a_vs_b": float(np.mean([d > 0 for d in deltas]) if deltas else 0.0),
+        "std_reward_delta": float(np.std(deltas) if deltas else 0.0),
     }

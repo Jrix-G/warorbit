@@ -9,11 +9,17 @@ from .policy import choose_action, reconstruct_action
 from .reward import compute_reward
 
 
-def make_synthetic_game(seed: int = 0) -> Dict[str, Any]:
+def make_synthetic_game(seed: int = 0, four_player: bool = False) -> Dict[str, Any]:
     rng = np.random.default_rng(seed)
     planets = []
-    base_positions = [(20, 50), (35, 60), (65, 40), (80, 55)]
-    owners = [0, 0, 1, 1]
+    if four_player:
+        base_positions = [(18, 30), (30, 78), (68, 22), (82, 70)]
+        owners = [0, 1, 2, 3]
+        player_ids = [0, 1, 2, 3]
+    else:
+        base_positions = [(20, 50), (35, 60), (65, 40), (80, 55)]
+        owners = [0, 0, 1, 1]
+        player_ids = [0, 1]
     for i, ((x, y), owner) in enumerate(zip(base_positions, owners)):
         planets.append({
             "id": i,
@@ -34,7 +40,16 @@ def make_synthetic_game(seed: int = 0) -> Dict[str, Any]:
             "production": float(rng.integers(1, 4)),
             "ships": float(rng.integers(8, 20)),
         })
-    return {"my_id": 0, "player_ids": [0, 1], "turn": 0, "planets": planets, "fleets": [], "is_four_player": False, "winner": None, "terminal": False}
+    return {
+        "my_id": 0,
+        "player_ids": player_ids,
+        "turn": 0,
+        "planets": planets,
+        "fleets": [],
+        "is_four_player": four_player,
+        "winner": None,
+        "terminal": False,
+    }
 
 
 def _clone(game: Dict[str, Any]) -> Dict[str, Any]:
@@ -89,17 +104,22 @@ def _advance_game(game: Dict[str, Any], action: tuple[int, int, int], turn: int)
     return next_game
 
 
-def play_episode(model, config: Dict[str, Any], seed: int = 0) -> List[Dict[str, Any]]:
-    game = make_synthetic_game(seed)
+def _linear_schedule(start: float, end: float, frac: float) -> float:
+    return float(start + (end - start) * min(1.0, max(0.0, frac)))
+
+
+def play_episode(model, config: Dict[str, Any], seed: int = 0, progress: float = 0.0, four_player: bool = False) -> List[Dict[str, Any]]:
+    game = make_synthetic_game(seed, four_player=four_player)
     episode = []
     max_turns = int(config.get("max_turns", 100))
+    temperature = _linear_schedule(float(config.get("temperature_start", 1.2)), float(config.get("temperature_end", 0.35)), progress)
     for t in range(max_turns):
         encoded = encode_game_state(game, config)
         candidates = __import__("neural_network.src.policy", fromlist=["build_action_candidates"]).build_action_candidates(game)
         candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
         import torch
         outputs = model(torch.tensor(encoded.features, dtype=torch.float32), torch.tensor(candidate_features, dtype=torch.float32))
-        cand, log_prob = choose_action(outputs, game, explore=True)
+        cand, log_prob = choose_action(outputs, game, temperature=temperature, explore=True)
         action = reconstruct_action(cand, game)
         next_game = _advance_game(game, action, t)
         reward = compute_reward(game, {"ships": action[2]}, next_game, terminal=bool(next_game.get("terminal", False)))

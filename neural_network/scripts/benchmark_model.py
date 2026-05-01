@@ -23,6 +23,8 @@ def main():
     parser.add_argument("--config", default="neural_network/configs/default_config.json")
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--checkpoint", default="neural_network/checkpoints/latest.npz")
+    parser.add_argument("--symmetric", action="store_true")
+    parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
     cfg = load_json(args.config)
     model = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(cfg), hidden_dim=int(cfg.get("hidden_dim", 128))))
@@ -30,9 +32,10 @@ def main():
     if checkpoint.exists():
         state, _ = load_checkpoint(checkpoint)
         model.load_state_dict(state)
-    result = benchmark_model(model, cfg, games=args.episodes)
-    result.update(benchmark_matchups(model, cfg, episodes=args.episodes))
-    print(json.dumps(result, indent=2))
+    result = benchmark_model(model, cfg, games=args.episodes, symmetric=args.symmetric, seed=args.seed)
+    matchup = benchmark_matchups(model, cfg, episodes=args.episodes, seed_offset=args.seed)
+    result.update(matchup)
+    print(json.dumps(result, indent=2, default=float))
 
 
 if __name__ == "__main__":
