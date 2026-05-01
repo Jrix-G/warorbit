@@ -64,7 +64,7 @@ def _sample_opponents(pool: Sequence[str], seed: int, count: int = 3) -> List[st
 
 def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, our_index: int, temperature: float, pool: Sequence[str]):
     log_probs: List[torch.Tensor] = []
-    opp_names = _sample_opponents(pool, seed, 3)
+    opp_names = _sample_opponents(pool, seed, int(config.get("train_notebook_opponents", 1)))
     opp_iter = iter(opp_names)
     agents = []
     our_agent = _make_our_agent(model, config, log_probs, temperature)
@@ -162,7 +162,7 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
         pool = [name for name in ZOO.keys() if name.startswith("notebook_")]
     train_steps = int(config.get("train_steps", 50))
     eval_episodes = max(1, int(config.get("eval_episodes", 20)))
-    eval_every = max(1, int(config.get("eval_every", max(1, train_steps // 5))))
+    eval_every = max(1, int(config.get("eval_every", max(1, train_steps // 10))))
     baseline = 0.0
     best_score = -1e9
     best_record: Dict[str, Any] = {}
@@ -210,6 +210,15 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
         append_jsonl(log_path, record)
         save_checkpoint(candidate, model.state_dict(), record)
         save_checkpoint(latest, model.state_dict(), record)
+        if (step + 1) % max(1, eval_every // 2) == 0 or step == train_steps - 1:
+            print(
+                f"step {step+1}/{train_steps} "
+                f"reward={reward:+.3f} "
+                f"temp={temperature:.3f} "
+                f"baseline={baseline:+.3f} "
+                f"ops={'/'.join(opp_names)}",
+                flush=True,
+            )
 
     return {
         "best_score": best_score,
