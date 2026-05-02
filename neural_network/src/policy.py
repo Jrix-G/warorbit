@@ -79,7 +79,13 @@ def is_valid_action(candidate: ActionCandidate, game: Dict[str, Any]) -> bool:
     return candidate.source_id != candidate.target_id
 
 
-def choose_action(outputs: Dict[str, torch.Tensor], game: Dict[str, Any], temperature: float = 1.0, explore: bool = False) -> Tuple[ActionCandidate, torch.Tensor]:
+def choose_action(
+    outputs: Dict[str, torch.Tensor],
+    game: Dict[str, Any],
+    temperature: float = 1.0,
+    explore: bool = False,
+    return_entropy: bool = False,
+) -> Tuple[ActionCandidate, torch.Tensor] | Tuple[ActionCandidate, torch.Tensor, torch.Tensor]:
     candidates = build_action_candidates(game)
     features = torch.tensor(np.stack([c.score_features for c in candidates]), dtype=torch.float32, device=outputs["latent"].device)
     latent = outputs["latent"][:1]
@@ -94,7 +100,11 @@ def choose_action(outputs: Dict[str, torch.Tensor], game: Dict[str, Any], temper
     probs = torch.softmax(masked_logits, dim=-1)
     dist = Categorical(probs=probs)
     idx = dist.sample() if explore else torch.argmax(probs)
-    return candidates[int(idx.item())], dist.log_prob(idx)
+    log_prob = dist.log_prob(idx)
+    entropy = dist.entropy()
+    if return_entropy:
+        return candidates[int(idx.item())], log_prob, entropy
+    return candidates[int(idx.item())], log_prob
 
 
 def reconstruct_action(candidate: ActionCandidate, game: Dict[str, Any], min_ratio: float = 0.5) -> Tuple[int, int, int]:

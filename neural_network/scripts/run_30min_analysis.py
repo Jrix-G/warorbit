@@ -21,6 +21,7 @@ def main():
     args = parser.parse_args()
     cfg = load_json(args.config)
     cfg["train_steps"] = max(1, int(args.duration_minutes * 10))
+    cfg["batch_size"] = max(16, int(cfg.get("batch_size", 32)))
     cfg["max_turns"] = int(cfg.get("max_turns", 100))
     cfg["gamma"] = float(cfg.get("gamma", 0.99))
     cfg["learning_rate"] = float(cfg.get("learning_rate", 0.0003))

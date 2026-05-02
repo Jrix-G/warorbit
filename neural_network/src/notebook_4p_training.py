@@ -13,7 +13,7 @@ from opponents import ZOO, training_pool
 from SimGame import run_match
 
 from .encoder import encode_game_state
-from .model import ModelConfig, NeuralNetworkModel
+from .model import ModelConfig, NeuralNetworkModel, load_compatible_state_dict
 from .orbit_wars_adapter import obs_to_game_dict
 from .policy import build_action_candidates, choose_action, reconstruct_action
 from .storage import append_jsonl, load_checkpoint, save_checkpoint
@@ -141,7 +141,7 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
     np.random.seed(int(config["seed"]))
     random.seed(int(config["seed"]))
 
-    model = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(config), hidden_dim=int(config.get("hidden_dim", 128))))
+    model = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(config), hidden_dim=int(config.get("hidden_dim", 256))))
     optimizer = torch.optim.Adam(model.parameters(), lr=float(config["learning_rate"]))
 
     checkpoint_dir = Path(config["checkpoint_dir"])
@@ -155,13 +155,15 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
     resume_path = Path(config.get("resume_checkpoint", str(latest)))
     if resume and resume_path.exists():
         state, _ = load_checkpoint(resume_path)
-        model.load_state_dict(state)
+        load_compatible_state_dict(model, state)
 
-    pool = training_pool(limit=int(config.get("notebook_pool_limit", 15)))
+    pool_limit = max(4, int(config.get("notebook_pool_limit", 4)))
+    pool_limit_max = max(pool_limit, int(config.get("notebook_pool_limit_max", 15)))
+    pool = training_pool(limit=pool_limit)
     if not pool:
         pool = [name for name in ZOO.keys() if name.startswith("notebook_")]
     train_steps = int(config.get("train_steps", 50))
-    eval_episodes = max(1, int(config.get("eval_episodes", 20)))
+    eval_episodes = max(20, int(config.get("eval_episodes", 20)))
     eval_every = max(1, int(config.get("eval_every", max(1, train_steps // 10))))
     baseline = 0.0
     best_score = -1e9
@@ -195,6 +197,16 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
         if (step + 1) % eval_every == 0 or step == train_steps - 1:
             eval_stats = evaluate_4p(model, config, pool, eval_episodes, seed_offset=int(config["seed"]) + 50000 + step * 1000)
             record.update(eval_stats)
+            if eval_stats["winrate"] > 0.65 and pool_limit < pool_limit_max:
+                pool_limit = pool_limit_max
+                pool = training_pool(limit=pool_limit)
+                if not pool:
+                    pool = [name for name in ZOO.keys() if name.startswith("notebook_")]
+                record["curriculum_escalated"] = True
+                record["curriculum_pool_limit"] = pool_limit
+            else:
+                record["curriculum_escalated"] = False
+                record["curriculum_pool_limit"] = pool_limit
             if eval_stats["winrate"] > best_score:
                 best_score = eval_stats["winrate"]
                 promoted = True
@@ -206,6 +218,8 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
         else:
             record["checkpoint_promoted"] = False
             record["promotion_reason"] = promotion_reason
+            record["curriculum_escalated"] = False
+            record["curriculum_pool_limit"] = pool_limit
 
         append_jsonl(log_path, record)
         save_checkpoint(candidate, model.state_dict(), record)

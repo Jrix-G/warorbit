@@ -82,3 +82,9 @@ def diagnose_run(rows: List[Dict[str, Any]]) -> FailureDiagnosis:
     ])
     return FailureDiagnosis(mode=mode, severity=severity, reasons=reasons, suggested_fix=suggested)
 
+
+def should_promote_checkpoint(eval_scores: List[float], current_best: float, min_episodes: int = 20) -> bool:
+    if len(eval_scores) < min_episodes:
+        return False
+    mean_score = float(np.mean(eval_scores)) if eval_scores else float("-inf")
+    return mean_score > float(current_best)

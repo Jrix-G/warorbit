@@ -9,7 +9,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from neural_network.src.utils import load_json
-from neural_network.src.model import NeuralNetworkModel, ModelConfig
+from neural_network.src.model import NeuralNetworkModel, ModelConfig, load_compatible_state_dict
 from neural_network.src.storage import load_checkpoint
 from neural_network.src.benchmark import compare_checkpoints
 from neural_network.src.trainer import _infer_input_dim
@@ -18,7 +18,7 @@ from neural_network.src.trainer import _infer_input_dim
 def _load_model(path: str, cfg: dict) -> NeuralNetworkModel:
     model = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(cfg)))
     state, _ = load_checkpoint(path)
-    model.load_state_dict(state)
+    load_compatible_state_dict(model, state)
     return model
 
 
@@ -38,4 +38,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

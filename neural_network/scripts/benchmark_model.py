@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from neural_network.src.utils import load_json
-from neural_network.src.model import NeuralNetworkModel, ModelConfig
+from neural_network.src.model import NeuralNetworkModel, ModelConfig, load_compatible_state_dict
 from neural_network.src.trainer import _infer_input_dim
 from neural_network.src.benchmark import benchmark_model, benchmark_matchups
 from neural_network.src.storage import load_checkpoint
@@ -27,11 +27,11 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
     cfg = load_json(args.config)
-    model = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(cfg), hidden_dim=int(cfg.get("hidden_dim", 128))))
+    model = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(cfg), hidden_dim=int(cfg.get("hidden_dim", 256))))
     checkpoint = Path(args.checkpoint)
     if checkpoint.exists():
         state, _ = load_checkpoint(checkpoint)
-        model.load_state_dict(state)
+        load_compatible_state_dict(model, state)
     result = benchmark_model(model, cfg, games=args.episodes, symmetric=args.symmetric, seed=args.seed)
     matchup = benchmark_matchups(model, cfg, episodes=args.episodes, seed_offset=args.seed)
     result.update(matchup)

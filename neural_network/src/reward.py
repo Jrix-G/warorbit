@@ -3,6 +3,13 @@ from __future__ import annotations
 from typing import Any, Dict
 
 
+def _progress_fraction(state: Dict[str, Any], horizon: float = 100.0) -> float:
+    turn = float(state.get("turn", 0.0))
+    if horizon <= 0:
+        return 0.0
+    return max(0.0, min(1.0, turn / horizon))
+
+
 def compute_reward(prev_state: Dict[str, Any], action: Dict[str, Any], next_state: Dict[str, Any], terminal: bool = False) -> float:
     prev_planets = prev_state.get("planets", [])
     next_planets = next_state.get("planets", [])
@@ -18,22 +25,24 @@ def compute_reward(prev_state: Dict[str, Any], action: Dict[str, Any], next_stat
     next_enemy_planets = sum(1 for p in next_planets if p["owner"] not in (-1, my_id))
 
     reward = 0.0
-    reward += 1.5 * (next_my - prev_my)
-    reward += 0.45 * (next_prod - prev_prod)
-    reward += 0.05 * (next_ships - prev_ships)
-    reward += 1.25 * (prev_enemy_planets - next_enemy_planets)
+    progress = _progress_fraction(next_state)
+    dense_decay = max(0.0, 1.0 - (progress / 0.25))
+    reward += dense_decay * (0.8 * (next_my - prev_my))
+    reward += dense_decay * (0.2 * (next_prod - prev_prod))
+    reward += dense_decay * (0.02 * (next_ships - prev_ships))
+    reward += dense_decay * (0.75 * (prev_enemy_planets - next_enemy_planets))
     ships_sent = float(action.get("ships", 0)) if action else 0.0
-    reward += 0.02 * ships_sent
+    reward += dense_decay * (0.008 * ships_sent)
     if ships_sent <= 0:
-        reward -= 0.05
+        reward -= 0.03
     if next_my < prev_my:
-        reward -= 2.0
+        reward -= 1.5
 
     if terminal:
         if next_state.get("winner") == my_id:
-            reward += 25.0
+            reward += 50.0
         elif next_state.get("winner") is not None:
-            reward -= 25.0
+            reward -= 50.0
 
     if next_state.get("is_four_player", False):
         reward *= 1.0

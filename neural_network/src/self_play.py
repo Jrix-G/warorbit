@@ -119,11 +119,20 @@ def play_episode(model, config: Dict[str, Any], seed: int = 0, progress: float =
         candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
         import torch
         outputs = model(torch.tensor(encoded.features, dtype=torch.float32), torch.tensor(candidate_features, dtype=torch.float32))
-        cand, log_prob = choose_action(outputs, game, temperature=temperature, explore=True)
+        cand, log_prob, entropy = choose_action(outputs, game, temperature=temperature, explore=True, return_entropy=True)
         action = reconstruct_action(cand, game)
         next_game = _advance_game(game, action, t)
         reward = compute_reward(game, {"ships": action[2]}, next_game, terminal=bool(next_game.get("terminal", False)))
-        episode.append({"state": encoded.features, "action": action, "reward": reward, "next_state": next_game, "log_prob": log_prob})
+        episode.append(
+            {
+                "state": encoded.features,
+                "action": action,
+                "reward": reward,
+                "next_state": next_game,
+                "log_prob": log_prob,
+                "entropy": entropy,
+            }
+        )
         game = next_game
         if next_game.get("terminal"):
             break
