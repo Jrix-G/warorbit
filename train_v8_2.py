@@ -205,23 +205,32 @@ def _load_flat(path: Path):
 
 
 def _migrate_flat_params(bot, params: np.ndarray) -> np.ndarray:
-    """Pad old ranker checkpoints when bot_v8_2 adds plan rows."""
+    """Pad old ranker checkpoints when bot_v8_2 adds plan rows or candidate features."""
     params = np.asarray(params, dtype=np.float32).ravel()
     expected = bot.N_PLANS_MAX * bot.N_STATE_FEATURES + bot.N_CANDIDATE_FEATURES + bot.N_STATE_FEATURES + 1
     if params.size == expected:
         return params
 
-    tail = bot.N_CANDIDATE_FEATURES + bot.N_STATE_FEATURES + 1
-    old_state_size = params.size - tail
-    if old_state_size <= 0 or old_state_size % bot.N_STATE_FEATURES != 0:
+    old_rows = None
+    old_cand = None
+    for rows in range(bot.N_PLANS_MAX, 0, -1):
+        remainder = params.size - rows * bot.N_STATE_FEATURES - bot.N_STATE_FEATURES - 1
+        if 0 < remainder <= bot.N_CANDIDATE_FEATURES:
+            old_rows = rows
+            old_cand = remainder
+            break
+    if old_rows is None or old_cand is None:
         raise ValueError(f"Cannot migrate ranker vector size {params.size} to {expected}")
-    old_rows = old_state_size // bot.N_STATE_FEATURES
-    if old_rows > bot.N_PLANS_MAX:
-        raise ValueError(f"Cannot migrate {old_rows} plan rows into {bot.N_PLANS_MAX}")
 
     migrated_state = np.zeros((bot.N_PLANS_MAX, bot.N_STATE_FEATURES), dtype=np.float32)
+    old_state_size = old_rows * bot.N_STATE_FEATURES
     migrated_state[:old_rows] = params[:old_state_size].reshape(old_rows, bot.N_STATE_FEATURES)
-    migrated = np.concatenate([migrated_state.ravel(), params[old_state_size:]]).astype(np.float32)
+
+    migrated_cand = np.zeros(bot.N_CANDIDATE_FEATURES, dtype=np.float32)
+    cand_start = old_state_size
+    cand_end = cand_start + old_cand
+    migrated_cand[:old_cand] = params[cand_start:cand_end]
+    migrated = np.concatenate([migrated_state.ravel(), migrated_cand, params[cand_end:]]).astype(np.float32)
     return migrated
 
 

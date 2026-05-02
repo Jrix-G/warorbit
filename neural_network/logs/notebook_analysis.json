@@ -1,0 +1,114 @@
+[
+  {
+    "filename": "distance-prioritized-agent-lb-max-score-1100.ipynb",
+    "code_cells": 1,
+    "markdown_cells": 1,
+    "weights": {
+      "neutral_priority": 2.0,
+      "comet_bonus": 10.0,
+      "production_horizon": 1.0,
+      "distance_penalty": 1.25,
+      "defense_reserve": 28.0
+    },
+    "features": {
+      "has_sun_dodging": "YES",
+      "has_comet_logic": "YES",
+      "has_neutral_priority": "YES",
+      "has_production_horizon": "YES",
+      "has_threat_assessment": "YES",
+      "has_kingmaker_logic": "YES",
+      "target_selection_logic": [],
+      "defense_strategy": [],
+      "special_techniques": []
+    },
+    "code_length": 106246
+  },
+  {
+    "filename": "getting-started.ipynb",
+    "code_cells": 7,
+    "markdown_cells": 6,
+    "weights": {},
+    "features": {
+      "has_sun_dodging": "YES",
+      "has_comet_logic": "YES",
+      "has_neutral_priority": "YES",
+      "has_production_horizon": "YES",
+      "has_threat_assessment": "NO",
+      "has_kingmaker_logic": "NO",
+      "target_selection_logic": [],
+      "defense_strategy": [],
+      "special_techniques": []
+    },
+    "code_length": 4172
+  },
+  {
+    "filename": "lb-928-7-physics-accurate-planner.ipynb",
+    "code_cells": 1,
+    "markdown_cells": 0,
+    "weights": {
+      "neutral_priority": 2.0,
+      "comet_bonus": 15.0,
+      "production_horizon": 1.0,
+      "distance_penalty": 1.25,
+      "defense_reserve": 12.0
+    },
+    "features": {
+      "has_sun_dodging": "YES",
+      "has_comet_logic": "YES",
+      "has_neutral_priority": "YES",
+      "has_production_horizon": "YES",
+      "has_threat_assessment": "YES",
+      "has_kingmaker_logic": "YES",
+      "target_selection_logic": [],
+      "defense_strategy": [],
+      "special_techniques": []
+    },
+    "code_length": 71439
+  },
+  {
+    "filename": "orbit-wars-2026-tactical-heuristic.ipynb",
+    "code_cells": 1,
+    "markdown_cells": 0,
+    "weights": {
+      "neutral_priority": -1.0,
+      "comet_bonus": 1.0,
+      "production_horizon": 1.0
+    },
+    "features": {
+      "has_sun_dodging": "YES",
+      "has_comet_logic": "YES",
+      "has_neutral_priority": "YES",
+      "has_production_horizon": "YES",
+      "has_threat_assessment": "YES",
+      "has_kingmaker_logic": "YES",
+      "target_selection_logic": [],
+      "defense_strategy": [],
+      "special_techniques": []
+    },
+    "code_length": 26535
+  },
+  {
+    "filename": "orbitbotnext.ipynb",
+    "code_cells": 2,
+    "markdown_cells": 0,
+    "weights": {
+      "neutral_priority": 2.0,
+      "comet_bonus": 10.0,
+      "production_horizon": 1.0,
+      "distance_penalty": 1.25,
+      "defense_reserve": 28.0
+    },
+    "features": {
+      "has_sun_dodging": "YES",
+      "has_comet_logic": "YES",
+      "has_neutral_priority": "YES",
+      "has_production_horizon": "YES",
+      "has_threat_assessment": "YES",
+      "has_kingmaker_logic": "YES",
+      "target_selection_logic": [],
+      "defense_strategy": [],
+      "special_techniques": []
+    },
+    "code_length": 103587
+  }
+]

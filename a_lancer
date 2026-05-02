@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+mkdir -p logs evaluations
+
+STAMP=$(date +%Y%m%d_%H%M%S)
+LOG="logs/v8_2_train_2h_${STAMP}.log"
+
+echo "[a_lancer] starting | log=$LOG"
+python3 train_v8_2.py \
+  --minutes 120 \
+  --pairs 5 \
+  --games-per-eval 3 \
+  --eval-games 24 \
+  --eval-every 3 \
+  --max-steps 220 \
+  --eval-max-steps 400 \
+  --four-player-ratio 0.65 \
+  --eval-four-player-ratio 0.70 \
+  --sigma 0.07 \
+  --lr 0.025 \
+  --l2 0.0004 \
+  --workers 5 \
+  --pool-limit 6 \
+  2>&1 | tee "$LOG"

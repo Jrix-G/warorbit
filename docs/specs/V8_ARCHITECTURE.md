@@ -206,11 +206,13 @@ In the implemented V8 shape, the candidate set is intentionally small and
 structured:
 
 ```text
-C(s) = { V7 baseline, attack, expand, defense, comet, reserve,
+C(s) = { V7 baseline, attack, expand, defense, reserve, transfer_push,
           4p_opportunistic*, 4p_eliminate_weakest*, 4p_conservation* }
 ```
 
-The three starred candidates are only generated when `IS_4P = True`.
+`transfer_push` is always available and biases friendly staging transfers
+from safe rear planets into forward launch platforms. The three starred
+candidates are only generated when `IS_4P = True`.
 This avoids the plateau of a late scalar reranker because the model can now
 switch between qualitatively different plan families.
 
@@ -268,6 +270,7 @@ z_c = E_c(s, c)
 - action count,
 - ship fraction sent,
 - source / target mix,
+- friendly transfer fraction,
 - average ETA,
 - source production / reserve stats,
 - coverage and concentration statistics,
@@ -490,7 +493,7 @@ agent(obs)
 
 Candidate 0 is `v7_baseline`, meaning V7's planner grammar with the V8.2
 corrections enabled. Additional candidates bias the same grammar toward
-expansion, attack, defense, reserve, and 4p-specific plans.
+expansion, attack, defense, reserve, friendly staging, and 4p-specific plans.
 
 ### Corrections shipped
 

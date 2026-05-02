@@ -1,0 +1,9 @@
+Resumed evaluations/v8_2_ranker_train_latest.npz generation=40 best_score=0.3250
+gen=0041 train=0.600 (2p 0.667/6 4p 0.583/24) eval=0.600 (2p 0.667 4p 0.583) best=0.325 grad=25.41 promo=0 elapsed_min=7.2
+  [skip] eval gained +0.008 but mode-floor regressed (2p 0.250 vs best 0.500, 4p 0.350 vs best 0.281)
+gen=0042 train=0.400 (2p 0.400/10 4p 0.400/20) eval=0.333 (2p 0.250 4p 0.350) best=0.325 grad=51.86 promo=0 elapsed_min=24.7
+gen=0043 train=0.333 (2p 0.333/12 4p 0.333/18) eval=0.333 (2p 0.333 4p 0.333) best=0.325 grad=18.09 promo=0 elapsed_min=31.2
+gen=0044 train=0.400 (2p 0.500/8 4p 0.364/22) eval=0.400 (2p 0.500 4p 0.364) best=0.325 grad=66.08 promo=0 elapsed_min=36.0
+gen=0045 train=0.067 (2p 0.000/8 4p 0.091/22) eval=0.208 (2p 0.250 4p 0.200) best=0.325 grad=44.11 promo=0 elapsed_min=54.4
+gen=0046 train=0.367 (2p 0.286/14 4p 0.438/16) eval=0.367 (2p 0.286 4p 0.438) best=0.325 grad=25.04 promo=0 elapsed_min=59.3
+gen=0047 train=0.367 (2p 0.500/8 4p 0.318/22) eval=0.367 (2p 0.500 4p 0.318) best=0.325 grad=21.63 promo=0 elapsed_min=66.5

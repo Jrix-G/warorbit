@@ -8,6 +8,7 @@ Key changes vs V7:
   Fix #4  4p early expansion thresholds   — lower neutral margin, delay rear staging
   Fix #5  4p offense throttle             — defensive mode when 2+ active fronts
   + 4p candidate plans: opportunistic, eliminate_weakest, conservation, late_blitz
+  + Friendly staging transfers as first-class missions (transfer_push plan)
   + Linear plan ranker (zero-init = V7 baseline tie-break = safe warm-start)
   + Value head (linear regressor on state features)
 
@@ -103,8 +104,8 @@ OPPORTUNISTIC_DEPLETED_PROD_MULT = 2.25  # target.ships < production * this
 
 # Ranker dimensions
 N_STATE_FEATURES = 24
-N_CANDIDATE_FEATURES = 12
-N_PLANS_MAX = 10                   # baseline + attack + expand + defense + reserve + 5 4p variants
+N_CANDIDATE_FEATURES = 14
+N_PLANS_MAX = 11                   # baseline + attack + expand + defense + reserve + transfer + 5 4p variants
 RANKER_TEMPERATURE = 1.0
 EARLY_4P_EXPAND_PLANET_TARGET = 6
 EARLY_4P_EXPAND_OVERRIDE_TURN = 70
@@ -114,6 +115,24 @@ CONVERSION_PUSH_MIN_GARRISON_RATIO = 0.30
 CONVERSION_PUSH_MAX_ACTIVE_FRONTS = 2
 CONVERSION_PUSH_MIN_SHIP_LEAD = 1.03
 CONVERSION_PUSH_MIN_PROD_LEAD = 1.03
+
+# Friendly staging transfers. Kovi-style strong bots use friendly moves heavily
+# to consolidate rear production into a small number of launch platforms.
+TRANSFER_SOURCE_MIN_SHIPS = 14
+TRANSFER_DEST_MIN_PRODUCTION = 1
+TRANSFER_MAX_TRAVEL_TURNS = 42
+TRANSFER_FRONT_PROGRESS = 0.88
+TRANSFER_REAR_DISTANCE_RATIO = 1.12
+TRANSFER_BASE_SEND_RATIO = 0.55
+TRANSFER_PUSH_SEND_RATIO = 0.78
+TRANSFER_MIN_SEND_SHIPS = 8
+TRANSFER_FRONT_STOCK_PROD_MULT = 15
+TRANSFER_FRONT_STOCK_ABS = 35
+TRANSFER_ACTIVE_FRONT_BONUS = 1.35
+TRANSFER_PLAN_BONUS = 1.45
+TRANSFER_OVERRIDE_MIN_STEP = 25
+TRANSFER_OVERRIDE_MIN_FRAC = 0.08
+TRANSFER_OVERRIDE_MAX_ACTIVE_FRONTS = 3
 
 
 # ---------------------------------------------------------------------------
@@ -135,11 +154,12 @@ PLAN_NAMES = (
     "attack_focus",         # 2
     "defense_focus",        # 3
     "reserve_hold",         # 4
-    "4p_opportunistic",     # 5  (4p only)
-    "4p_eliminate_weakest", # 6  (4p only)
-    "4p_conservation",      # 7  (4p only)
-    "4p_late_blitz",        # 8  (4p only, t > LATE_BLITZ_TURN)
-    "4p_conversion_push",   # 9  (4p only, favorable midgame conversion)
+    "transfer_push",        # 5  (friendly staging emphasis)
+    "4p_opportunistic",     # 6  (4p only)
+    "4p_eliminate_weakest", # 7  (4p only)
+    "4p_conservation",      # 8  (4p only)
+    "4p_late_blitz",        # 9  (4p only, t > LATE_BLITZ_TURN)
+    "4p_conversion_push",   # 10 (4p only, favorable midgame conversion)
 )
 
 
@@ -387,6 +407,8 @@ class PlanContext:
     suppress_garrison_floor: bool = False         # late_blitz
     suppress_garrison_ratio_cap: bool = False
     suppress_rear_staging: bool = False
+    transfer_boost: float = 1.0
+    force_transfer_staging: bool = False
 
 
 def _adjust_keep_needed(world: WorldModel, planet, ctx: PlanContext, base_keep: int) -> int:
@@ -474,6 +496,96 @@ def _has_4p_opportunistic_target(world: WorldModel) -> bool:
         if target.owner not in (-1, world.player) or has_enemy_inbound:
             return True
     return False
+
+
+def _transfer_frontier_targets(world: WorldModel) -> List[Planet]:
+    return world.enemy_planets or world.static_neutral_planets or world.neutral_planets
+
+
+def _frontier_distance_map(world: WorldModel, targets: Sequence[Planet]) -> Dict[int, float]:
+    if not targets:
+        return {p.id: 1e9 for p in world.my_planets}
+    return {
+        p.id: min(_dist(p.x, p.y, t.x, t.y) for t in targets)
+        for p in world.my_planets
+    }
+
+
+def _emit_transfer_staging(world: WorldModel, ctx: PlanContext, atk_left, append_move) -> None:
+    """Move safe rear ships to friendly launch platforms near the action."""
+    if ctx.suppress_rear_staging or world.is_late or len(world.my_planets) < 2:
+        return
+    if world.is_four_player and world.step < FOUR_P_REAR_STAGING_MIN_TURN and not ctx.force_transfer_staging:
+        return
+
+    frontier_targets = _transfer_frontier_targets(world)
+    if not frontier_targets:
+        return
+
+    frontier_distance = _frontier_distance_map(world, frontier_targets)
+    safe_planets = [p for p in world.my_planets if p.id not in world.doomed_candidates]
+    if len(safe_planets) < 2:
+        return
+
+    active_front_ids = {p.id for p in compute_active_fronts(world)}
+    destinations = [
+        p for p in safe_planets
+        if p.production >= TRANSFER_DEST_MIN_PRODUCTION
+    ]
+    if not destinations:
+        return
+
+    send_ratio = TRANSFER_PUSH_SEND_RATIO if ctx.force_transfer_staging else TRANSFER_BASE_SEND_RATIO
+    send_ratio = min(0.92, send_ratio * max(0.2, ctx.transfer_boost))
+
+    for src in sorted(safe_planets, key=lambda p: -frontier_distance[p.id]):
+        available = atk_left(src.id)
+        if available < TRANSFER_SOURCE_MIN_SHIPS:
+            continue
+
+        src_frontier_dist = frontier_distance[src.id]
+        best = None
+        for dst in destinations:
+            if dst.id == src.id:
+                continue
+            dst_frontier_dist = frontier_distance[dst.id]
+            if dst_frontier_dist >= src_frontier_dist * TRANSFER_FRONT_PROGRESS:
+                continue
+            if src_frontier_dist < dst_frontier_dist * TRANSFER_REAR_DISTANCE_RATIO:
+                continue
+
+            stock_limit = max(TRANSFER_FRONT_STOCK_ABS, int(dst.production * TRANSFER_FRONT_STOCK_PROD_MULT))
+            if int(dst.ships) >= stock_limit and dst.id not in active_front_ids and not ctx.force_transfer_staging:
+                continue
+
+            probe_send = max(TRANSFER_MIN_SEND_SHIPS, int(available * send_ratio))
+            aim = world.plan_shot(src.id, dst.id, probe_send)
+            if aim is None:
+                continue
+            angle, turns, _, _ = aim
+            if turns > TRANSFER_MAX_TRAVEL_TURNS:
+                continue
+
+            progress = max(0.0, src_frontier_dist - dst_frontier_dist)
+            stock_need = max(0, stock_limit - int(dst.ships))
+            active_bonus = TRANSFER_ACTIVE_FRONT_BONUS if dst.id in active_front_ids else 1.0
+            score = (progress / max(1.0, turns)) * active_bonus
+            score += min(1.5, stock_need / max(1.0, stock_limit))
+            if ctx.force_transfer_staging:
+                score *= TRANSFER_PLAN_BONUS
+            if best is None or score > best[0]:
+                best = (score, dst, angle, turns)
+
+        if best is None:
+            continue
+        _, dst, angle, _turns = best
+        stock_limit = max(TRANSFER_FRONT_STOCK_ABS, int(dst.production * TRANSFER_FRONT_STOCK_PROD_MULT))
+        stock_need = max(TRANSFER_MIN_SEND_SHIPS, stock_limit - int(dst.ships))
+        stock_send = min(stock_need, int(available * 0.85))
+        send = min(available, max(TRANSFER_MIN_SEND_SHIPS, int(available * send_ratio), stock_send))
+        if send < TRANSFER_MIN_SEND_SHIPS:
+            continue
+        append_move(src.id, angle, send)
 
 
 def _v8_2_plan(world: WorldModel, ctx: PlanContext) -> Tuple[List[List], List[int]]:
@@ -864,6 +976,8 @@ def _v8_2_plan(world: WorldModel, ctx: PlanContext) -> Tuple[List[List], List[in
                 continue
             append_move(planet.id, aim[0], available_now)
 
+    _emit_transfer_staging(world, ctx, atk_left, append_move)
+
     # Rear-to-front staging — Fix #4 disables it during 4p early
     rear_staging_active = (
         not throttle
@@ -1005,9 +1119,16 @@ def _generate_candidates(world: WorldModel) -> List[Tuple[str, List[List]]]:
                   _v8_2_plan(world, PlanContext("reserve_hold", block_offense=True,
                                                 defense_boost=1.30,
                                                 suppress_rear_staging=True))[0]))
+    # 5. transfer_push — explicitly consolidates rear production into forward launch platforms.
+    plans.append(("transfer_push",
+                  _v8_2_plan(world, PlanContext("transfer_push",
+                                                attack_boost=0.92,
+                                                expand_boost=0.95,
+                                                transfer_boost=1.30,
+                                                force_transfer_staging=True))[0]))
 
     if is_4p:
-        # 5. 4p_opportunistic. When no scavenging target exists, keep this as
+        # 6. 4p_opportunistic. When no scavenging target exists, keep this as
         # a guarded tempo plan so old rankers do not collapse into passivity.
         if _has_4p_opportunistic_target(world):
             plans.append(("4p_opportunistic",
@@ -1021,7 +1142,7 @@ def _generate_candidates(world: WorldModel) -> List[Tuple[str, List[List]]]:
                                                         attack_boost=0.95,
                                                         expand_boost=1.25,
                                                         defense_boost=1.05))[0]))
-        # 6. 4p_eliminate_weakest — only if a player is weak enough to focus down.
+        # 7. 4p_eliminate_weakest — only if a player is weak enough to focus down.
         weakest = world.weakest_enemy_id
         weakest_strength = world.owner_strength.get(weakest, 0) if weakest is not None else 0
         if weakest is not None and weakest_strength <= world.my_total * ELIMINATE_WEAKEST_FRACTION:
@@ -1030,20 +1151,20 @@ def _generate_candidates(world: WorldModel) -> List[Tuple[str, List[List]]]:
                                                          only_targets_owner=weakest,
                                                          attack_boost=1.80,
                                                          expand_boost=0.70))[0]))
-        # 7. 4p_conservation — explicit no-offense plan, but still allows rear-to-front redistribution
+        # 8. 4p_conservation — explicit no-offense plan, but still allows rear-to-front redistribution
         conservation_boost = 1.85 if len(compute_active_fronts(world)) < 3 else 2.05
         plans.append(("4p_conservation",
                       _v8_2_plan(world, PlanContext("4p_conservation", block_offense=True,
                                                     defense_boost=conservation_boost,
                                                     suppress_rear_staging=False))[0]))
-        # 8. 4p_late_blitz
+        # 9. 4p_late_blitz
         if _allow_4p_late_blitz(world, len(compute_active_fronts(world)), garrison_ratio_now(world)):
             plans.append(("4p_late_blitz",
                           _v8_2_plan(world, PlanContext("4p_late_blitz",
                                                         attack_boost=1.80,
                                                         suppress_garrison_floor=True,
                                                         suppress_garrison_ratio_cap=True))[0]))
-        # 9. 4p_conversion_push — convert a stable lead before a weak enemy/blitz exists.
+        # 10. 4p_conversion_push — convert a stable lead before a weak enemy/blitz exists.
         conversion_owner = _conversion_push_owner(world, len(compute_active_fronts(world)), garrison_ratio_now(world))
         if conversion_owner is not None:
             plans.append(("4p_conversion_push",
@@ -1057,7 +1178,7 @@ def _generate_candidates(world: WorldModel) -> List[Tuple[str, List[List]]]:
 
 
 # ---------------------------------------------------------------------------
-# Candidate features (12-D per plan)
+# Candidate features (14-D per plan)
 # ---------------------------------------------------------------------------
 
 def build_candidate_features(plan_name: str, moves: List[List], world: WorldModel) -> np.ndarray:
@@ -1073,6 +1194,7 @@ def build_candidate_features(plan_name: str, moves: List[List], world: WorldMode
     targets_attack = 0
     targets_expand = 0
     targets_defense = 0
+    transfer_ships = 0
     avg_eta = 0.0
     n_eta = 0
     distinct_targets = set()
@@ -1109,6 +1231,7 @@ def build_candidate_features(plan_name: str, moves: List[List], world: WorldMode
         distinct_targets.add(best.id)
         if best.owner == world.player:
             targets_defense += 1
+            transfer_ships += int(ships)
         elif best.owner == -1:
             targets_expand += 1
         else:
@@ -1116,6 +1239,8 @@ def build_candidate_features(plan_name: str, moves: List[List], world: WorldMode
         avg_eta += math.hypot(best.x - src.x, best.y - src.y)
         n_eta += 1
     avg_eta = (avg_eta / max(1, n_eta)) / 100.0
+
+    transfer_frac = transfer_ships / my_total
 
     # Plan-id one-hot collapsed: keep plan_idx normalized + dedicated flags
     plan_idx = PLAN_NAMES.index(plan_name) if plan_name in PLAN_NAMES else 0
@@ -1132,7 +1257,9 @@ def build_candidate_features(plan_name: str, moves: List[List], world: WorldMode
         1.0 if plan_name.startswith("4p_") else 0.0,                 # 8
         1.0 if plan_name in ("defense_focus", "reserve_hold", "4p_conservation") else 0.0,  # 9
         1.0 if plan_name in ("attack_focus", "4p_eliminate_weakest", "4p_late_blitz", "4p_conversion_push") else 0.0,  # 10
-        1.0,                                                         # 11 bias
+        min(transfer_frac, 2.0),                                      # 11
+        1.0 if plan_name == "transfer_push" else 0.0,                # 12
+        1.0,                                                         # 13 bias
     ], dtype=np.float32)
     return feat
 
@@ -1177,6 +1304,16 @@ def _select_candidate_index(candidates: List[Tuple[str, List[List]]], scores: Li
         if scores[i] > best_score:
             best_score = scores[i]
             best_idx = i
+    if (world.step >= TRANSFER_OVERRIDE_MIN_STEP
+            and not world.is_late
+            and len(compute_active_fronts(world)) <= TRANSFER_OVERRIDE_MAX_ACTIVE_FRONTS):
+        chosen_transfer_frac = float(cand_feats[best_idx][11])
+        for i, (plan_name, moves) in enumerate(candidates):
+            if plan_name != "transfer_push" or not moves:
+                continue
+            transfer_frac = float(cand_feats[i][11])
+            if transfer_frac >= TRANSFER_OVERRIDE_MIN_FRAC and transfer_frac > chosen_transfer_frac + 0.04:
+                return i
     if _conversion_push_owner(world) is not None:
         chosen_name, chosen_moves = candidates[best_idx]
         chosen_attack_ratio = float(cand_feats[best_idx][2])
@@ -1280,9 +1417,15 @@ def load_checkpoint(path: Optional[str] = None) -> bool:
             cols = min(state_w.shape[1], N_STATE_FEATURES)
             migrated[:rows, :cols] = state_w[:rows, :cols]
             state_w = migrated
+        candidate_w = np.asarray(data["candidate_w"], dtype=np.float32).ravel()
+        if candidate_w.size != N_CANDIDATE_FEATURES:
+            migrated_candidate = np.zeros(N_CANDIDATE_FEATURES, dtype=np.float32)
+            cols = min(candidate_w.size, N_CANDIDATE_FEATURES)
+            migrated_candidate[:cols] = candidate_w[:cols]
+            candidate_w = migrated_candidate
         set_ranker_weights(
             state_w=state_w,
-            candidate_w=data["candidate_w"],
+            candidate_w=candidate_w,
             value_w=data["value_w"],
             value_b=float(data["value_b"][0]),
         )
