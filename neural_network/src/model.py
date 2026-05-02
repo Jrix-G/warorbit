@@ -109,3 +109,7 @@ class NeuralNetworkModel(nn.Module):
 
     def load_state(self, state: Dict[str, Any]) -> None:
         load_compatible_state_dict(self, state)
+
+
+def count_parameters(module: nn.Module) -> int:
+    return sum(param.numel() for param in module.parameters() if param.requires_grad)

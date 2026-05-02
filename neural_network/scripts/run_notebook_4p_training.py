@@ -25,10 +25,12 @@ def _prepare_config(cfg: dict, duration_minutes: float, eval_episodes: int) -> d
     cfg["four_player_ratio"] = 1.0
     cfg["eval_four_player_ratio"] = 1.0
     cfg["notebook_pool_limit"] = 15
-    cfg["train_notebook_opponents"] = 1
+    cfg["train_notebook_opponents"] = 3
     cfg["eval_every"] = max(1, int(cfg["train_steps"] // 10))
     cfg.setdefault("temperature_start", 1.2)
     cfg.setdefault("temperature_end", 0.35)
+    cfg.setdefault("send_ratios", [0.25, 0.5, 0.75])
+    cfg.setdefault("policy_prior_strength", 0.8)
     cfg.setdefault("promotion_margin", 0.05)
     cfg.setdefault("promotion_min_eval_std", 0.20)
     return cfg
@@ -38,7 +40,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Train the neural network in 4p against notebook opponents.")
     parser.add_argument("--config", default="neural_network/configs/default_config.json")
     parser.add_argument("--duration-minutes", type=float, default=30.0)
-    parser.add_argument("--eval-episodes", type=int, default=20)
+    parser.add_argument("--eval-episodes", type=int, default=32)
     parser.add_argument("--no-resume", action="store_true")
     args = parser.parse_args()
 
