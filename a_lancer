@@ -6,10 +6,10 @@ cd "$(dirname "$0")"
 mkdir -p logs evaluations
 
 STAMP=$(date +%Y%m%d_%H%M%S)
-LOG="logs/v8_2_train_2h_${STAMP}.log"
+LOG="logs/v8_5_train_2h_${STAMP}.log"
 
 echo "[a_lancer] starting | log=$LOG"
-python3 train_v8_2.py \
+python3 train_v8_5.py \
   --minutes 120 \
   --pairs 5 \
   --games-per-eval 3 \

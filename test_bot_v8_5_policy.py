@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from bot_v8_2 import (
+from bot_v8_5 import (
     CAND_ATTACK_FRAC,
     CAND_IS_DEFENSE,
     CAND_IS_TRANSFER,
