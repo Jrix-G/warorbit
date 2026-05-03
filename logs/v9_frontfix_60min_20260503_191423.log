@@ -51,3 +51,46 @@ gen=0004 pair=2/12
 gen=0004 pair=3/12
 gen=0004 pair=4/12
 gen=0004 pair=5/12
+gen=0004 pair=6/12
+gen=0004 pair=7/12
+gen=0004 pair=8/12
+gen=0004 pair=9/12
+gen=0004 pair=10/12
+gen=0004 pair=11/12
+gen=0004 pair=12/12
+gen=0004 train=0.531 (2p 0.800/10 4p 0.500/86) eval=0.531 (2p 0.800 4p 0.500) bench=0.000 best=-1.000 grad=29.39 promo=0 explore=0.04 div=1.27 4pdiag=WARN xfer=0.49/0.30+ bb=0.08/0.15+ lock=0.99/0.90+ fronts=3.2/2.0- front_adj=-0.061 elapsed_min=40.5
+gen=0005 train_pair_start
+gen=0005 pair=1/12
+gen=0005 pair=2/12
+gen=0005 pair=3/12
+gen=0005 pair=4/12
+gen=0005 pair=5/12
+gen=0005 pair=6/12
+gen=0005 pair=7/12
+gen=0005 pair=8/12
+gen=0005 pair=9/12
+gen=0005 pair=10/12
+gen=0005 pair=11/12
+gen=0005 pair=12/12
+gen=0005 train=0.594 (2p 1.000/16 4p 0.512/80) eval=0.594 (2p 1.000 4p 0.512) bench=0.000 best=-1.000 grad=17.07 promo=0 explore=0.04 div=1.37 4pdiag=WARN xfer=0.51/0.30+ bb=0.06/0.15+ lock=0.99/0.90+ fronts=3.3/2.0- front_adj=-0.072 elapsed_min=50.4
+gen=0006 train_pair_start
+gen=0006 pair=1/12
+gen=0006 pair=2/12
+gen=0006 pair=3/12
+gen=0006 pair=4/12
+gen=0006 pair=5/12
+gen=0006 pair=6/12
+gen=0006 pair=7/12
+gen=0006 pair=8/12
+gen=0006 pair=9/12
+gen=0006 pair=10/12
+V9 timeout reached after 60.00 minutes; saving latest checkpoint
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+Saved latest=evaluations\v9_frontfix_60m_latest.npz best=evaluations\v9_frontfix_60m_best.npz bot_checkpoint=evaluations\v9_frontfix_60m_policy.npz stop_reason=timeout

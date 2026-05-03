@@ -50,10 +50,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--candidate-diversity", type=float, default=1.15)
     parser.add_argument("--front-lock-turns", type=int, default=24)
     parser.add_argument("--target-active-fronts", type=float, default=2.0)
+    parser.add_argument("--target-backbone-turn-frac", type=float, default=0.15)
     parser.add_argument("--front-penalty-weight", type=float, default=0.055)
     parser.add_argument("--front-penalty-cap", type=float, default=0.12)
     parser.add_argument("--front-ok-bonus", type=float, default=0.045)
     parser.add_argument("--front-partial-bonus", type=float, default=0.025)
+    parser.add_argument("--backbone-penalty-weight", type=float, default=0.080)
+    parser.add_argument("--backbone-bonus-weight", type=float, default=0.060)
     parser.add_argument("--front-pressure-plan-bias", type=float, default=0.12)
     parser.add_argument("--front-pressure-attack-penalty", type=float, default=0.12)
     parser.add_argument("--exploration-rate", type=float, default=0.08)
@@ -112,10 +115,13 @@ def main() -> None:
         exploration_rate=args.exploration_rate,
         front_lock_turns=args.front_lock_turns,
         target_active_fronts=args.target_active_fronts,
+        target_backbone_turn_frac=args.target_backbone_turn_frac,
         front_penalty_weight=args.front_penalty_weight,
         front_penalty_cap=args.front_penalty_cap,
         front_ok_bonus=args.front_ok_bonus,
         front_partial_bonus=args.front_partial_bonus,
+        backbone_penalty_weight=args.backbone_penalty_weight,
+        backbone_bonus_weight=args.backbone_bonus_weight,
         front_pressure_plan_bias=args.front_pressure_plan_bias,
         front_pressure_attack_penalty=args.front_pressure_attack_penalty,
     )

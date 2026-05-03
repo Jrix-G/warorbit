@@ -27,10 +27,13 @@ class V9Config:
     max_moves_per_plan: int = 12
     front_lock_turns: int = 24
     target_active_fronts: float = 2.0
+    target_backbone_turn_frac: float = 0.15
     front_penalty_weight: float = 0.055
     front_penalty_cap: float = 0.12
     front_ok_bonus: float = 0.045
     front_partial_bonus: float = 0.025
+    backbone_penalty_weight: float = 0.080
+    backbone_bonus_weight: float = 0.060
     front_pressure_plan_bias: float = 0.12
     front_pressure_attack_penalty: float = 0.12
     seed: int = 9009
@@ -132,10 +135,13 @@ class V9Config:
             "max_moves_per_plan",
             "front_lock_turns",
             "target_active_fronts",
+            "target_backbone_turn_frac",
             "front_penalty_weight",
             "front_penalty_cap",
             "front_ok_bonus",
             "front_partial_bonus",
+            "backbone_penalty_weight",
+            "backbone_bonus_weight",
             "front_pressure_plan_bias",
             "front_pressure_attack_penalty",
             "seed",

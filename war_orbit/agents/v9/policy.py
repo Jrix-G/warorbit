@@ -75,8 +75,8 @@ class V9Weights:
         plan_bias[PLAN_TYPE_TO_INDEX["multi_step_trap"]] = 0.06
         plan_bias[PLAN_TYPE_TO_INDEX["resource_denial"]] = 0.11
         plan_bias[PLAN_TYPE_TO_INDEX["endgame_finisher"]] = 0.04
-        plan_bias[PLAN_TYPE_TO_INDEX["defensive_consolidation"]] = 0.08
-        plan_bias[PLAN_TYPE_TO_INDEX["staging_transfer"]] = 0.14
+        plan_bias[PLAN_TYPE_TO_INDEX["defensive_consolidation"]] = 0.09
+        plan_bias[PLAN_TYPE_TO_INDEX["staging_transfer"]] = 0.20
         plan_bias[PLAN_TYPE_TO_INDEX["opportunistic_snipe"]] = 0.08
         plan_bias[PLAN_TYPE_TO_INDEX["probe"]] = -0.02
         plan_bias[PLAN_TYPE_TO_INDEX["reserve_hold"]] = -0.10
@@ -88,8 +88,8 @@ class V9Weights:
         state_plan_w[PLAN_TYPE_TO_INDEX["endgame_finisher"], STATE_FEATURE_INDEX["finish_pressure"]] = 0.42
         state_plan_w[PLAN_TYPE_TO_INDEX["endgame_finisher"], STATE_FEATURE_INDEX["is_late"]] = 0.22
         state_plan_w[PLAN_TYPE_TO_INDEX["delayed_strike"], STATE_FEATURE_INDEX["is_4p"]] = 0.15
-        state_plan_w[PLAN_TYPE_TO_INDEX["staging_transfer"], STATE_FEATURE_INDEX["is_4p"]] = 0.34
-        state_plan_w[PLAN_TYPE_TO_INDEX["staging_transfer"], STATE_FEATURE_INDEX["active_front_ratio"]] = 0.18
+        state_plan_w[PLAN_TYPE_TO_INDEX["staging_transfer"], STATE_FEATURE_INDEX["is_4p"]] = 0.48
+        state_plan_w[PLAN_TYPE_TO_INDEX["staging_transfer"], STATE_FEATURE_INDEX["active_front_ratio"]] = 0.24
         state_plan_w[PLAN_TYPE_TO_INDEX["multi_step_trap"], STATE_FEATURE_INDEX["active_front_ratio"]] = 0.18
         state_plan_w[PLAN_TYPE_TO_INDEX["defensive_consolidation"], STATE_FEATURE_INDEX["threatened_ratio"]] = 0.42
         state_plan_w[PLAN_TYPE_TO_INDEX["defensive_consolidation"], STATE_FEATURE_INDEX["doomed_ratio"]] = 0.26
@@ -213,9 +213,13 @@ class V9Policy:
                 front_lock = float(metadata.get("front_lock", 0.0))
                 consolidation_threshold = float(metadata.get("consolidation_threshold", 0.0))
                 staged_finisher = float(metadata.get("staged_finisher", 0.0))
-                metadata_bonus += 0.24 * backbone
+                metadata_bonus += 0.36 * backbone
                 metadata_bonus += (0.12 + 0.14 * float(fronts)) * front_lock
                 metadata_bonus += 0.20 * consolidation_threshold
+                if candidate.plan_type == "staging_transfer":
+                    metadata_bonus += 0.10 + 0.16 * backbone + 0.08 * front_lock
+                if backbone > 0.0 and transfer >= 0.30 and attack < 0.35:
+                    metadata_bonus += 0.08
                 metadata_bonus += (0.12 + 0.30 * float(finish_pressure)) * staged_finisher
                 if 6 <= len(world.my_planets) < 15 and not world.is_late:
                     metadata_bonus += 0.18 * float(transfer + defense)

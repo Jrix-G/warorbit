@@ -544,19 +544,20 @@ class V9Planner:
             return None
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
         anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
-        b = MoveBuilder(world, reserve_scale=0.98, max_moves=self.params.max_moves_per_plan)
+        active_fronts = _active_front_count(world, focus)
+        b = MoveBuilder(world, reserve_scale=1.06, max_moves=self.params.max_moves_per_plan)
         score = _stage_to_front(
             b,
-            ratio=0.66,
+            ratio=0.80,
             min_send=max(6, self.params.min_source_ships - 1),
             focus_enemy_id=focus,
             preferred_anchor_id=self.params.front_anchor_id,
-            max_transfers=7,
+            max_transfers=9,
         )
         if not b.moves:
             return None
         threshold_gap = max(0, 13 - len(world.my_planets))
-        score += 7.0 + 1.2 * threshold_gap + 1.5 * _active_front_count(world, focus)
+        score += 13.0 + 1.4 * threshold_gap + 2.2 * active_fronts
         return PlanCandidate(
             "v9_4p_backbone",
             b.moves,
@@ -649,11 +650,11 @@ class V9Planner:
         anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
         score = _stage_to_front(
             b,
-            ratio=0.74,
+            ratio=0.82,
             min_send=max(10, self.params.min_source_ships),
             focus_enemy_id=focus,
             preferred_anchor_id=self.params.front_anchor_id,
-            max_transfers=8 if world.is_four_player else None,
+            max_transfers=10 if world.is_four_player else None,
         )
         if not b.moves:
             return None
@@ -837,22 +838,22 @@ class V9Planner:
         )
 
     def _defensive_consolidation(self, world) -> Optional[PlanCandidate]:
-        b = MoveBuilder(world, reserve_scale=0.72, max_moves=self.params.max_moves_per_plan)
+        b = MoveBuilder(world, reserve_scale=0.82 if world.is_four_player else 0.72, max_moves=self.params.max_moves_per_plan)
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
         active_fronts = _active_front_count(world, focus) if world.is_four_player else 0
         front_pressure = max(0, active_fronts - 2)
         score = _commit_reinforcements(b, force=True)
         score += _stage_to_front(
             b,
-            ratio=min(0.62, 0.42 + 0.06 * front_pressure),
+            ratio=min(0.70, 0.48 + 0.07 * front_pressure),
             min_send=max(7, self.params.min_source_ships),
             focus_enemy_id=focus,
             preferred_anchor_id=self.params.front_anchor_id,
-            max_transfers=min(8, 5 + front_pressure) if world.is_four_player else None,
+            max_transfers=min(9, 6 + front_pressure) if world.is_four_player else None,
         )
         if not b.moves:
             return None
-        score += 3.0 * front_pressure
+        score += 4.0 * front_pressure + (4.0 if world.is_four_player else 0.0)
         return PlanCandidate(
             "v9_defensive_consolidation",
             b.moves,

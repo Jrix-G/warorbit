@@ -85,6 +85,7 @@ def _front_pressure_adjustment(summary: Dict[str, float], config: V9Config) -> f
     if int(summary.get("n_4p", 0)) <= 0:
         return 0.0
     target_fronts = float(getattr(config, "target_active_fronts", 2.0))
+    target_backbone = max(0.01, float(getattr(config, "target_backbone_turn_frac", 0.15)))
     fronts = float(summary.get("active_front_avg", 0.0))
     xfer = float(summary.get("transfer_move_frac", 0.0))
     backbone = float(summary.get("backbone_turn_frac", 0.0))
@@ -92,14 +93,23 @@ def _front_pressure_adjustment(summary: Dict[str, float], config: V9Config) -> f
 
     excess = max(0.0, fronts - target_fronts)
     penalty = min(float(getattr(config, "front_penalty_cap", 0.12)), excess * float(getattr(config, "front_penalty_weight", 0.055)))
+    backbone_shortfall = max(0.0, (target_backbone - backbone) / target_backbone)
+    penalty += float(getattr(config, "backbone_penalty_weight", 0.08)) * backbone_shortfall
+
+    backbone_score = min(1.0, backbone / target_backbone)
+    front_score = min(1.0, max(0.0, 3.5 - fronts) / max(0.1, 3.5 - target_fronts))
+    if backbone_score < 0.75:
+        front_score *= 0.35
     progress = (
         min(1.0, xfer / 0.30)
-        + min(1.0, backbone / 0.15)
+        + backbone_score
         + min(1.0, lock / 0.90)
-        + min(1.0, max(0.0, 3.5 - fronts) / max(0.1, 3.5 - target_fronts))
+        + min(front_score, backbone_score)
     ) / 4.0
     bonus = float(getattr(config, "front_partial_bonus", 0.025)) * progress
-    if xfer >= 0.30 and backbone >= 0.15 and lock >= 0.90 and fronts <= target_fronts:
+    if backbone >= target_backbone and fronts <= target_fronts:
+        bonus += float(getattr(config, "backbone_bonus_weight", 0.06))
+    if xfer >= 0.30 and backbone >= target_backbone and lock >= 0.90 and fronts <= target_fronts:
         bonus += float(getattr(config, "front_ok_bonus", 0.045))
     return bonus - penalty
 

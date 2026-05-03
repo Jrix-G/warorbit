@@ -1,0 +1,23 @@
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+Starting V9 fresh dim=399
+V9 train start minutes=60.00 pairs=12 hard_timeout=60.00 games_per_eval=4 eval_games=16 train_opponents=15 eval_opponents=6 benchmark_opponents=5 workers=8 train_only=1
+V9 4p diag targets xfer>=0.30 bb>=0.15 lock>=0.90 fronts<=2.0
+V9 worker pool started workers=8
+gen=0001 train_pair_start
+gen=0001 pair=1/12
+gen=0001 pair=2/12
+gen=0001 pair=3/12
+gen=0001 pair=4/12
+gen=0001 pair=5/12
+gen=0001 pair=6/12
+gen=0001 pair=7/12
+gen=0001 pair=8/12
+gen=0001 pair=9/12
+gen=0001 pair=10/12
+gen=0001 pair=11/12
+gen=0001 pair=12/12
+gen=0001 train=0.500 (2p 0.778/18 4p 0.436/78) eval=0.500 (2p 0.778 4p 0.436) bench=0.000 best=-1.000 grad=30.01 promo=0 explore=0.05 div=1.16 4pdiag=WARN xfer=0.51/0.30+ bb=0.13/0.15+ lock=1.00/0.90+ fronts=3.2/2.0- front_adj=-0.057 elapsed_min=12.3
+gen=0002 train_pair_start
+gen=0002 pair=1/12
+gen=0002 pair=2/12
+gen=0002 pair=3/12
