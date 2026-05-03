@@ -4,6 +4,7 @@ from war_orbit.agents.v9.policy import V9Weights
 from war_orbit.config.v9_config import V9Config
 from war_orbit.training.curriculum import build_cross_play_specs, build_role_pools
 from war_orbit.training.trainer import (
+    _apply_guardian_adjustments,
     _is_generalization_failure,
     _partial_reset,
     _selection_score,
@@ -41,6 +42,49 @@ def test_promotion_uses_benchmark_guard_not_internal_eval_only():
     collapsed_benchmark = {"mean": 0.0}
     assert _selection_score(eval_summary, collapsed_benchmark) == 0.0
     assert not _should_promote(0.0, -1.0, eval_summary, collapsed_benchmark, cfg)
+
+
+def test_promotion_requires_heldout_4p_backbone_and_front_quality():
+    cfg = V9Config(
+        min_improvement=0.01,
+        min_benchmark_score=0.40,
+        min_promotion_benchmark_games=8,
+        guardian_min_benchmark_4p=0.42,
+        guardian_min_benchmark_backbone=0.08,
+        guardian_max_benchmark_fronts=2.70,
+        guardian_max_generalization_gap=0.18,
+    )
+    eval_summary = {"mean": 0.55}
+    weak_diag = {
+        "mean": 0.50,
+        "wr_4p": 0.50,
+        "n_2p": 2,
+        "n_4p": 8,
+        "backbone_turn_frac": 0.02,
+        "active_front_avg": 1.9,
+    }
+    strong_diag = dict(weak_diag, backbone_turn_frac=0.10, active_front_avg=2.1)
+    assert not _should_promote(0.45, -1.0, eval_summary, weak_diag, cfg)
+    assert _should_promote(0.45, -1.0, eval_summary, strong_diag, cfg)
+
+
+def test_guardian_raises_backbone_pressure_when_heldout_backbone_collapses():
+    cfg = V9Config(backbone_penalty_weight=0.10, backbone_bonus_weight=0.08, front_pressure_plan_bias=0.14)
+    train = {"mean": 0.55, "backbone_turn_frac": 0.15}
+    eval_summary = {"mean": 0.52}
+    benchmark = {
+        "mean": 0.32,
+        "wr_4p": 0.27,
+        "n_2p": 4,
+        "n_4p": 12,
+        "backbone_turn_frac": 0.03,
+        "active_front_avg": 1.9,
+    }
+    event = _apply_guardian_adjustments(cfg, train, eval_summary, benchmark)
+    assert event["changed"] == 1.0
+    assert cfg.backbone_penalty_weight > 0.10
+    assert cfg.backbone_bonus_weight > 0.08
+    assert cfg.front_pressure_plan_bias > 0.14
 
 
 def test_generalization_failure_detector_trips_on_train_eval_benchmark_split():

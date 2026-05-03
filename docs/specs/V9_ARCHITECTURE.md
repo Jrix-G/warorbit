@@ -287,6 +287,41 @@ Ce mode sert a apprendre vite, pas a juger le bot. Apres le run volume:
 python .\run_v9.py --skip-training --export-checkpoint evaluations\v9_volume_policy.npz --benchmark-games 128 --benchmark-progress-every 1 --workers 8 --eval-max-steps 220 --four-player-ratio 0.80 --pool-limit 15
 ```
 
+## 8b. Mode VPS
+
+Quand on lance V9 sur un VPS, le risque principal n'est pas seulement le CPU:
+
+- trop de workers peut saturer le scheduler et faire monter la RAM;
+- BLAS/NumPy peuvent lancer plusieurs threads par worker si on ne les bride pas;
+- le benchmark dans la boucle peut faire exploser la durée et la charge;
+- si le VPS est petit, l'OS peut tuer le process avant la sauvegarde finale.
+
+Profil de sécurité recommandé:
+
+```powershell
+python .\run_v9.py --minutes 600 --hard-timeout-minutes 600 --train-only --skip-eval --workers 1 --pairs 2 --games-per-eval 1 --eval-every 0 --benchmark-every 0 --max-steps 100 --four-player-ratio 0.50 --train-search-width 2 --train-simulation-depth 0 --train-simulation-rollouts 0 --front-lock-turns 15 --pool-limit 8
+```
+
+Règles pratiques:
+
+- `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, `MKL_NUM_THREADS=1`, `NUMEXPR_NUM_THREADS=1`
+- commencer avec `workers=1`, puis monter seulement si le VPS reste stable
+- éviter `benchmark-games` élevé dans la boucle principale
+- garder `hard-timeout-minutes` actif pour forcer la sauvegarde
+
+Ordre de grandeur de gain de temps:
+
+- `workers=1` = base de référence
+- `workers=2` = souvent ~1.6x a 1.8x plus rapide
+- `workers=4` = souvent ~2.7x a 3.5x
+- `workers=8` = souvent ~4x a 6x
+
+Le gain n'est pas lineaire, car une partie du pipeline reste sequentielle: adaptation,
+serialisation des resultats, checkpointing, evaluation et gestion de deadline.
+En revanche, sur une machine avec beaucoup de RAM libre et un CPU peu charge, le
+temps perdu vient surtout du manque de parallelisme. Monter `workers` de 1 a 4 ou 8
+est donc le levier principal, bien plus que la frequence brute.
+
 ## 9. Comment juger le prochain run
 
 Ne pas lire seulement `train`.

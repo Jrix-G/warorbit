@@ -34,6 +34,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--benchmark-games", type=int, default=128)
     parser.add_argument("--min-promotion-benchmark-games", type=int, default=128)
     parser.add_argument("--benchmark-progress-every", type=int, default=1)
+    parser.add_argument("--min-benchmark-score", type=float, default=0.15)
+    parser.add_argument("--max-generalization-gap", type=float, default=0.30)
     parser.add_argument("--seed", type=int, default=9009)
     parser.add_argument("--checkpoint", default="evaluations/v9_robust_policy_latest.npz")
     parser.add_argument("--best-checkpoint", default="evaluations/v9_robust_policy_best.npz")
@@ -59,6 +61,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--backbone-bonus-weight", type=float, default=0.060)
     parser.add_argument("--front-pressure-plan-bias", type=float, default=0.12)
     parser.add_argument("--front-pressure-attack-penalty", type=float, default=0.12)
+    parser.add_argument("--guardian-enabled", type=int, default=1)
+    parser.add_argument("--guardian-min-benchmark-4p", type=float, default=0.42)
+    parser.add_argument("--guardian-min-benchmark-backbone", type=float, default=0.08)
+    parser.add_argument("--guardian-max-benchmark-fronts", type=float, default=2.70)
+    parser.add_argument("--guardian-max-generalization-gap", type=float, default=0.18)
+    parser.add_argument("--export-best-on-finish", type=int, default=1)
     parser.add_argument("--exploration-rate", type=float, default=0.08)
     parser.add_argument("--confidence-l2", type=float, default=0.0025)
     parser.add_argument("--reward-noise", type=float, default=0.015)
@@ -98,6 +106,8 @@ def main() -> None:
         benchmark_games=args.benchmark_games,
         min_promotion_benchmark_games=args.min_promotion_benchmark_games,
         benchmark_progress_every=args.benchmark_progress_every,
+        min_benchmark_score=args.min_benchmark_score,
+        max_generalization_gap=args.max_generalization_gap,
         seed=args.seed,
         checkpoint=args.checkpoint,
         best_checkpoint=args.best_checkpoint,
@@ -124,6 +134,12 @@ def main() -> None:
         backbone_bonus_weight=args.backbone_bonus_weight,
         front_pressure_plan_bias=args.front_pressure_plan_bias,
         front_pressure_attack_penalty=args.front_pressure_attack_penalty,
+        guardian_enabled=bool(args.guardian_enabled),
+        guardian_min_benchmark_4p=args.guardian_min_benchmark_4p,
+        guardian_min_benchmark_backbone=args.guardian_min_benchmark_backbone,
+        guardian_max_benchmark_fronts=args.guardian_max_benchmark_fronts,
+        guardian_max_generalization_gap=args.guardian_max_generalization_gap,
+        export_best_on_finish=bool(args.export_best_on_finish),
     )
     if args.opponents:
         config.training_opponents = list(args.opponents)

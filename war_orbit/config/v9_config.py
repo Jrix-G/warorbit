@@ -62,6 +62,12 @@ class V9Config:
     min_promotion_benchmark_games: int = 128
     benchmark_progress_every: int = 1
     benchmark_four_player_ratio: float = 0.80
+    guardian_enabled: bool = True
+    guardian_min_benchmark_4p: float = 0.42
+    guardian_min_benchmark_backbone: float = 0.08
+    guardian_max_benchmark_fronts: float = 2.70
+    guardian_max_generalization_gap: float = 0.18
+    export_best_on_finish: bool = True
     stagnation_window: int = 4
     min_improvement: float = 0.015
     min_benchmark_score: float = 0.15
@@ -144,6 +150,12 @@ class V9Config:
             "backbone_bonus_weight",
             "front_pressure_plan_bias",
             "front_pressure_attack_penalty",
+            "guardian_enabled",
+            "guardian_min_benchmark_4p",
+            "guardian_min_benchmark_backbone",
+            "guardian_max_benchmark_fronts",
+            "guardian_max_generalization_gap",
+            "export_best_on_finish",
             "seed",
         }
         data = asdict(self)

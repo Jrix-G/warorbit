@@ -21,3 +21,68 @@ gen=0002 train_pair_start
 gen=0002 pair=1/12
 gen=0002 pair=2/12
 gen=0002 pair=3/12
+gen=0002 pair=4/12
+gen=0002 pair=5/12
+gen=0002 pair=6/12
+gen=0002 pair=7/12
+gen=0002 pair=8/12
+gen=0002 pair=9/12
+gen=0002 pair=10/12
+gen=0002 pair=11/12
+gen=0002 pair=12/12
+gen=0002 train=0.615 (2p 0.500/12 4p 0.631/84) eval=0.615 (2p 0.500 4p 0.631) bench=0.000 best=-1.000 grad=32.34 promo=0 explore=0.04 div=1.07 4pdiag=WARN xfer=0.54/0.30+ bb=0.15/0.15+ lock=0.99/0.90+ fronts=3.4/2.0- front_adj=-0.052 elapsed_min=19.8
+gen=0003 train_pair_start
+gen=0003 pair=1/12
+gen=0003 pair=2/12
+gen=0003 pair=3/12
+gen=0003 pair=4/12
+gen=0003 pair=5/12
+gen=0003 pair=6/12
+gen=0003 pair=7/12
+gen=0003 pair=8/12
+gen=0003 pair=9/12
+gen=0003 pair=10/12
+gen=0003 pair=11/12
+gen=0003 pair=12/12
+gen=0003 train=0.510 (2p 0.769/26 4p 0.414/70) eval=0.510 (2p 0.769 4p 0.414) bench=0.000 best=-1.000 grad=31.27 promo=0 explore=0.04 div=1.17 4pdiag=WARN xfer=0.50/0.30+ bb=0.12/0.15+ lock=0.99/0.90+ fronts=3.3/2.0- front_adj=-0.072 elapsed_min=30.1
+gen=0004 train_pair_start
+gen=0004 pair=1/12
+gen=0004 pair=2/12
+gen=0004 pair=3/12
+gen=0004 pair=4/12
+gen=0004 pair=5/12
+gen=0004 pair=6/12
+gen=0004 pair=7/12
+gen=0004 pair=8/12
+gen=0004 pair=9/12
+gen=0004 pair=10/12
+gen=0004 pair=11/12
+gen=0004 pair=12/12
+gen=0004 train=0.531 (2p 0.714/14 4p 0.500/82) eval=0.531 (2p 0.714 4p 0.500) bench=0.000 best=-1.000 grad=32.21 promo=0 explore=0.04 div=1.27 4pdiag=WARN xfer=0.50/0.30+ bb=0.14/0.15+ lock=0.99/0.90+ fronts=3.0/2.0- front_adj=-0.037 elapsed_min=42.3
+gen=0005 train_pair_start
+gen=0005 pair=1/12
+gen=0005 pair=2/12
+gen=0005 pair=3/12
+gen=0005 pair=4/12
+gen=0005 pair=5/12
+gen=0005 pair=6/12
+gen=0005 pair=7/12
+gen=0005 pair=8/12
+gen=0005 pair=9/12
+gen=0005 pair=10/12
+gen=0005 pair=11/12
+gen=0005 pair=12/12
+gen=0005 train=0.531 (2p 0.938/16 4p 0.450/80) eval=0.531 (2p 0.938 4p 0.450) bench=0.000 best=-1.000 grad=12.94 promo=0 explore=0.04 div=1.37 4pdiag=WARN xfer=0.52/0.30+ bb=0.16/0.15+ lock=0.99/0.90+ fronts=3.3/2.0- front_adj=-0.049 elapsed_min=56.9
+gen=0006 train_pair_start
+gen=0006 pair=1/12
+gen=0006 pair=2/12
+V9 timeout reached after 60.00 minutes; saving latest checkpoint
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+Saved latest=evaluations\v9_backbone_60m_latest.npz best=evaluations\v9_backbone_60m_best.npz bot_checkpoint=evaluations\v9_backbone_60m_policy.npz stop_reason=timeout
