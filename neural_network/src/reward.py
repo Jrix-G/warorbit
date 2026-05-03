@@ -34,4 +34,15 @@ def compute_reward(
     next_state: Dict[str, Any],
     terminal: bool = False,
 ) -> float:
-    return compute_dense_reward(prev_state, next_state, current_step=0)
+    reward = compute_dense_reward(prev_state, next_state, current_step=0)
+    if terminal:
+        my_id = int(prev_state.get("my_id", next_state.get("my_id", 0)))
+        winner = next_state.get("winner")
+        if winner == my_id:
+            reward += 20.0
+        elif winner is not None and int(winner) >= 0:
+            reward -= 20.0
+    ships = float(action.get("ships", 0.0)) if isinstance(action, dict) else 0.0
+    if ships > 0:
+        reward += min(0.05, ships / 1000.0)
+    return float(reward)

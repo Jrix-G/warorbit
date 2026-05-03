@@ -4,13 +4,12 @@ import math
 import random
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Sequence, Tuple
 
 import numpy as np
 import torch
 from torch.nn.utils import clip_grad_norm_
 
-from opponents import ZOO, training_pool
 from SimGame import SimGame
 
 from .encoder import encode_game_state
@@ -21,6 +20,186 @@ from .reward import compute_dense_reward
 from .storage import append_jsonl, load_checkpoint, save_checkpoint
 from .torch_compat import ensure_torch_dynamo_stub
 from .utils import ensure_dir
+
+
+ZOO: Dict[str, Callable] | None = None
+
+
+def _obs_planets(obs: Any) -> List[list]:
+    if isinstance(obs, dict):
+        return list(obs.get("planets", []) or [])
+    return list(getattr(obs, "planets", []) or [])
+
+
+def _obs_player(obs: Any) -> int:
+    if isinstance(obs, dict):
+        return int(obs.get("player", 0) or 0)
+    return int(getattr(obs, "player", 0) or 0)
+
+
+def _passive_agent(obs, config=None):
+    return []
+
+
+def _random_agent(obs, config=None):
+    planets = _obs_planets(obs)
+    me = _obs_player(obs)
+    moves = []
+    for planet in planets:
+        if int(planet[1]) == me and float(planet[5]) > 10:
+            moves.append([int(planet[0]), random.uniform(0.0, 2.0 * math.pi), int(float(planet[5]) // 2)])
+    return moves
+
+
+def _greedy_agent(obs, config=None):
+    planets = _obs_planets(obs)
+    me = _obs_player(obs)
+    my_planets = [p for p in planets if int(p[1]) == me]
+    targets = [p for p in planets if int(p[1]) != me]
+    moves = []
+    for src in my_planets:
+        if float(src[5]) < 10 or not targets:
+            continue
+        tgt = min(targets, key=lambda p: math.hypot(float(p[2]) - float(src[2]), float(p[3]) - float(src[3])))
+        angle = math.atan2(float(tgt[3]) - float(src[3]), float(tgt[2]) - float(src[2]))
+        moves.append([int(src[0]), angle, int(float(src[5]) // 2)])
+    return moves
+
+
+def _starter_agent(obs, config=None):
+    planets = _obs_planets(obs)
+    me = _obs_player(obs)
+    static_targets = []
+    for planet in planets:
+        orbital_r = math.hypot(float(planet[2]) - 50.0, float(planet[3]) - 50.0)
+        if orbital_r + float(planet[4]) >= 50.0 and int(planet[1]) != me:
+            static_targets.append(planet)
+    moves = []
+    for src in planets:
+        if int(src[1]) != me or float(src[5]) <= 0 or not static_targets:
+            continue
+        tgt = min(static_targets, key=lambda p: math.hypot(float(p[2]) - float(src[2]), float(p[3]) - float(src[3])))
+        ships = int(float(src[5]) // 2)
+        if ships >= 20:
+            angle = math.atan2(float(tgt[3]) - float(src[3]), float(tgt[2]) - float(src[2]))
+            moves.append([int(src[0]), angle, ships])
+    return moves
+
+
+def _segment_min_dist_to_sun(x1: float, y1: float, x2: float, y2: float) -> float:
+    seg_dx = x2 - x1
+    seg_dy = y2 - y1
+    lsq = seg_dx * seg_dx + seg_dy * seg_dy
+    if lsq < 1e-9:
+        return math.hypot(x1 - 50.0, y1 - 50.0)
+    t = max(0.0, min(1.0, ((50.0 - x1) * seg_dx + (50.0 - y1) * seg_dy) / lsq))
+    return math.hypot(x1 + t * seg_dx - 50.0, y1 + t * seg_dy - 50.0)
+
+
+def _distance_agent(obs, config=None):
+    planets = _obs_planets(obs)
+    me = _obs_player(obs)
+    my_planets = [p for p in planets if int(p[1]) == me]
+    moves = []
+    for src in my_planets:
+        if float(src[5]) < 12:
+            continue
+        candidates = []
+        for tgt in planets:
+            if int(tgt[1]) == me:
+                continue
+            distance = math.hypot(float(tgt[2]) - float(src[2]), float(tgt[3]) - float(src[3]))
+            score = -distance - 0.5 * float(tgt[5]) + (8.0 if int(tgt[1]) == -1 else 0.0)
+            candidates.append((score, tgt))
+        if not candidates:
+            continue
+        _, tgt = max(candidates, key=lambda item: item[0])
+        if float(src[5]) > float(tgt[5]) + 5.0:
+            angle = math.atan2(float(tgt[3]) - float(src[3]), float(tgt[2]) - float(src[2]))
+            moves.append([int(src[0]), angle, int(float(src[5]) * 0.6)])
+    return moves
+
+
+def _sun_dodge_agent(obs, config=None):
+    planets = _obs_planets(obs)
+    me = _obs_player(obs)
+    my_planets = [p for p in planets if int(p[1]) == me]
+    targets = [p for p in planets if int(p[1]) != me]
+    moves = []
+    for src in my_planets:
+        if float(src[5]) < 10 or not targets:
+            continue
+        tgt = min(targets, key=lambda p: math.hypot(float(p[2]) - float(src[2]), float(p[3]) - float(src[3])))
+        dx = float(tgt[2]) - float(src[2])
+        dy = float(tgt[3]) - float(src[3])
+        distance = math.hypot(dx, dy)
+        angle = math.atan2(dy, dx)
+        if _segment_min_dist_to_sun(float(src[2]), float(src[3]), float(tgt[2]), float(tgt[3])) < 11.5:
+            for delta in (0.3, -0.3, 0.6, -0.6, 0.9, -0.9):
+                candidate = angle + delta
+                end_x = float(src[2]) + math.cos(candidate) * distance
+                end_y = float(src[3]) + math.sin(candidate) * distance
+                if _segment_min_dist_to_sun(float(src[2]), float(src[3]), end_x, end_y) > 11.0:
+                    angle = candidate
+                    break
+        moves.append([int(src[0]), angle, int(float(src[5]) // 2)])
+    return moves
+
+
+def _orbit_stars_agent(obs, config=None):
+    moves = _sun_dodge_agent(obs, config)
+    return moves if moves else _distance_agent(obs, config)
+
+
+LOCAL_ZOO: Dict[str, Callable] = {
+    "passive": _passive_agent,
+    "random": _random_agent,
+    "greedy": _greedy_agent,
+    "starter": _starter_agent,
+    "distance": _distance_agent,
+    "sun_dodge": _sun_dodge_agent,
+    "structured": _distance_agent,
+    "orbit_stars": _orbit_stars_agent,
+}
+
+
+def _external_zoo() -> Dict[str, Callable]:
+    global ZOO
+    if ZOO is None:
+        from opponents import ZOO as external_zoo
+
+        ZOO = external_zoo
+    return ZOO
+
+
+def training_pool(limit: int = 15) -> List[str]:
+    from opponents import training_pool as external_training_pool
+
+    return external_training_pool(limit=limit)
+
+
+def _notebook_names() -> List[str]:
+    return [name for name in sorted(_external_zoo()) if name.startswith("notebook_")]
+
+
+def _known_opponent_names(pool: Sequence[str]) -> List[str]:
+    names = []
+    external: Dict[str, Callable] | None = None
+    for name in pool:
+        if name in LOCAL_ZOO:
+            names.append(name)
+            continue
+        if external is None:
+            external = _external_zoo()
+        if name in external:
+            names.append(name)
+    return names
+
+
+def _agent_for_name(name: str) -> Callable:
+    if name in LOCAL_ZOO:
+        return LOCAL_ZOO[name]
+    return _external_zoo().get(name, LOCAL_ZOO["random"])
 
 
 def _linear_schedule(start: float, end: float, frac: float) -> float:
@@ -93,6 +272,32 @@ def run_match(
     }
 
 
+def _run_match_compat(
+    agents,
+    seed: int,
+    n_players: int,
+    max_steps: int,
+    stop_player: int | None,
+) -> Dict[str, Any]:
+    try:
+        return run_match(
+            agents,
+            seed=seed,
+            n_players=n_players,
+            max_steps=max_steps,
+            stop_player=stop_player,
+        )
+    except TypeError as exc:
+        if "stop_player" not in str(exc):
+            raise
+        return run_match(
+            agents,
+            seed=seed,
+            n_players=n_players,
+            max_steps=max_steps,
+        )
+
+
 def _make_our_agent(
     model: NeuralNetworkModel,
     config: Dict[str, Any],
@@ -128,11 +333,11 @@ def _make_our_agent(
 
 def _sample_opponents(pool: Sequence[str], seed: int, count: int = 3) -> List[str]:
     rng = random.Random(seed)
-    names = [name for name in pool if name in ZOO]
-    if len(names) < count:
-        names = list(ZOO.keys())
+    names = _known_opponent_names(pool)
+    if not names:
+        names = ["random", "greedy", "starter"]
     rng.shuffle(names)
-    return names[:count]
+    return [names[i % len(names)] for i in range(max(1, count))]
 
 
 def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, our_index: int, temperature: float, pool: Sequence[str]):
@@ -147,7 +352,7 @@ def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, 
             agents.append(our_agent)
         else:
             name = next(opp_iter, None)
-            agents.append(ZOO[name] if name is not None else ZOO["random"])
+            agents.append(_agent_for_name(name or "random"))
     return agents, log_probs, action_records, opp_names
 
 
@@ -212,7 +417,7 @@ def _train_episode(
 
 def _eval_match(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, our_index: int, pool: Sequence[str], temperature: float = 0.0) -> Dict[str, Any]:
     agents, log_probs, action_records, opp_names = _build_agents(model, config, seed, our_index, temperature, pool)
-    result = run_match(
+    result = _run_match_compat(
         agents,
         seed=seed,
         n_players=4,
@@ -289,7 +494,7 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
     pool_limit_max = max(pool_limit, int(config.get("notebook_pool_limit_max", 15)))
     pool = training_pool(limit=pool_limit)
     if not pool:
-        pool = [name for name in ZOO.keys() if name.startswith("notebook_")]
+        pool = _notebook_names()
     train_steps = int(config.get("train_steps", 50))
     eval_episodes = max(20, int(config.get("eval_episodes", 20)))
     eval_every = max(1, int(config.get("eval_every", max(1, train_steps // 10))))
@@ -307,7 +512,7 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
         our_index = step % 4
         seed = int(config["seed"]) + step * 97
         agents, log_probs, action_records, opp_names = _build_agents(model, config, seed, our_index, temperature, pool)
-        result = run_match(
+        result = _run_match_compat(
             agents,
             seed=seed,
             n_players=4,
@@ -360,7 +565,7 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
                 pool_limit = pool_limit_max
                 pool = training_pool(limit=pool_limit)
                 if not pool:
-                    pool = [name for name in ZOO.keys() if name.startswith("notebook_")]
+                    pool = _notebook_names()
                 record["curriculum_escalated"] = True
                 record["curriculum_pool_limit"] = pool_limit
             else:

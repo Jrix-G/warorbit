@@ -6,6 +6,11 @@ from typing import Any, Dict
 import torch
 from torch import nn
 
+from .torch_compat import ensure_torch_dynamo_stub
+
+
+ensure_torch_dynamo_stub()
+
 
 @dataclass
 class ModelConfig:

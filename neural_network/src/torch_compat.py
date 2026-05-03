@@ -9,6 +9,7 @@ def ensure_torch_dynamo_stub() -> None:
         import torch._dynamo  # type: ignore  # noqa: F401
         return
     except ModuleNotFoundError:
+        sys.modules.pop("torch._dynamo", None)
         pass
 
     if "torch._dynamo" in sys.modules:

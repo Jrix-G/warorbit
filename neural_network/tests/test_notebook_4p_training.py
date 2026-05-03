@@ -1,6 +1,7 @@
 from neural_network.scripts.run_notebook_4p_training import _prepare_config
 from neural_network.scripts.run_90min_6agent_training import _prepare_config as _prepare_population_config
 from neural_network.src.model import ModelConfig, NeuralNetworkModel, count_parameters
+from neural_network.src.population_4p_training import _composite_score, _load_curriculum_state, _maybe_advance_curriculum, _should_try_promotion, _tier_pool, DEFAULT_CURRICULUM_TIERS
 
 
 def test_prepare_config_forces_four_player():
@@ -22,6 +23,52 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     assert out["hidden_dim"] == 256
     assert out["notebook_pool_limit"] == 15
     assert out["train_notebook_opponents"] == 3
+    assert out["worker_train_steps"] >= 6
+    assert out["candidate_eval_episodes"] < out["eval_episodes"]
+    assert out["opponent_curriculum_enabled"] is True
+
+
+def test_population_config_resumes_from_best_and_confirms_promotions():
+    cfg = {
+        "checkpoint_dir": "x",
+        "log_dir": "y",
+        "best_checkpoint": "neural_network/checkpoints/best.npz",
+        "seed": 42,
+    }
+    out = _prepare_population_config(cfg, 200.0, 6, 8)
+    assert out["resume_checkpoint"] == out["best_checkpoint"]
+    assert out["eval_episodes"] == 8
+    assert out["promotion_eval_episodes"] == 16
+    assert out["candidate_eval_episodes"] == 6
+    assert out["promotion_margin"] == 0.02
+    assert out["promotion_min_remaining_minutes"] == 12.0
+
+
+def test_population_promotion_requires_real_improvement():
+    assert not _should_try_promotion({"score": 0.375}, best_score=0.375, margin=0.02)
+    assert _should_try_promotion({"score": 0.5}, best_score=0.375, margin=0.02)
+
+
+def test_population_composite_score_penalizes_rank_and_noop():
+    good = {"winrate": 0.25, "rank_mean": 2.0, "eval_mean": 0.2, "avg_score": 300.0, "eval_do_nothing_rate": 0.2, "eval_avg_ships_sent": 20.0}
+    bad = {"winrate": 0.25, "rank_mean": 3.8, "eval_mean": -0.8, "avg_score": 10.0, "eval_do_nothing_rate": 0.9, "eval_avg_ships_sent": 0.0}
+    assert _composite_score(good) > _composite_score(bad)
+
+
+def test_population_curriculum_starts_weak_and_advances():
+    tiers = [dict(item) for item in DEFAULT_CURRICULUM_TIERS]
+    state = _load_curriculum_state("missing_curriculum_state_for_test.json", tiers, {}, resume=True)
+    assert tiers[state["tier_index"]]["name"] == "basic_300"
+    assert _tier_pool({}, tiers[0]) == ["random", "greedy", "starter"]
+    state["tier_generation"] = int(tiers[0]["min_generations"])
+    state["total_generations"] = 3
+    advanced, _reason = _maybe_advance_curriculum(
+        state,
+        tiers,
+        {"winrate": 0.75, "rank_mean": 2.0, "eval_mean": 0.4, "eval_do_nothing_rate": 0.2, "eval_avg_ships_sent": 20.0},
+    )
+    assert advanced
+    assert tiers[state["tier_index"]]["name"] == "heuristic_500"
 
 
 def test_population_config_caps_duration_at_eight_hours():

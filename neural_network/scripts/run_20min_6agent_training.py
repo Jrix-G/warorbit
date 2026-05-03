@@ -43,8 +43,10 @@ def _prepare_config(cfg: dict, workers: int, eval_episodes: int) -> dict:
     cfg["hidden_dim"] = 256
     cfg["learning_rate"] = min(float(cfg.get("learning_rate", 0.0003)), 0.00025)
     cfg["train_steps"] = 200
-    cfg["worker_train_steps"] = 2
+    cfg["worker_train_steps"] = max(4, int(cfg.get("worker_train_steps", 4)))
     cfg["eval_episodes"] = max(4, int(eval_episodes))
+    cfg["candidate_eval_episodes"] = max(4, min(cfg["eval_episodes"], int(cfg.get("candidate_eval_episodes", 4))))
+    cfg["promotion_eval_episodes"] = max(12, cfg["eval_episodes"])
     cfg["benchmark_games"] = cfg["eval_episodes"]
     cfg["curriculum_enabled"] = True
     cfg["curriculum_early_4p_ratio"] = 1.0
@@ -55,12 +57,16 @@ def _prepare_config(cfg: dict, workers: int, eval_episodes: int) -> dict:
     cfg["notebook_pool_limit"] = 15
     cfg["notebook_pool_limit_max"] = 15
     cfg["train_notebook_opponents"] = 3
+    cfg["train_stop_on_elimination"] = bool(cfg.get("train_stop_on_elimination", True))
+    cfg["opponent_curriculum_enabled"] = bool(cfg.get("opponent_curriculum_enabled", True))
+    cfg.setdefault("opponent_curriculum_start_tier", 0)
+    cfg.setdefault("opponent_curriculum_state", "neural_network/logs/opponent_curriculum_state.json")
     cfg["temperature_start"] = float(cfg.get("temperature_start", 1.15))
     cfg["temperature_end"] = float(cfg.get("temperature_end", 0.25))
     cfg.setdefault("send_ratios", [0.25, 0.5, 0.75])
     cfg.setdefault("policy_prior_strength", 0.8)
     cfg["promotion_margin"] = float(cfg.get("promotion_margin", 0.0))
-    for key in ("checkpoint_dir", "log_dir", "candidate_checkpoint", "best_checkpoint", "latest_checkpoint", "export_path"):
+    for key in ("checkpoint_dir", "log_dir", "candidate_checkpoint", "best_checkpoint", "latest_checkpoint", "export_path", "opponent_curriculum_state"):
         if key in cfg:
             cfg[key] = _resolve_path(str(cfg[key]))
     return cfg

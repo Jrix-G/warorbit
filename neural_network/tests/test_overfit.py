@@ -11,11 +11,11 @@ def test_overfit_simple_action():
     candidates = torch.zeros(1, 2, 16)
     candidates[0, 1, 0] = 1.0
     target_idx = 1
-    before = None
+    out = model(state, candidates)
+    before = float(torch.softmax(out["policy_logits"], dim=-1)[0, target_idx].item())
     for _ in range(100):
         out = model(state, candidates)
         probs = torch.softmax(out["policy_logits"], dim=-1)
-        before = float(probs[0, target_idx].item())
         loss = -torch.log(probs[0, target_idx] + 1e-8)
         optimizer.zero_grad()
         loss.backward()

@@ -17,11 +17,57 @@ L'objectif n'est pas de garder le dernier modèle produit, mais de faire converg
 
 1. charger le meilleur checkpoint existant si disponible ;
 2. entraîner 6 candidats en parallèle depuis cette base ;
-3. évaluer chaque candidat en matchs 4 joueurs ;
-4. promouvoir uniquement le candidat avec le meilleur winrate ;
-5. relancer une génération depuis ce nouveau best checkpoint.
+3. faire une évaluation rapide de tous les candidats ;
+4. confirmer seulement le meilleur candidat sur une évaluation plus large ;
+5. promouvoir uniquement si le score composite confirmé progresse ;
+6. relancer une génération depuis ce nouveau best checkpoint.
 
 Cette approche évite de dégrader le modèle en remplaçant le best par un candidat plus récent mais moins bon.
+
+## Curriculum automatique
+
+Le run populationnel ne démarre plus directement contre le pool notebook complet.
+Il utilise un curriculum d'adversaires persistant :
+
+```text
+basic_300      -> random / greedy / starter
+heuristic_500  -> greedy / starter / distance / sun_dodge / structured / orbit_stars
+mixed_700      -> heuristiques + notebooks de départ
+notebook_open  -> pool notebook complet
+```
+
+Le fichier d'état est écrit dans :
+
+```text
+logs/opponent_curriculum_state.json
+```
+
+Il contient le tier courant, le pool utilisé, l'historique des promotions de
+difficulté, le meilleur score du tier et le dernier record évalué. Si un run
+s'arrête après 1 heure, le run suivant reprend au même niveau de curriculum
+tant que `--no-resume` n'est pas utilisé.
+
+Le passage au tier suivant est automatique. Il demande plusieurs générations
+dans le tier courant et un mélange de critères :
+
+- score composite suffisant ;
+- winrate suffisant ;
+- rang moyen assez bon ;
+- taux de `do_nothing` raisonnable.
+
+## Score composite
+
+La promotion ne dépend plus du winrate seul. Le score utilisé combine :
+
+- `winrate` ;
+- `rank_mean` converti en score de rang ;
+- `eval_mean` ;
+- `avg_score` normalisé ;
+- `eval_avg_ships_sent` ;
+- pénalité sur `eval_do_nothing_rate`.
+
+Cela évite de promouvoir un modèle qui gagne rarement par hasard mais joue
+mal sur le reste des métriques.
 
 ## Fichiers ajoutés
 
@@ -87,8 +133,17 @@ Chaque ligne contient notamment :
 - `pool_size`
 - `train_winrate`
 - `winrate`
+- `score`
+- `composite_score`
+- `curriculum_tier`
+- `tier_generation`
+- `candidate_eval_episodes`
+- `promotion_eval_episodes`
 - `winrate_by_position`
 - `eval_mean`
+- `rank_mean`
+- `eval_do_nothing_rate`
+- `eval_avg_ships_sent`
 - `checkpoint_promoted`
 - `promotion_reason`
 

@@ -5,11 +5,14 @@
 - `submission.py` — agent principal (à soumettre)
 - `bot_v7.py` — source V7
 - `bot_v8_5.py` — source V8.5 actuelle
+- `bot_v9.py` — wrapper agent V9 experimental
 - `benchmark_v8_5.py` — benchmark local V8.5 2p/4p/mixte
 - `train_v8_5.py` — entraînement long du ranker V8.5
+- `run_v9.py` — entraînement + benchmark V9 avec timeout dur
 - `train_v8_offline.py` — entraînement offline
 - `VPS/` — lanceurs conservateurs pour VPS faibles
 - `docs/analysis/stratégie.md` — analyse compétitive
+- `docs/specs/V9_ARCHITECTURE.md` — architecture, tactiques 4p, logs et runbook V9
 - `CLAUDE.md` — config Playwright MCP
 
 ## Setup
@@ -42,6 +45,37 @@ Smoke (~1 min) :
 
 ```bash
 python3 train_v8_5.py --minutes 1 --pairs 2 --games-per-eval 1 --eval-games 4 --max-steps 120 --workers 4 --pool-limit 2 --no-resume --checkpoint /tmp/v8_5_latest.npz --best-checkpoint /tmp/v8_5_best.npz --export-bot-checkpoint /tmp/v8_5_ranker.npz --log-jsonl /tmp/v8_5_train.jsonl
+```
+
+## Entrainer V9
+
+Documentation complete: `docs/specs/V9_ARCHITECTURE.md`.
+
+Run local 1h avec benchmark court et sauvegarde garantie au timeout :
+
+```bash
+python3 run_v9.py --minutes 60 --hard-timeout-minutes 60 --pairs 5 --games-per-eval 2 --eval-games 32 --benchmark-games 16 --min-promotion-benchmark-games 16 --benchmark-progress-every 1 --max-steps 160 --eval-max-steps 220 --four-player-ratio 0.80 --pool-limit 15
+```
+
+Les logs V9 incluent maintenant le diagnostic 4p `xfer/bb/lock/fronts` et sont
+écrits dans `evaluations/v9_robust_train.jsonl`.
+
+Pour une mesure benchmark plus stable, lancer ensuite :
+
+```bash
+python3 run_v9.py --skip-training --benchmark-games 128 --benchmark-progress-every 1 --workers 8 --eval-max-steps 220 --four-player-ratio 0.80 --pool-limit 15
+```
+
+Mode volume pur 1h, sans eval/benchmark dans la boucle :
+
+```bash
+python3 run_v9.py --minutes 60 --hard-timeout-minutes 60 --train-only --workers 8 --pairs 24 --games-per-eval 8 --max-steps 80 --four-player-ratio 0.80 --train-search-width 3 --train-simulation-depth 0 --train-simulation-rollouts 0 --front-lock-turns 15 --train-opponents random noisy_greedy greedy starter distance sun_dodge structured --no-resume --checkpoint evaluations/v9_volume_latest.npz --best-checkpoint evaluations/v9_volume_best.npz --export-checkpoint evaluations/v9_volume_policy.npz --log-jsonl evaluations/v9_volume_train.jsonl
+```
+
+Benchmark du checkpoint volume :
+
+```bash
+python3 run_v9.py --skip-training --export-checkpoint evaluations/v9_volume_policy.npz --benchmark-games 128 --benchmark-progress-every 1 --workers 8 --eval-max-steps 220 --four-player-ratio 0.80 --pool-limit 15
 ```
 
 ## Soumettre
