@@ -56,6 +56,13 @@ Audit complet `bot_v8_2.py` / `train_v8_2.py` / `benchmark_v8_2.py` + correction
 - `build_candidate_features` → projection forward (`proj > 0`) +
   `perp ≤ p.radius + 6`, abandon de la tolérance angulaire fixe ; couvre les
   angles d'interception orbital correctement.
+- `plan_shot` V8.2 → solveur d'interception plus robuste avec recherche locale
+  autour de l'ETA de départ, damping sur les itérations et revalidation avant
+  retour.
+- Nouveaux candidats d'ouverture :
+  - `opening_fortify` pour forcer plus de défense tôt quand la pression monte,
+  - `opening_relay` pour pousser davantage d'échanges internes et de staging
+    entre planètes sûres.
 - `agent` → fallback `bot_v7.agent(obs, config)` au lieu de `[]` sur exception.
 
 **`train_v8_2.py`** (réécriture complète)
@@ -79,6 +86,29 @@ Audit complet `bot_v8_2.py` / `train_v8_2.py` / `benchmark_v8_2.py` + correction
 - WR 2p, 4p, global ; median + p95 temps par game.
 - Histogramme plan-choice via candidate-log callback.
 - 4p picks rotatifs (anchor + 2 buddies) au lieu de répétition.
+
+## Changelog — 2026-05-03 patch V8.5
+
+### Ce qui a été ajouté
+
+- Couches de prior macro au-dessus du ranker lineaire pour router plus
+  nettement entre:
+  - fortification d'ouverture,
+  - staging ami->ami,
+  - pression / information par probes,
+  - conservation multi-front,
+  - conversion d'un lead 4p.
+- Constantes nommées pour les indices des features d'etat et de candidat afin
+  de réduire les regressions de maintenance.
+- Tests de non-regression pour verifier que les nouveaux priorisants battent
+  la baseline dans les phases critiques.
+
+### Intention
+
+Le bot reste un ranker de plans, mais il n'est plus laisse seul sur les
+situations macro nettes. Les heuristiques de phase corrigent le cas ou la
+baseline continue a absorber des tours qui devraient etre explicitement
+reorientes vers fortify / relay / conversion.
 
 **Nouveaux fichiers**
 - `run_v8_2_train_vps.sh` : wrapper 10h calibré 2 vCPU avec timestamp logs.
@@ -206,7 +236,7 @@ In the implemented V8 shape, the candidate set is intentionally small and
 structured:
 
 ```text
-C(s) = { V7 baseline, attack, expand, defense, reserve, transfer_push,
+C(s) = { V7 baseline, attack, expand, defense, reserve, transfer_push, probe_focus,
           4p_opportunistic*, 4p_eliminate_weakest*, 4p_conservation* }
 ```
 
@@ -517,7 +547,7 @@ expansion, attack, defense, reserve, friendly staging, and 4p-specific plans.
 
 ### Candidate plans
 
-V8.2 currently emits up to nine candidate plans:
+V8.2 currently emits up to fourteen candidate plans:
 
 ```text
 0 v7_baseline
@@ -525,10 +555,15 @@ V8.2 currently emits up to nine candidate plans:
 2 attack_focus
 3 defense_focus
 4 reserve_hold
-5 4p_opportunistic
-6 4p_eliminate_weakest
-7 4p_conservation
-8 4p_late_blitz
+5 transfer_push
+6 probe_focus
+7 4p_opportunistic
+8 4p_eliminate_weakest
+9 4p_conservation
+10 4p_late_blitz
+11 4p_conversion_push
+12 opening_fortify
+13 opening_relay
 ```
 
 The 4p variants are only available in four-player states. `4p_late_blitz`
