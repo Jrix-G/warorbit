@@ -11,7 +11,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 
 from opponents import ZOO, training_pool
-from SimGame import run_match
+from SimGame import SimGame
 
 from .encoder import encode_game_state
 from .model import ModelConfig, NeuralNetworkModel, load_compatible_state_dict
@@ -43,6 +43,54 @@ def _send_ratios(config: Dict[str, Any]) -> Tuple[float, ...]:
     values = config.get("send_ratios", [0.25, 0.5, 0.75])
     ratios = tuple(float(v) for v in values if 0.0 < float(v) < 1.0)
     return ratios or (0.25, 0.5, 0.75)
+
+
+def run_match(
+    agents,
+    seed: int | None = None,
+    n_players: int | None = None,
+    neutral_pairs: int = 8,
+    max_steps: int = 100,
+    overage_time: float = 60.0,
+    stop_player: int | None = None,
+) -> Dict[str, Any]:
+    """Run a local SimGame match and stop early if `stop_player` is eliminated."""
+    players = int(n_players or len(agents))
+    if len(agents) != players:
+        raise ValueError(f"agent count ({len(agents)}) must match n_players ({players})")
+
+    game = SimGame.random_game(
+        seed=seed,
+        n_players=players,
+        neutral_pairs=neutral_pairs,
+        max_steps=max_steps,
+        overage_time=overage_time,
+    )
+    started = time.perf_counter()
+    stop_player = None if stop_player is None else int(stop_player)
+
+    while not game.is_terminal():
+        actions = {}
+        for player, agent in enumerate(agents):
+            obs = game.observation(player)
+            try:
+                move = agent(obs, None)
+            except TypeError:
+                move = agent(obs)
+            actions[player] = move if isinstance(move, list) else []
+        game.step(actions)
+        if stop_player is not None and stop_player not in game.alive_players():
+            break
+
+    elapsed = time.perf_counter() - started
+    return {
+        "winner": game.winner(),
+        "scores": game.scores(),
+        "steps": int(game.state.step),
+        "seconds": elapsed,
+        "steps_per_second": game.state.step / max(elapsed, 1e-9),
+        "final_state": game.observation(stop_player if stop_player is not None else 0),
+    }
 
 
 def _make_our_agent(
@@ -164,7 +212,13 @@ def _train_episode(
 
 def _eval_match(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, our_index: int, pool: Sequence[str], temperature: float = 0.0) -> Dict[str, Any]:
     agents, log_probs, action_records, opp_names = _build_agents(model, config, seed, our_index, temperature, pool)
-    result = run_match(agents, seed=seed, n_players=4, max_steps=int(config.get("max_turns", 100)))
+    result = run_match(
+        agents,
+        seed=seed,
+        n_players=4,
+        max_steps=int(config.get("max_turns", 100)),
+        stop_player=our_index,
+    )
     reward = _episode_reward(result, our_index)
     scores = result.get("scores", [])
     ordered = sorted(((float(score), idx) for idx, score in enumerate(scores)), reverse=True)
@@ -253,7 +307,13 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
         our_index = step % 4
         seed = int(config["seed"]) + step * 97
         agents, log_probs, action_records, opp_names = _build_agents(model, config, seed, our_index, temperature, pool)
-        result = run_match(agents, seed=seed, n_players=4, max_steps=int(config.get("max_turns", 100)))
+        result = run_match(
+            agents,
+            seed=seed,
+            n_players=4,
+            max_steps=int(config.get("max_turns", 100)),
+            stop_player=our_index,
+        )
         # Dense curriculum reward (annealed, actif uniquement en début d'entraînement)
         # On utilise l'état final du match comme approximation de next_state terminal
         final_state = result.get("final_state", {})

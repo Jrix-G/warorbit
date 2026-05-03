@@ -11,6 +11,7 @@ python scripts\run_90min_6agent_training.py
 ```
 
 Il lance par défaut un entraînement d'environ 90 minutes avec 6 workers en parallèle.
+La durée demandée est plafonnée à 8 heures maximum, même si `--duration-minutes` est plus grand.
 
 L'objectif n'est pas de garder le dernier modèle produit, mais de faire converger progressivement le meilleur modèle disponible :
 
@@ -32,6 +33,7 @@ Cette approche évite de dégrader le modèle en remplaçant le best par un cand
 Le runner force les paramètres importants suivants :
 
 - `duration_minutes = 90`
+  - plafond d'exécution: `480` minutes
 - `workers = 6`
 - `hidden_dim = 256`
 - `notebook_pool_limit = 15`

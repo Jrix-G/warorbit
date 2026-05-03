@@ -24,6 +24,12 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     assert out["train_notebook_opponents"] == 3
 
 
+def test_population_config_caps_duration_at_eight_hours():
+    cfg = {"checkpoint_dir": "x", "log_dir": "y", "seed": 42}
+    out = _prepare_population_config(cfg, 600.0, 6, 16)
+    assert out["duration_minutes"] == 480.0
+
+
 def test_population_model_parameter_budget_is_near_target():
     input_dim = 11 + 64 * 19 + 128 * 10 + 4 * 8
     model = NeuralNetworkModel(ModelConfig(input_dim=input_dim, hidden_dim=256))

@@ -13,6 +13,8 @@ PACKAGE_DIR = Path(__file__).resolve().parents[1]
 from neural_network.src.population_4p_training import run_population_4p_training
 from neural_network.src.utils import ensure_dir, load_json
 
+MAX_DURATION_MINUTES = 480.0
+
 
 def _resolve_path(value: str) -> str:
     path = Path(value)
@@ -38,7 +40,7 @@ def _load_config(path: str | None) -> dict:
 
 def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episodes: int) -> dict:
     cfg = dict(cfg)
-    cfg["duration_minutes"] = float(duration_minutes)
+    cfg["duration_minutes"] = min(float(duration_minutes), MAX_DURATION_MINUTES)
     cfg["workers"] = max(1, int(workers))
     cfg["hidden_dim"] = 256
     cfg["learning_rate"] = min(float(cfg.get("learning_rate", 0.0003)), 0.00025)
@@ -67,7 +69,7 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run 90 minutes of 4p population training with six neural agents.")
+    parser = argparse.ArgumentParser(description="Run up to 8 hours of 4p population training with six neural agents.")
     parser.add_argument("--config", default=None)
     parser.add_argument("--duration-minutes", type=float, default=90.0)
     parser.add_argument("--workers", type=int, default=6)

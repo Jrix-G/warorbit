@@ -1,0 +1,4 @@
+Resumed evaluations/v8_2_ranker_train_latest.npz generation=16 best_score=0.3250
+gen=0017 train=0.283 (2p 0.350/10 4p 0.250/20) eval=0.283 (2p 0.350 4p 0.250) best=0.325 grad=29.56 promo=0 elapsed_min=8.5
+gen=0018 train=0.317 (2p 0.458/12 4p 0.222/18) eval=0.317 (2p 0.458 4p 0.222) best=0.325 grad=47.91 promo=0 elapsed_min=16.5
+gen=0019 train=0.233 (2p 0.286/14 4p 0.188/16) eval=0.233 (2p 0.286 4p 0.188) best=0.325 grad=36.47 promo=0 elapsed_min=24.8

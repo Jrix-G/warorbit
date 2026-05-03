@@ -10,13 +10,14 @@ import numpy as np
 import torch
 
 from opponents import ZOO, training_pool
-from SimGame import run_match
 
 from .model import ModelConfig, NeuralNetworkModel, count_parameters, load_compatible_state_dict
-from .notebook_4p_training import _action_summary, _build_agents, _episode_reward, _infer_input_dim, _train_episode, evaluate_4p
+from .notebook_4p_training import _action_summary, _build_agents, _episode_reward, _infer_input_dim, _train_episode, evaluate_4p, run_match
 from .storage import append_jsonl, load_checkpoint, save_checkpoint
 from .torch_compat import ensure_torch_dynamo_stub
 from .utils import ensure_dir
+
+MAX_DURATION_MINUTES = 480.0
 
 
 def _checkpoint_to_load(config: Dict[str, Any], resume: bool) -> Path | None:
@@ -57,6 +58,7 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
     checkpoint_path = task.get("checkpoint_path")
     pool = list(task["pool"])
     train_steps = max(1, int(config.get("worker_train_steps", 4)))
+    deadline_epoch = float(task.get("deadline_epoch", 0.0))
 
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -70,6 +72,8 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
     last_record: Dict[str, Any] = {}
 
     for local_step in range(train_steps):
+        if deadline_epoch > 0.0 and time.time() >= deadline_epoch:
+            break
         absolute_step = generation * train_steps + local_step
         progress = absolute_step / max(1, int(config.get("train_steps", train_steps)) - 1)
         temperature = float(config.get("temperature_start", 1.2)) + (
@@ -116,12 +120,77 @@ def _evaluate_candidate(state: Dict[str, torch.Tensor], config: Dict[str, Any], 
     return evaluate_4p(model, config, pool, episodes=episodes, seed_offset=seed_offset)
 
 
+def _worker_evaluate_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
+    deadline_epoch = float(task.get("deadline_epoch", 0.0))
+    if deadline_epoch > 0.0 and time.time() >= deadline_epoch:
+        return {"worker_id": int(task["worker_id"]), "record": {"eval_mean": 0.0, "eval_std": 0.0, "winrate": 0.0, "winrate_by_position": {}, "rank_mean": 4.0, "avg_score": 0.0, "avg_episode_length": 0.0, "eval_action_count": 0.0, "eval_do_nothing_rate": 1.0, "eval_avg_ships_sent": 0.0, "seeds": []}}
+    return {
+        "worker_id": int(task["worker_id"]),
+        "record": _evaluate_candidate(
+            task["state"],
+            task["config"],
+            task["pool"],
+            int(task["episodes"]),
+            int(task["seed_offset"]),
+        ),
+    }
+
+
+def _run_parallel(tasks: List[Dict[str, Any]], workers: int, fn, label: str, started_at: float, deadline_epoch: float) -> List[Dict[str, Any]]:
+    if not tasks:
+        return []
+    if workers == 1:
+        if deadline_epoch > 0.0 and time.time() >= deadline_epoch:
+            return []
+        results = [fn(tasks[0])]
+        print(
+            f"{label} done 1/{len(tasks)} elapsed={(time.time() - started_at)/60.0:.1f}m",
+            flush=True,
+        )
+        return results
+
+    results: List[Dict[str, Any]] = []
+    ctx = mp.get_context("spawn")
+    with ctx.Pool(processes=min(workers, len(tasks))) as process_pool:
+        pending = [process_pool.apply_async(fn, (task,)) for task in tasks]
+        done = 0
+        while pending:
+            if deadline_epoch > 0.0 and time.time() >= deadline_epoch:
+                process_pool.terminate()
+                process_pool.join()
+                print(
+                    f"{label} hard_deadline_reached elapsed={(time.time() - started_at)/60.0:.1f}m",
+                    flush=True,
+                )
+                return results
+            newly_done = []
+            for idx, job in enumerate(pending):
+                if job.ready():
+                    try:
+                        results.append(job.get())
+                    except Exception:
+                        pass
+                    newly_done.append(idx)
+            if not newly_done:
+                time.sleep(0.2)
+                continue
+            for idx in reversed(newly_done):
+                pending.pop(idx)
+                done += 1
+                print(
+                    f"{label} done {done}/{len(tasks)} elapsed={(time.time() - started_at)/60.0:.1f}m",
+                    flush=True,
+                )
+    return results
+
+
 def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> Dict[str, Any]:
     cfg = dict(config)
     cfg["hidden_dim"] = int(cfg.get("hidden_dim", 256))
     cfg["train_notebook_opponents"] = int(cfg.get("train_notebook_opponents", 3))
     cfg["notebook_pool_limit"] = int(cfg.get("notebook_pool_limit", 15))
     cfg["notebook_pool_limit_max"] = int(cfg.get("notebook_pool_limit_max", cfg["notebook_pool_limit"]))
+    cfg["duration_minutes"] = min(float(cfg.get("duration_minutes", 90.0)), MAX_DURATION_MINUTES)
 
     checkpoint_dir = Path(cfg["checkpoint_dir"])
     log_dir = Path(cfg["log_dir"])
@@ -135,9 +204,10 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
 
     pool = _notebook_pool(int(cfg["notebook_pool_limit"]))
     workers = max(1, int(cfg.get("workers", 6)))
-    duration_seconds = max(1.0, float(cfg.get("duration_minutes", 90.0)) * 60.0)
+    duration_seconds = max(1.0, float(cfg["duration_minutes"]) * 60.0)
     eval_episodes = max(4, int(cfg.get("eval_episodes", 16)))
     started_at = time.time()
+    deadline_epoch = started_at + duration_seconds
     generation = 0
     base_checkpoint = _checkpoint_to_load(cfg, resume)
     best_score = -1e9
@@ -150,7 +220,15 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
     probe = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(cfg), hidden_dim=int(cfg["hidden_dim"])))
     parameter_count = count_parameters(probe)
 
-    while time.time() - started_at < duration_seconds:
+    while time.time() < deadline_epoch:
+        elapsed = time.time() - started_at
+        print(
+            f"generation {generation} start elapsed={elapsed/60.0:.1f}m "
+            f"best={best_score:.3f} pool={len(pool)} workers={workers}",
+            flush=True,
+        )
+        if time.time() >= deadline_epoch:
+            break
         checkpoint_str = str(base_checkpoint) if base_checkpoint else None
         tasks = [
             {
@@ -160,26 +238,40 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 "seed": int(cfg["seed"]) + generation * 100000 + worker_id * 4099,
                 "checkpoint_path": checkpoint_str,
                 "pool": pool,
+                "deadline_epoch": deadline_epoch,
             }
             for worker_id in range(workers)
         ]
 
-        if workers == 1:
-            candidates = [_worker_train_candidate(tasks[0])]
-        else:
-            ctx = mp.get_context("spawn")
-            with ctx.Pool(processes=workers) as process_pool:
-                candidates = process_pool.map(_worker_train_candidate, tasks)
+        candidates = _run_parallel(tasks, workers, _worker_train_candidate, f"generation {generation} train", started_at, deadline_epoch)
+        if not candidates:
+            print("hard stop: no completed training candidates before deadline", flush=True)
+            break
+
+        eval_tasks = [
+            {
+                "worker_id": int(candidate["worker_id"]),
+                "state": candidate["state"],
+                "config": cfg,
+                "pool": pool,
+                "episodes": eval_episodes,
+                "seed_offset": int(cfg["seed"]) + 50000 + generation * 1000 + int(candidate["worker_id"]) * 100,
+                "deadline_epoch": deadline_epoch,
+            }
+            for candidate in candidates
+        ]
+        eval_results = _run_parallel(eval_tasks, workers, _worker_evaluate_candidate, f"generation {generation} eval", started_at, deadline_epoch)
+        if not eval_results:
+            print("hard stop: no completed evaluation before deadline", flush=True)
+            break
 
         evaluated: List[Dict[str, Any]] = []
+        eval_by_worker = {int(item["worker_id"]): item["record"] for item in eval_results if "worker_id" in item and "record" in item}
         for candidate in candidates:
-            eval_stats = _evaluate_candidate(
-                candidate["state"],
-                cfg,
-                pool,
-                episodes=eval_episodes,
-                seed_offset=int(cfg["seed"]) + 50000 + generation * 1000 + int(candidate["worker_id"]) * 100,
-            )
+            if int(candidate["worker_id"]) not in eval_by_worker:
+                continue
+            eval_result = {"record": eval_by_worker[int(candidate["worker_id"])]}
+            eval_stats = eval_result["record"]
             score = float(eval_stats["winrate"])
             record = {
                 "generation": generation,
@@ -196,6 +288,9 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 "worker_last_record": candidate["last_record"],
             }
             evaluated.append({"record": record, "state": candidate["state"]})
+        if not evaluated:
+            print("hard stop: no candidate had completed eval record before deadline", flush=True)
+            break
 
         evaluated.sort(key=lambda item: (float(item["record"]["score"]), float(item["record"].get("eval_mean", 0.0))), reverse=True)
         generation_best = evaluated[0]
