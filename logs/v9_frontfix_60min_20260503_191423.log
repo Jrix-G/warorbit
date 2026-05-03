@@ -1,0 +1,53 @@
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+Starting V9 fresh dim=399
+V9 train start minutes=60.00 pairs=12 hard_timeout=60.00 games_per_eval=4 eval_games=16 train_opponents=15 eval_opponents=6 benchmark_opponents=5 workers=8 train_only=1
+V9 4p diag targets xfer>=0.30 bb>=0.15 lock>=0.90 fronts<=2.0
+V9 worker pool started workers=8
+gen=0001 train_pair_start
+gen=0001 pair=1/12
+gen=0001 pair=2/12
+gen=0001 pair=3/12
+gen=0001 pair=4/12
+gen=0001 pair=5/12
+gen=0001 pair=6/12
+gen=0001 pair=7/12
+gen=0001 pair=8/12
+gen=0001 pair=9/12
+gen=0001 pair=10/12
+gen=0001 pair=11/12
+gen=0001 pair=12/12
+gen=0001 train=0.521 (2p 0.750/16 4p 0.475/80) eval=0.521 (2p 0.750 4p 0.475) bench=0.000 best=-1.000 grad=31.39 promo=0 explore=0.05 div=1.16 4pdiag=WARN xfer=0.48/0.30+ bb=0.06/0.15+ lock=1.00/0.90+ fronts=3.2/2.0- front_adj=-0.061 elapsed_min=12.4
+gen=0002 train_pair_start
+gen=0002 pair=1/12
+gen=0002 pair=2/12
+gen=0002 pair=3/12
+gen=0002 pair=4/12
+gen=0002 pair=5/12
+gen=0002 pair=6/12
+gen=0002 pair=7/12
+gen=0002 pair=8/12
+gen=0002 pair=9/12
+gen=0002 pair=10/12
+gen=0002 pair=11/12
+gen=0002 pair=12/12
+gen=0002 train=0.594 (2p 0.250/8 4p 0.625/88) eval=0.594 (2p 0.250 4p 0.625) bench=0.000 best=-1.000 grad=31.60 promo=0 explore=0.04 div=1.07 4pdiag=WARN xfer=0.52/0.30+ bb=0.07/0.15+ lock=0.99/0.90+ fronts=3.4/2.0- front_adj=-0.080 elapsed_min=19.2
+gen=0003 train_pair_start
+gen=0003 pair=1/12
+gen=0003 pair=2/12
+gen=0003 pair=3/12
+gen=0003 pair=4/12
+gen=0003 pair=5/12
+gen=0003 pair=6/12
+gen=0003 pair=7/12
+gen=0003 pair=8/12
+gen=0003 pair=9/12
+gen=0003 pair=10/12
+gen=0003 pair=11/12
+gen=0003 pair=12/12
+gen=0003 train=0.510 (2p 0.750/24 4p 0.431/72) eval=0.510 (2p 0.750 4p 0.431) bench=0.000 best=-1.000 grad=30.09 promo=0 explore=0.04 div=1.17 4pdiag=WARN xfer=0.46/0.30+ bb=0.06/0.15+ lock=1.00/0.90+ fronts=3.3/2.0- front_adj=-0.072 elapsed_min=29.3
+gen=0004 train_pair_start
+gen=0004 pair=1/12
+gen=0004 pair=2/12
+gen=0004 pair=3/12
+gen=0004 pair=4/12
+gen=0004 pair=5/12

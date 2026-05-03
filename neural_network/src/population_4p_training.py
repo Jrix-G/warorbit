@@ -231,6 +231,16 @@ def _maybe_advance_curriculum(state: Dict[str, Any], tiers: Sequence[Dict[str, A
     )
 
 
+def _best_for_tier(state: Dict[str, Any], tier_name: str) -> float:
+    tier_scores = state.get("tier_best_scores", {})
+    if isinstance(tier_scores, dict) and tier_name in tier_scores:
+        try:
+            return float(tier_scores[tier_name])
+        except (TypeError, ValueError):
+            return -1e9
+    return -1e9
+
+
 def _write_curriculum_state(
     path: Path,
     state: Dict[str, Any],
@@ -457,29 +467,42 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
     generation = int(curriculum_state.get("total_generations", 0)) if resume else 0
     curriculum_state["total_generations"] = generation
     base_checkpoint = _checkpoint_to_load(cfg, resume)
-    best_score = -1e9
+    global_best_score = -1e9
+    tier_best_score = -1e9
     best_record: Dict[str, Any] = {}
 
     if base_checkpoint and base_checkpoint.exists():
         _, metadata = load_checkpoint(base_checkpoint)
         best_record = dict(metadata)
-        checkpoint_tier = metadata.get("curriculum_tier")
-        if not curriculum_enabled or checkpoint_tier in (None, current_tier.get("name")):
-            best_score = float(metadata.get("score", metadata.get("composite_score", metadata.get("winrate", metadata.get("best_score", -1e9)))))
+        try:
+            global_best_score = float(metadata.get("score", metadata.get("composite_score", metadata.get("winrate", metadata.get("best_score", -1e9)))))
+        except (TypeError, ValueError):
+            global_best_score = -1e9
+
+    tier_best_score = _best_for_tier(curriculum_state, str(current_tier.get("name")))
+    if tier_best_score < -1e8 and best_record:
+        checkpoint_tier = best_record.get("curriculum_tier")
+        if checkpoint_tier == current_tier.get("name"):
+            try:
+                tier_best_score = float(best_record.get("score", best_record.get("composite_score", best_record.get("winrate", -1e9))))
+            except (TypeError, ValueError):
+                tier_best_score = -1e9
 
     probe = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(cfg), hidden_dim=int(cfg["hidden_dim"])))
     parameter_count = count_parameters(probe)
-    _write_curriculum_state(curriculum_state_path, curriculum_state, current_tier, pool, best_score, best_record)
+    _write_curriculum_state(curriculum_state_path, curriculum_state, current_tier, pool, global_best_score, best_record)
 
     while time.time() < deadline_epoch:
         elapsed = time.time() - started_at
         current_tier = _current_tier(curriculum_state, tiers) if curriculum_enabled else current_tier
         pool = _tier_pool(cfg, current_tier) if curriculum_enabled else pool
+        tier_name = str(current_tier.get("name"))
+        tier_best_score = _best_for_tier(curriculum_state, tier_name) if curriculum_enabled else global_best_score
         tier_eval_default = min(eval_episodes, int(current_tier.get("candidate_eval_episodes", candidate_eval_episodes)))
         active_candidate_eval_episodes = max(4, int(cfg.get("candidate_eval_episodes", tier_eval_default)))
         print(
             f"generation {generation} start elapsed={elapsed/60.0:.1f}m "
-            f"best={best_score:.3f} tier={current_tier.get('name')} pool={len(pool)} "
+            f"global_best={global_best_score:.3f} tier_best={tier_best_score:.3f} tier={tier_name} pool={len(pool)} "
             f"workers={workers} eval_fast={active_candidate_eval_episodes}",
             flush=True,
         )
@@ -567,7 +590,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
         save_checkpoint(candidate_path, generation_best["state"], generation_best["record"])
         save_checkpoint(latest_path, generation_best["state"], generation_best["record"])
 
-        should_promote = _should_try_promotion(generation_best["record"], best_score, promotion_margin)
+        should_promote = _should_try_promotion(generation_best["record"], tier_best_score, promotion_margin)
         enough_time_for_confirmation = deadline_epoch - time.time() >= promotion_min_remaining_seconds
         if should_promote and enough_time_for_confirmation:
             preliminary_record = dict(generation_best["record"])
@@ -588,28 +611,30 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             generation_best["record"]["promotion_eval_episodes"] = promotion_eval_episodes
             generation_best["record"]["eval_phase"] = "confirmed"
 
-            if _should_try_promotion(generation_best["record"], best_score, promotion_margin):
-                best_score = float(generation_best["record"]["score"])
+            promoted_score = float(generation_best["record"]["score"])
+            if _should_try_promotion(generation_best["record"], tier_best_score, promotion_margin):
+                tier_best_score = promoted_score
+                curriculum_state.setdefault("tier_best_scores", {})[tier_name] = tier_best_score
                 generation_best["record"]["checkpoint_promoted"] = True
-                generation_best["record"]["promotion_reason"] = f"confirmed best composite score {best_score:.4f}"
-                best_record = dict(generation_best["record"])
-                save_checkpoint(best_path, generation_best["state"], generation_best["record"])
-                base_checkpoint = best_path
+                generation_best["record"]["promotion_reason"] = f"confirmed best composite score {tier_best_score:.4f}"
+                if promoted_score > global_best_score:
+                    global_best_score = promoted_score
+                    best_record = dict(generation_best["record"])
+                    save_checkpoint(best_path, generation_best["state"], generation_best["record"])
+                    base_checkpoint = best_path
+                else:
+                    base_checkpoint = latest_path if latest_path.exists() else base_checkpoint
             else:
                 generation_best["record"]["checkpoint_promoted"] = False
                 generation_best["record"]["promotion_reason"] = (
                     f"promotion rejected after confirmation "
-                    f"score {generation_best['record']['score']:.4f} < required {best_score + promotion_margin:.4f}"
+                    f"score {generation_best['record']['score']:.4f} < required {tier_best_score + promotion_margin:.4f}"
                 )
                 base_checkpoint = best_path if best_path.exists() else latest_path
         else:
             if should_promote:
                 generation_best["record"]["promotion_reason"] = "promotion skipped: not enough time for confirmation eval"
             base_checkpoint = best_path if best_path.exists() else latest_path
-
-        tier_scores = curriculum_state.setdefault("tier_best_scores", {})
-        if generation_best["record"].get("checkpoint_promoted"):
-            tier_scores[str(current_tier.get("name"))] = float(best_score)
 
         curriculum_state["total_generations"] = generation
         curriculum_state["tier_generation"] = int(curriculum_state.get("tier_generation", 0)) + 1
@@ -620,7 +645,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             if advanced:
                 next_tier = _current_tier(curriculum_state, tiers)
                 next_tier_name = str(next_tier.get("name"))
-                best_score = float(tier_scores.get(next_tier_name, -1e9))
+                tier_best_score = _best_for_tier(curriculum_state, next_tier_name)
                 current_tier = next_tier
                 pool = _tier_pool(cfg, current_tier)
                 base_checkpoint = best_path if best_path.exists() else latest_path
@@ -634,19 +659,19 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 item["record"].update(generation_best["record"])
             append_jsonl(log_path, item["record"])
 
-        _write_curriculum_state(curriculum_state_path, curriculum_state, current_tier, pool, best_score, best_record, generation_best["record"])
+        _write_curriculum_state(curriculum_state_path, curriculum_state, current_tier, pool, global_best_score, best_record, generation_best["record"])
 
         print(
-            f"generation {generation} best_score={generation_best['record']['score']:.3f} "
+            f"generation {generation} candidate_score={generation_best['record']['score']:.3f} "
             f"best_winrate={generation_best['record'].get('winrate', 0.0):.3f} "
-            f"tier_best={best_score:.3f} tier={current_tier.get('name')} "
+            f"global_best={global_best_score:.3f} tier_best={tier_best_score:.3f} tier={current_tier.get('name')} "
             f"params={parameter_count} pool={len(pool)}",
             flush=True,
         )
         generation += 1
 
     return {
-        "best_score": best_score,
+        "best_score": global_best_score,
         "best": str(best_path),
         "latest": str(latest_path),
         "candidate": str(candidate_path),
