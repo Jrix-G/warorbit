@@ -43,11 +43,13 @@ RUNNER=(
   --log-jsonl "$EVAL_DIR/v8_5_train_${STAMP}.jsonl"
 )
 
-if command -v cpulimit >/dev/null 2>&1; then
-  RUNNER=(cpulimit -f -l 80 -- "${RUNNER[@]}")
-elif command -v taskset >/dev/null 2>&1; then
-  RUNNER=(taskset -c 0 "${RUNNER[@]}")
+if ! command -v cpulimit >/dev/null 2>&1; then
+  echo "[VPS] cpulimit is required for the 80% CPU cap."
+  echo "[VPS] install it with: sudo apt-get update && sudo apt-get install -y cpulimit"
+  exit 1
 fi
+
+RUNNER=(cpulimit -f -l 80 -- "${RUNNER[@]}")
 
 echo "[VPS] starting | log=$LOG | pidfile=$PIDFILE"
 nohup nice -n 10 "${RUNNER[@]}" >"$LOG" 2>&1 < /dev/null &
