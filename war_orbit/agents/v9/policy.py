@@ -247,6 +247,7 @@ class V9Policy:
                 focus = metadata.get("focus_enemy_id")
                 if focus is not None and world.weakest_enemy_id is not None and int(focus) == int(world.weakest_enemy_id):
                     metadata_bonus += 0.05
+                metadata_bonus -= _off_focus_attack_penalty(world, candidate, attack_frac=float(attack), transfer_frac=float(transfer))
             if candidate.plan_type == "reserve_hold" and not world.threatened_candidates and not world.doomed_candidates:
                 safety -= 0.22
             if candidate.plan_type == "probe" and (world.is_late or finish_pressure > 0.8):
@@ -304,6 +305,40 @@ class V9Policy:
 
 def _dist_planets(a, b) -> float:
     return math.hypot(float(a.x) - float(b.x), float(a.y) - float(b.y))
+
+
+def _off_focus_attack_penalty(world, candidate: PlanCandidate, *, attack_frac: float, transfer_frac: float) -> float:
+    if not world.is_four_player or world.is_late or world.is_very_late:
+        return 0.0
+    metadata = candidate.metadata or {}
+    focus = metadata.get("focus_enemy_id")
+    if focus is None:
+        return 0.0
+    anchor = world.planet_by_id.get(int(metadata.get("front_anchor_id", -1)))
+    off_focus = 0
+    total_attacks = 0
+    for move in candidate.moves or []:
+        match = match_move_target(move, world)
+        if match is None:
+            continue
+        target, _eta = match
+        if target.owner in (-1, world.player):
+            continue
+        total_attacks += 1
+        if int(target.owner) == int(focus):
+            continue
+        near_anchor = anchor is not None and _dist_planets(anchor, target) <= 32.0 + float(anchor.radius) + float(target.radius)
+        if not near_anchor:
+            off_focus += 1
+    if off_focus <= 0:
+        return 0.0
+    frac = off_focus / max(1, total_attacks)
+    penalty = 0.30 + 0.42 * frac + 0.08 * off_focus
+    if attack_frac > 0.35 and transfer_frac < 0.22:
+        penalty += 0.16
+    if candidate.plan_type in ("opportunistic_snipe", "resource_denial", "delayed_strike", "multi_step_trap", "aggressive_expansion"):
+        penalty += 0.12
+    return penalty
 
 
 def _select_focus_enemy(world, current: Optional[int]) -> Optional[int]:
@@ -399,6 +434,9 @@ class V9Agent:
             max_moves_per_plan=self.config.max_moves_per_plan,
             focus_enemy_id=self.front_lock_owner,
             front_anchor_id=self.front_lock_anchor,
+            strict_single_target_4p=bool(getattr(self.config, "strict_single_target_4p", False)),
+            disable_snipe_4p=bool(getattr(self.config, "disable_snipe_4p", False)),
+            max_focus_targets_4p=int(getattr(self.config, "max_focus_targets_4p", 2)),
         ))
         candidates = planner.generate(world, self.rng)
         if not candidates:
@@ -480,7 +518,11 @@ class V9Agent:
         if world.is_four_player:
             stats["four_p_turns"] = stats.get("four_p_turns", 0.0) + 1.0
             stats["front_lock_turns"] = stats.get("front_lock_turns", 0.0) + (1.0 if self.front_lock_owner is not None else 0.0)
-            stats["active_front_sum"] = stats.get("active_front_sum", 0.0) + float(_active_front_count_runtime(world, self.front_lock_owner))
+            focused_fronts = float(_active_front_count_runtime(world, self.front_lock_owner))
+            global_fronts = float(_active_front_count_runtime(world, None))
+            stats["active_front_sum"] = stats.get("active_front_sum", 0.0) + focused_fronts
+            stats["focused_active_front_sum"] = stats.get("focused_active_front_sum", 0.0) + focused_fronts
+            stats["global_active_front_sum"] = stats.get("global_active_front_sum", 0.0) + global_fronts
         metadata = candidate.metadata or {}
         if metadata.get("backbone", 0.0):
             stats["backbone_turns"] = stats.get("backbone_turns", 0.0) + 1.0

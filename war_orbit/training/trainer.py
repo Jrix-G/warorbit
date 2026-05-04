@@ -127,6 +127,11 @@ def _selection_score(eval_summary: Dict[str, float], benchmark_summary: Dict[str
 
 def _should_promote(selection_score: float, best_score: float, eval_summary: Dict[str, float],
                     benchmark_summary: Dict[str, float], config: V9Config) -> bool:
+    return not _promotion_blockers(selection_score, best_score, eval_summary, benchmark_summary, config)
+
+
+def _promotion_blockers(selection_score: float, best_score: float, eval_summary: Dict[str, float],
+                        benchmark_summary: Dict[str, float], config: V9Config) -> list[str]:
     eval_score = float(eval_summary.get("mean", 0.0))
     benchmark_score = float(benchmark_summary.get("mean", 0.0))
     benchmark_games = int(benchmark_summary.get("n_2p", 0)) + int(benchmark_summary.get("n_4p", 0))
@@ -134,16 +139,24 @@ def _should_promote(selection_score: float, best_score: float, eval_summary: Dic
     benchmark_4p = float(benchmark_summary.get("wr_4p", 0.0))
     benchmark_bb = float(benchmark_summary.get("backbone_turn_frac", 0.0))
     benchmark_fronts = float(benchmark_summary.get("active_front_avg", 99.0))
-    return (
-        selection_score >= best_score + config.min_improvement
-        and benchmark_score >= config.min_benchmark_score
-        and benchmark_games >= config.min_promotion_benchmark_games
-        and gap <= config.max_generalization_gap
-        and gap <= float(getattr(config, "guardian_max_generalization_gap", config.max_generalization_gap))
-        and benchmark_4p >= float(getattr(config, "guardian_min_benchmark_4p", 0.0))
-        and benchmark_bb >= float(getattr(config, "guardian_min_benchmark_backbone", 0.0))
-        and benchmark_fronts <= float(getattr(config, "guardian_max_benchmark_fronts", 99.0))
-    )
+    blockers: list[str] = []
+    if selection_score < best_score + config.min_improvement:
+        blockers.append("score_not_improved")
+    if benchmark_score < config.min_benchmark_score:
+        blockers.append("benchmark_low")
+    if benchmark_games < config.min_promotion_benchmark_games:
+        blockers.append("benchmark_games_low")
+    if gap > config.max_generalization_gap:
+        blockers.append("gap_high")
+    if gap > float(getattr(config, "guardian_max_generalization_gap", config.max_generalization_gap)):
+        blockers.append("guardian_gap_high")
+    if benchmark_4p < float(getattr(config, "guardian_min_benchmark_4p", 0.0)):
+        blockers.append("bench4p_low")
+    if benchmark_bb < float(getattr(config, "guardian_min_benchmark_backbone", 0.0)):
+        blockers.append("bb_low")
+    if benchmark_fronts > float(getattr(config, "guardian_max_benchmark_fronts", 99.0)):
+        blockers.append("fronts_high")
+    return blockers
 
 
 def _is_generalization_failure(train_summary: Dict[str, float], eval_summary: Dict[str, float],
@@ -205,10 +218,22 @@ def _apply_guardian_adjustments(config: V9Config, train_summary: Dict[str, float
         changed = True
 
     if bench_4p < float(config.guardian_min_benchmark_4p):
-        config.four_player_ratio = min(0.90, float(config.four_player_ratio) + 0.02)
-        config.benchmark_four_player_ratio = min(0.90, float(config.benchmark_four_player_ratio) + 0.02)
+        config.four_player_ratio = min(1.0, max(float(config.four_player_ratio), float(config.four_player_ratio) + 0.02))
+        config.benchmark_four_player_ratio = min(1.0, max(float(config.benchmark_four_player_ratio), float(config.benchmark_four_player_ratio) + 0.02))
         config.candidate_diversity = min(1.75, float(config.candidate_diversity) + 0.04)
         event["four_p_fix"] = 1.0
+        changed = True
+
+    low_4p_streak = int(getattr(config, "_guardian_low_4p_streak", 0))
+    low_4p_streak = low_4p_streak + 1 if bench_4p < 0.30 else 0
+    setattr(config, "_guardian_low_4p_streak", low_4p_streak)
+    if low_4p_streak >= 2:
+        config.strict_single_target_4p = True
+        config.disable_snipe_4p = True
+        config.max_focus_targets_4p = 1
+        config.front_pressure_attack_penalty = min(0.24, float(config.front_pressure_attack_penalty) + 0.012)
+        event["strict_focus_fix"] = 1.0
+        event["low_4p_streak"] = float(low_4p_streak)
         changed = True
 
     if gap > float(config.guardian_max_generalization_gap):
@@ -229,6 +254,9 @@ def _apply_guardian_adjustments(config: V9Config, train_summary: Dict[str, float
         "backbone_penalty_weight": float(config.backbone_penalty_weight),
         "backbone_bonus_weight": float(config.backbone_bonus_weight),
         "front_pressure_plan_bias": float(config.front_pressure_plan_bias),
+        "strict_single_target_4p": 1.0 if bool(getattr(config, "strict_single_target_4p", False)) else 0.0,
+        "disable_snipe_4p": 1.0 if bool(getattr(config, "disable_snipe_4p", False)) else 0.0,
+        "max_focus_targets_4p": float(getattr(config, "max_focus_targets_4p", 2)),
     })
     return event
 
@@ -411,6 +439,7 @@ class V9Trainer:
                 benchmark_summary = {"mean": 0.0, "wr_2p": 0.0, "wr_4p": 0.0, "n_2p": 0, "n_4p": 0}
                 selection_score = float(train_summary["mean"]) if self.config.train_only else 0.0
                 promoted = False
+                promotion_blockers: list[str] = ["train_only"] if self.config.train_only else []
                 guardian_event: Dict[str, float | str] = {"event": "not_run"}
                 if self.config.train_only:
                     scheduler.update(float(train_summary["mean"]))
@@ -452,6 +481,7 @@ class V9Trainer:
                         )
                         benchmark_summary = summarise_results(benchmark_results)
                     selection_score = _selection_score(eval_summary, benchmark_summary, self.config)
+                    promotion_blockers = _promotion_blockers(selection_score, self.best_score, eval_summary, benchmark_summary, self.config)
                     if _should_promote(selection_score, self.best_score, eval_summary, benchmark_summary, self.config):
                         self.best_score = float(selection_score)
                         promoted = True
@@ -523,6 +553,7 @@ class V9Trainer:
                     "benchmark_2p": float(benchmark_summary["wr_2p"]),
                     "benchmark_4p": float(benchmark_summary["wr_4p"]),
                     "selection_score": float(selection_score),
+                    "promotion_blockers": list(promotion_blockers),
                     "generalization_gap": float(eval_summary["mean"] - benchmark_summary["mean"]),
                     "best": float(self.best_score),
                     "grad_norm": grad_norm,
@@ -537,13 +568,19 @@ class V9Trainer:
                     "train_front_lock_turn_frac": float(train_summary.get("front_lock_turn_frac", 0.0)),
                     "train_staged_finisher_turn_frac": float(train_summary.get("staged_finisher_turn_frac", 0.0)),
                     "train_active_front_avg": float(train_summary.get("active_front_avg", 0.0)),
+                    "train_focused_front_avg": float(train_summary.get("focused_front_avg", train_summary.get("active_front_avg", 0.0))),
+                    "train_global_front_avg": float(train_summary.get("global_front_avg", train_summary.get("active_front_avg", 0.0))),
                     "train_front_pressure_adjustment": float(_front_pressure_adjustment(train_summary, self.config)),
                     "eval_transfer_move_frac": float(eval_summary.get("transfer_move_frac", 0.0)),
                     "eval_backbone_turn_frac": float(eval_summary.get("backbone_turn_frac", 0.0)),
                     "eval_front_lock_turn_frac": float(eval_summary.get("front_lock_turn_frac", 0.0)),
+                    "eval_focused_front_avg": float(eval_summary.get("focused_front_avg", eval_summary.get("active_front_avg", 0.0))),
+                    "eval_global_front_avg": float(eval_summary.get("global_front_avg", eval_summary.get("active_front_avg", 0.0))),
                     "benchmark_transfer_move_frac": float(benchmark_summary.get("transfer_move_frac", 0.0)),
                     "benchmark_backbone_turn_frac": float(benchmark_summary.get("backbone_turn_frac", 0.0)),
                     "benchmark_front_lock_turn_frac": float(benchmark_summary.get("front_lock_turn_frac", 0.0)),
+                    "benchmark_focused_front_avg": float(benchmark_summary.get("focused_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
+                    "benchmark_global_front_avg": float(benchmark_summary.get("global_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
                     "train_4p_diag": _four_p_diag(train_summary),
                     "eval_4p_diag": _four_p_diag(eval_summary),
                     "benchmark_4p_diag": _four_p_diag(benchmark_summary),
@@ -555,8 +592,11 @@ class V9Trainer:
                     f"train={train_summary['mean']:.3f} (2p {train_summary['wr_2p']:.3f}/{train_summary['n_2p']} "
                     f"4p {train_summary['wr_4p']:.3f}/{train_summary['n_4p']}) "
                     f"eval={eval_summary['mean']:.3f} (2p {eval_summary['wr_2p']:.3f} 4p {eval_summary['wr_4p']:.3f}) "
-                    f"bench={benchmark_summary['mean']:.3f} "
+                    f"bench={benchmark_summary['mean']:.3f} (2p {benchmark_summary['wr_2p']:.3f}/{benchmark_summary['n_2p']} "
+                    f"4p {benchmark_summary['wr_4p']:.3f}/{benchmark_summary['n_4p']}) "
+                    f"sel={selection_score:.3f} gap={eval_summary['mean'] - benchmark_summary['mean']:.3f} "
                     f"best={self.best_score:.3f} grad={grad_norm:.2f} promo={int(promoted)} "
+                    f"block={','.join(promotion_blockers) or '-'} "
                     f"explore={state.exploration_rate:.2f} div={state.candidate_diversity:.2f} "
                     f"{_format_four_p_diag(train_summary)} "
                     f"front_adj={_front_pressure_adjustment(train_summary, self.config):+.3f} "

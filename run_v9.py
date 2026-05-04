@@ -68,6 +68,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--guardian-max-benchmark-fronts", type=float, default=2.70)
     parser.add_argument("--guardian-max-generalization-gap", type=float, default=0.18)
     parser.add_argument("--export-best-on-finish", type=int, default=1)
+    parser.add_argument("--strict-single-target-4p", type=int, default=0)
+    parser.add_argument("--disable-snipe-4p", type=int, default=0)
+    parser.add_argument("--max-focus-targets-4p", type=int, default=2)
     parser.add_argument("--exploration-rate", type=float, default=0.08)
     parser.add_argument("--confidence-l2", type=float, default=0.0025)
     parser.add_argument("--reward-noise", type=float, default=0.015)
@@ -142,6 +145,9 @@ def main() -> None:
         guardian_max_benchmark_fronts=args.guardian_max_benchmark_fronts,
         guardian_max_generalization_gap=args.guardian_max_generalization_gap,
         export_best_on_finish=bool(args.export_best_on_finish),
+        strict_single_target_4p=bool(args.strict_single_target_4p),
+        disable_snipe_4p=bool(args.disable_snipe_4p),
+        max_focus_targets_4p=args.max_focus_targets_4p,
     )
     if args.opponents:
         config.training_opponents = list(args.opponents)

@@ -321,5 +321,7 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
         "staged_finisher_turn_frac": float(stat_totals.get("staged_finisher_turns", 0.0)) / total_turns,
         "consolidation_threshold_turn_frac": float(stat_totals.get("consolidation_threshold_turns", 0.0)) / total_turns,
         "active_front_avg": float(stat_totals.get("active_front_sum", 0.0)) / four_p_turns,
+        "focused_front_avg": float(stat_totals.get("focused_active_front_sum", stat_totals.get("active_front_sum", 0.0))) / four_p_turns,
+        "global_front_avg": float(stat_totals.get("global_active_front_sum", stat_totals.get("active_front_sum", 0.0))) / four_p_turns,
         "focus_switches": float(stat_totals.get("focus_switches", 0.0)) / max(1.0, len(results)),
     }

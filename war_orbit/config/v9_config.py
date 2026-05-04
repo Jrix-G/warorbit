@@ -68,6 +68,9 @@ class V9Config:
     guardian_max_benchmark_fronts: float = 2.70
     guardian_max_generalization_gap: float = 0.18
     export_best_on_finish: bool = True
+    strict_single_target_4p: bool = False
+    disable_snipe_4p: bool = False
+    max_focus_targets_4p: int = 2
     stagnation_window: int = 4
     min_improvement: float = 0.015
     min_benchmark_score: float = 0.15
@@ -156,6 +159,9 @@ class V9Config:
             "guardian_max_benchmark_fronts",
             "guardian_max_generalization_gap",
             "export_best_on_finish",
+            "strict_single_target_4p",
+            "disable_snipe_4p",
+            "max_focus_targets_4p",
             "seed",
         }
         data = asdict(self)

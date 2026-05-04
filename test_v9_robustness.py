@@ -7,6 +7,7 @@ from war_orbit.training.trainer import (
     _apply_guardian_adjustments,
     _is_generalization_failure,
     _partial_reset,
+    _promotion_blockers,
     _selection_score,
     _should_promote,
 )
@@ -65,6 +66,7 @@ def test_promotion_requires_heldout_4p_backbone_and_front_quality():
     }
     strong_diag = dict(weak_diag, backbone_turn_frac=0.10, active_front_avg=2.1)
     assert not _should_promote(0.45, -1.0, eval_summary, weak_diag, cfg)
+    assert "bb_low" in _promotion_blockers(0.45, -1.0, eval_summary, weak_diag, cfg)
     assert _should_promote(0.45, -1.0, eval_summary, strong_diag, cfg)
 
 
@@ -121,4 +123,24 @@ def test_cross_play_specs_rotate_slots_and_preserve_phase():
     )
     assert {s.phase for s in specs} == {"eval"}
     assert {s.our_index for s in specs} >= {0, 1, 2, 3}
-    assert {s.n_players for s in specs} == {2, 4}
+    assert {s.n_players for s in specs} == {4}
+
+
+def test_guardian_enables_strict_focus_after_repeated_low_4p():
+    cfg = V9Config()
+    train = {"mean": 0.55, "backbone_turn_frac": 0.15}
+    eval_summary = {"mean": 0.52}
+    benchmark = {
+        "mean": 0.32,
+        "wr_4p": 0.27,
+        "n_2p": 0,
+        "n_4p": 12,
+        "backbone_turn_frac": 0.10,
+        "active_front_avg": 2.0,
+    }
+    _apply_guardian_adjustments(cfg, train, eval_summary, benchmark)
+    event = _apply_guardian_adjustments(cfg, train, eval_summary, benchmark)
+    assert event["strict_focus_fix"] == 1.0
+    assert cfg.strict_single_target_4p
+    assert cfg.disable_snipe_4p
+    assert cfg.max_focus_targets_4p == 1

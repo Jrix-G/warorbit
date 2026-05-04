@@ -1,378 +1,253 @@
 # War Orbit V9 Architecture
 
-Date: 2026-05-03
+Date: 2026-05-04
 
-V9 remplace l'approche V8.5 "ranker sur plans limites" par une politique plus
-robuste: generation de candidats strategiquement differents, scoring hybride,
-evaluation separee et adaptation automatique quand le benchmark externe ne suit
-pas l'eval interne.
+V9 est le bot experimental robuste de War Orbit. Il remplace l'approche V8.5
+"ranker sur plans limites" par une politique de plans strategiques, un scoring
+hybride, une evaluation separee train/eval/benchmark et un guardian 4p qui
+refuse les promotions faibles meme quand le train parait bon.
 
-Le but prioritaire n'est pas d'augmenter le score train. Le but est que
-l'evaluation interne correle avec le benchmark et que le bot ne s'effondre pas
-contre des adversaires notebooks non vus.
+Le but prioritaire n'est pas de maximiser le train. Le but est de produire un
+checkpoint qui tient en 4p contre des notebooks forts non vus, sans dispersion
+multi-fronts.
 
-## 1. Diagnostic qui a motive V9
+## 1. Diagnostic V9
 
-Symptomes observes:
+Les runs precedents montraient le meme pattern:
 
-- train monte vite jusqu'a 0.85-1.00;
-- eval interne peut rester tres haute;
-- benchmark externe peut tomber autour de 0.00-0.31;
-- en 4p, les pertes arrivent surtout par dispersion multi-fronts et manque de
-  consolidation avant la finition.
+- train/eval pouvaient monter vite;
+- le benchmark externe restait faible;
+- en 4p, le bot faisait beaucoup de transferts et gardait un focus logique;
+- pourtant il restait expose sur trop de fronts et ne convertissait pas assez en
+  victoires.
 
-Conclusion: le pipeline apprenait des comportements gagnants contre son petit
-pool, mais pas des strategies robustes contre des styles forts.
+Conclusion: `lock` ne suffit pas. Un lock d'ennemi doit aussi contraindre les
+moves reels: attaques, snipes, denial et finisher doivent rester compatibles avec
+le front anchor.
 
-V9 traite donc train, eval et benchmark comme trois distributions separees.
-Une promotion n'est acceptee que si le benchmark est suffisant et si l'ecart
-eval-benchmark reste sous controle.
-
-## 2. Structure de code
+## 2. Fichiers principaux
 
 ```text
-war_orbit/
-  agents/v9/
-    planner.py        # candidats strategiques et simulation de plans
-    evaluator.py      # extraction des features et evaluation locale
-    policy.py         # scoring hybride, lock 4p, diagnostics d'action
-    adaptation.py     # reaction stagnation / generalization failure
-  config/
-    v9_config.py      # hyperparametres, pools, timeouts, checkpoints
-  evaluation/
-    benchmark.py      # benchmark final et logs par adversaire
-  features/
-    state_features.py
-    plan_features.py
-  optimization/
-    search.py
-    tuning.py
-  training/
-    curriculum.py     # pools train/eval/benchmark et cross-play
-    self_play.py      # execution des matchs et agregation des stats
-    trainer.py        # boucle ES, promotion, sauvegarde, logs
-run_v9.py             # entree unique training + evaluation
-bot_v9.py             # wrapper agent
+bot_v9.py                         # wrapper public de l'agent V9
+run_v9.py                         # entree training/eval/benchmark
+war_orbit/config/v9_config.py     # hyperparametres et flags guardian
+war_orbit/agents/v9/planner.py    # generation de plans
+war_orbit/agents/v9/policy.py     # scoring, lock 4p, diagnostics runtime
+war_orbit/training/curriculum.py  # schedules train/eval/benchmark
+war_orbit/training/self_play.py   # execution et agregation des stats
+war_orbit/training/trainer.py     # ES, promotion, guardian, logs JSONL
+war_orbit/evaluation/benchmark.py # benchmark separe
 ```
 
-## 3. Separation train / eval / benchmark
+## 3. Train, eval, benchmark
 
-Les pools sont separes dans `war_orbit/config/v9_config.py`.
+Les pools sont separes dans `V9Config`:
 
-- `training_opponents`: adversaires de shaping, bruit, bots simples, V7 et
-  notebooks d'entrainement.
-- `eval_opponents`: adversaires held-out utilises pour verifier la progression
-  sans fuite directe depuis train.
-- `benchmark_opponents`: pool dur, principalement notebooks forts et combos 4p.
+- `training_opponents`: shaping et apprentissage;
+- `eval_opponents`: held-out interne;
+- `benchmark_opponents`: pool dur notebooks, utilise pour promotion.
 
-Le benchmark par defaut est maintenant a 128 parties:
+La promotion ne depend pas du train. Elle utilise:
 
 ```text
-benchmark_games = 128
-min_promotion_benchmark_games = 128
-opponent_pool_limit = 15
-four_player_ratio = 0.80
-benchmark_four_player_ratio = 0.80
+selection_score = min(eval_mean, benchmark_mean) + ajustement 4p
 ```
 
-Une generation peut donc etre lente. Le timeout dur garantit quand meme une
-sauvegarde propre a 60 minutes maximum.
-
-## 4. Tactiques V9 4p ajoutees
-
-### 4p backbone
-
-Plan: `v9_4p_backbone`
-
-Objectif: reproduire ce que les bons agents 4p font naturellement: beaucoup de
-transferts ami -> ami pour construire une colonne centrale et eviter de tout
-envoyer depuis des planetes faibles.
-
-Signal attendu dans les logs:
+Et elle exige:
 
 ```text
-bb >= 0.15
+selection_score >= best_score + min_improvement
+benchmark_mean >= min_benchmark_score
+benchmark_games >= min_promotion_benchmark_games
+eval_mean - benchmark_mean <= max_generalization_gap
+eval_mean - benchmark_mean <= guardian_max_generalization_gap
+benchmark_4p >= guardian_min_benchmark_4p
+benchmark_backbone >= guardian_min_benchmark_backbone
+benchmark_fronts <= guardian_max_benchmark_fronts
+```
+
+Depuis le patch du 2026-05-04, si `four_player_ratio >= 1.0` dans
+`build_cross_play_specs`, le schedule est vraiment 4p-only. Avant, le benchmark
+commencait toujours par des matchs 2p, ce qui rendait `bench=...` trop optimiste
+sur les runs guardian.
+
+## 4. Tactiques 4p
+
+### Backbone
+
+Plan: `v9_4p_backbone`.
+
+Il transfere des ships ami -> ami vers une colonne/front central. Cible:
+
+```text
 xfer >= 0.30
+bb >= 0.15
 ```
 
-### Single front lock
+### Front lock
 
-La politique choisit un ennemi focus et un front anchor, puis garde ce focus
-pendant `front_lock_turns` tours, par defaut 24.
-
-Objectif: ne pas alterner entre trois ennemis en 4p. On veut finir ou neutraliser
-un front avant d'en ouvrir un autre.
-
-Signal attendu:
+V9 choisit un `focus_enemy_id` et un `front_anchor_id`, puis garde ce focus
+pendant `front_lock_turns` tours. Cible:
 
 ```text
 lock >= 0.90
 fronts <= 2.0
 ```
 
-### Consolidation threshold
+Le patch du 2026-05-04 ajoute une penalite dure en midgame 4p si un candidat
+attaque un ennemi hors focus et loin du front anchor. Cela corrige le cas
+`lock=0.99` mais `fronts=3.6`.
 
-Plan: `v9_front_lock_consolidation`
+### Consolidation
 
-Objectif: si le reseau possede trop de planetes fragiles, trop peu de garrison
-ou trop de fronts actifs, V9 privilegie les transferts, la defense locale et la
-construction du hub avant une attaque.
+Plans: `v9_front_lock_consolidation`, `v9_defensive_consolidation`,
+`v9_reserve_hold`.
 
-Ce point corrige le comportement observe ou le bot semblait "gagner" localement
-mais se faisait ensuite etouffer par deux adversaires forts.
+Ils renforcent les planetes menacees et transferent vers le front avant de
+continuer l'attaque.
+
+### Resource denial
+
+Plan: `v9_resource_denial`.
+
+En 4p midgame, il est maintenant limite aux cibles du focus enemy, proches du
+front anchor. Sous forte pression ou en mode strict, il vise une seule cible.
+
+### Opportunistic snipe
+
+Plan: `v9_opportunistic_snipe`.
+
+En 4p midgame, il ne snipe plus globalement. Il doit rester sur le focus enemy ou
+pres du front anchor. Le guardian peut aussi le desactiver via
+`disable_snipe_4p`.
 
 ### Staged finisher
 
-Plan: `v9_staged_finisher`
+Plan: `v9_staged_finisher`.
 
-Objectif: terminer un adversaire faible sans all-in premature. Le plan stage
-d'abord vers le front, puis engage seulement quand le lead ships/prod et le
-timing sont suffisants.
+Quand l'ennemi focus est affaibli, le plan passe plus vite de staging a capture:
+moins de transferts supplementaires, plus de sources de front, plus d'agression.
 
-Garde-fou actuel: pas de finisher trop tot sauf lead clair apres le midgame.
+## 5. Guardian strict focus
 
-### Denial et delayed strike focus
+Le guardian ajuste les poids et les flags quand le benchmark ne suit pas.
 
-Les plans `v9_resource_denial`, `v9_delayed_strike`, `v9_deep_staging` et les
-finishers utilisent maintenant le meme focus enemy/front anchor. Ils doivent
-donc produire des attaques compatibles avec la consolidation, pas des coups
-opportunistes disperses.
+Si `benchmark_4p < guardian_min_benchmark_4p`, il augmente la pression 4p sans
+reduire un run deja configure a `four_player_ratio=1.0`.
 
-## 5. Scoring et anti-overfitting
-
-V9 ne s'appuie pas seulement sur un score lineaire.
-
-Le choix final combine:
-
-- score de base du plan;
-- features d'etat et de plan;
-- bonus metadata pour `backbone`, `front_lock`, `consolidation_threshold` et
-  `staged_finisher`;
-- penalites pour attaque dispersee en 4p midgame;
-- simulation multi-step selon les parametres runtime;
-- bruit et regularisation pendant training.
-
-Pendant training, le score est regularise:
-
-- penalite L2 contre exces de confiance;
-- penalite si l'entropie de plans est trop faible;
-- penalite si un plan dominant prend trop de place;
-- reward noise pour eviter la memorisation exacte des seeds.
-
-## 6. Adaptation automatique
-
-La boucle detecte deux problemes differents:
-
-- stagnation: pas de progression recente;
-- generalization failure: train/eval hauts mais benchmark bas.
-
-En cas de generalization failure, V9:
-
-- augmente l'exploration;
-- augmente la diversite candidats;
-- pousse les familles `staging_transfer` et `defensive_consolidation`;
-- applique un reset partiel des poids vers les defaults;
-- refuse de promouvoir le checkpoint tant que le benchmark ne confirme pas.
-
-Critere de promotion:
+Si `benchmark_4p < 0.30` pendant au moins deux generations, il active:
 
 ```text
-selection_score = min(eval_mean, benchmark_mean)
-benchmark_mean >= min_benchmark_score
-benchmark_games >= min_promotion_benchmark_games
-eval_mean - benchmark_mean <= max_generalization_gap
+strict_single_target_4p = True
+disable_snipe_4p = True
+max_focus_targets_4p = 1
 ```
 
-## 7. Logs V9
+Effet:
 
-Au demarrage, V9 affiche les cibles 4p:
+- `resource_denial` ne disperse plus sur plusieurs cibles;
+- `opportunistic_snipe` est coupe en midgame 4p;
+- la policy penalise plus fortement les attaques hors focus.
 
-```text
-V9 4p diag targets xfer>=0.30 bb>=0.15 lock>=0.90 fronts<=2.0
+Ces flags sont exposables depuis `run_v9.py`:
+
+```bash
+--strict-single-target-4p 1
+--disable-snipe-4p 1
+--max-focus-targets-4p 1
 ```
 
-Chaque generation affiche maintenant un diagnostic lisible:
+## 6. Logs
+
+La ligne de generation affiche maintenant le benchmark decompose:
 
 ```text
-gen=0004 train=0.900 (...) eval=0.750 (...) bench=0.312 best=1.000
-grad=46.54 promo=0 explore=0.15 div=1.39
-4pdiag=WARN xfer=0.34/0.30+ bb=0.29/0.15+ lock=1.00/0.90+ fronts=3.5/2.0-
-elapsed_min=13.6
+bench=0.417 (2p 0.833/6 4p 0.278/18) sel=0.385 gap=0.166
+promo=0 block=bench4p_low
+```
+
+Les raisons possibles de refus de promotion sont:
+
+```text
+score_not_improved
+benchmark_low
+benchmark_games_low
+gap_high
+guardian_gap_high
+bench4p_low
+bb_low
+fronts_high
+```
+
+Le diagnostic 4p reste:
+
+```text
+4pdiag=OK|WARN xfer=.../0.30+ bb=.../0.15+ lock=.../0.90+ fronts=.../2.0-
 ```
 
 Lecture:
 
-- `xfer`: part des moves qui sont des transferts ami -> ami.
-- `bb`: part des tours ou un plan backbone/staging 4p est actif.
-- `lock`: part des tours 4p avec un focus enemy/front lock actif.
-- `fronts`: nombre moyen de fronts actifs.
-- `OK`: les quatre cibles sont respectees.
-- `WARN`: au moins une cible est hors zone.
+- `xfer < 0.30`: pas assez de transferts/consolidation;
+- `bb < 0.15`: backbone pas assez actif;
+- `lock < 0.90`: focus instable;
+- `fronts > 2.0`: dispersion tactique encore trop forte.
 
-Interpretation directe:
-
-- `xfer < 0.30`: le bot attaque trop directement, pas assez de consolidation.
-- `bb < 0.15`: le backbone 4p n'est pas assez choisi.
-- `lock < 0.90`: le focus change trop souvent ou ne s'active pas.
-- `fronts > 2.0`: le bot se disperse encore en multi-front.
-
-Ces diagnostics sont aussi ecrits dans le JSONL:
+Le JSONL contient aussi:
 
 ```text
-evaluations/v9_robust_train.jsonl
+train_focused_front_avg
+train_global_front_avg
+eval_focused_front_avg
+eval_global_front_avg
+benchmark_focused_front_avg
+benchmark_global_front_avg
+promotion_blockers
+guardian.strict_single_target_4p
+guardian.disable_snipe_4p
+guardian.max_focus_targets_4p
 ```
 
-Champs importants:
+`focused_front_avg` mesure les fronts contre le focus. `global_front_avg` mesure
+l'exposition contre tous les ennemis. Si focused est bon mais global reste haut,
+le bot est encore vulnerable aux adversaires non-focus.
 
-- `train_4p_diag`
-- `eval_4p_diag`
-- `benchmark_4p_diag`
-- `train_transfer_move_frac`
-- `train_backbone_turn_frac`
-- `train_front_lock_turn_frac`
-- `train_active_front_avg`
-- `benchmark_mean`
-- `generalization_gap`
-- `stop_reason`
+## 7. Commandes
 
-## 8. Commande run 1h
-
-Commande recommandee pour un run local exploitable en 1h:
+Run guardian 4p local:
 
 ```powershell
-python .\run_v9.py --minutes 60 --hard-timeout-minutes 60 --pairs 5 --games-per-eval 2 --eval-games 32 --benchmark-games 16 --min-promotion-benchmark-games 16 --benchmark-progress-every 1 --max-steps 160 --eval-max-steps 220 --four-player-ratio 0.80 --pool-limit 15
+.\run_v9_4p_guardian_8h.ps1
 ```
 
-Notes:
-
-- `--hard-timeout-minutes 60` coupe quoi qu'il arrive autour de 1h et sauvegarde
-  `latest` + `export_checkpoint`.
-- V9 execute actuellement les matchs en sequence. Avec `--benchmark-games 128`
-  et `benchmark_four_player_ratio=0.80`, le premier benchmark peut consommer
-  l'heure entiere sur Windows/local CPU.
-- `--benchmark-progress-every 1` affiche une ligne apres chaque partie benchmark
-  terminee.
-- Si le timeout arrive pendant l'evaluation, le script sauvegarde le dernier
-  etat connu et peut sauter l'eval finale.
-
-Benchmark complet 128 parties, a lancer separement quand on veut une mesure plus
-stable:
+Equivalent Python:
 
 ```powershell
-python .\run_v9.py --skip-training --benchmark-games 128 --benchmark-progress-every 1 --workers 8 --eval-max-steps 220 --four-player-ratio 0.80 --pool-limit 15
+python .\run_v9.py --minutes 480 --hard-timeout-minutes 480 --workers 8 --pairs 8 --games-per-eval 3 --eval-games 12 --benchmark-games 24 --min-promotion-benchmark-games 24 --benchmark-progress-every 4 --eval-every 1 --benchmark-every 1 --max-steps 120 --eval-max-steps 220 --four-player-ratio 1.0 --eval-four-player-ratio 1.0 --benchmark-four-player-ratio 1.0 --train-search-width 3 --train-simulation-depth 0 --train-simulation-rollouts 0 --train-opponent-samples 1 --front-lock-turns 22 --target-active-fronts 2.0 --target-backbone-turn-frac 0.15 --front-penalty-weight 0.055 --front-penalty-cap 0.12 --front-ok-bonus 0.070 --front-partial-bonus 0.035 --backbone-penalty-weight 0.120 --backbone-bonus-weight 0.100 --front-pressure-plan-bias 0.16 --front-pressure-attack-penalty 0.14 --guardian-enabled 1 --guardian-min-benchmark-4p 0.42 --guardian-min-benchmark-backbone 0.08 --guardian-max-benchmark-fronts 2.70 --guardian-max-generalization-gap 0.18 --export-best-on-finish 1 --min-benchmark-score 0.35 --max-generalization-gap 0.18 --exploration-rate 0.08 --reward-noise 0.008 --pool-limit 15
 ```
 
-### Mode volume pur
-
-Pour produire beaucoup plus d'updates en 1h, il faut separer apprentissage et
-validation. Cette commande desactive eval/benchmark pendant le run, reduit les
-parties train et lance les matchs en parallele:
+Benchmark separe 4p pur:
 
 ```powershell
-python .\run_v9.py --minutes 60 --hard-timeout-minutes 60 --train-only --workers 8 --pairs 24 --games-per-eval 8 --max-steps 80 --four-player-ratio 0.80 --train-search-width 3 --train-simulation-depth 0 --train-simulation-rollouts 0 --front-lock-turns 15 --train-opponents random noisy_greedy greedy starter distance sun_dodge structured --no-resume --checkpoint evaluations\v9_volume_latest.npz --best-checkpoint evaluations\v9_volume_best.npz --export-checkpoint evaluations\v9_volume_policy.npz --log-jsonl evaluations\v9_volume_train.jsonl
+python .\run_v9.py --skip-training --benchmark-games 128 --benchmark-progress-every 1 --workers 8 --eval-max-steps 220 --benchmark-four-player-ratio 1.0 --four-player-ratio 1.0 --pool-limit 15
 ```
 
-Lecture:
-
-- `--train-only`: aucune evaluation couteuse dans la boucle.
-- `--workers 8`: parties executees en parallele.
-- `--pairs 24 --games-per-eval 8`: 384 parties train par generation.
-- `--max-steps 80`: signal court, beaucoup plus de parties par heure.
-- `--train-opponents ...`: adversaires legers locaux; les notebooks sont gardes
-  pour le benchmark separe.
-
-Ce mode sert a apprendre vite, pas a juger le bot. Apres le run volume:
+Validation:
 
 ```powershell
-python .\run_v9.py --skip-training --export-checkpoint evaluations\v9_volume_policy.npz --benchmark-games 128 --benchmark-progress-every 1 --workers 8 --eval-max-steps 220 --four-player-ratio 0.80 --pool-limit 15
+python -m compileall -q war_orbit run_v9.py
+python -m pytest test_v9_robustness.py test_v9_smoke.py -q
 ```
 
-## 8b. Mode VPS
-
-Quand on lance V9 sur un VPS, le risque principal n'est pas seulement le CPU:
-
-- trop de workers peut saturer le scheduler et faire monter la RAM;
-- BLAS/NumPy peuvent lancer plusieurs threads par worker si on ne les bride pas;
-- le benchmark dans la boucle peut faire exploser la durée et la charge;
-- si le VPS est petit, l'OS peut tuer le process avant la sauvegarde finale.
-
-Profil de sécurité recommandé:
-
-```powershell
-python .\run_v9.py --minutes 600 --hard-timeout-minutes 600 --train-only --skip-eval --workers 1 --pairs 2 --games-per-eval 1 --eval-every 0 --benchmark-every 0 --max-steps 100 --four-player-ratio 0.50 --train-search-width 2 --train-simulation-depth 0 --train-simulation-rollouts 0 --front-lock-turns 15 --pool-limit 8
-```
-
-Règles pratiques:
-
-- `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, `MKL_NUM_THREADS=1`, `NUMEXPR_NUM_THREADS=1`
-- commencer avec `workers=1`, puis monter seulement si le VPS reste stable
-- éviter `benchmark-games` élevé dans la boucle principale
-- garder `hard-timeout-minutes` actif pour forcer la sauvegarde
-
-Ordre de grandeur de gain de temps:
-
-- `workers=1` = base de référence
-- `workers=2` = souvent ~1.6x a 1.8x plus rapide
-- `workers=4` = souvent ~2.7x a 3.5x
-- `workers=8` = souvent ~4x a 6x
-
-Le gain n'est pas lineaire, car une partie du pipeline reste sequentielle: adaptation,
-serialisation des resultats, checkpointing, evaluation et gestion de deadline.
-En revanche, sur une machine avec beaucoup de RAM libre et un CPU peu charge, le
-temps perdu vient surtout du manque de parallelisme. Monter `workers` de 1 a 4 ou 8
-est donc le levier principal, bien plus que la frequence brute.
-
-## 9. Comment juger le prochain run
-
-Ne pas lire seulement `train`.
+## 8. Comment juger un run
 
 Ordre de priorite:
 
-1. `benchmark_mean` doit monter et ne pas rester a 0.00-0.31.
-2. `generalization_gap` doit rester <= 0.30.
-3. `4pdiag` doit passer vers OK ou au moins montrer `xfer`, `bb`, `lock` bons.
-4. `fronts` doit baisser au fil des generations, idealement sous 2.0.
-5. Les lignes par adversaire doivent montrer moins de combos a 0.000.
+1. `benchmark_4p` doit monter vers `0.42+`.
+2. `promotion_blockers` doit perdre `bench4p_low`.
+3. `fronts` doit rester sous le seuil guardian et tendre vers `2.0`.
+4. `global_front_avg` ne doit pas rester beaucoup plus haut que
+   `focused_front_avg`.
+5. `bb`, `xfer` et `lock` doivent rester bons.
 
-Un run avec train=0.90, eval=0.75, benchmark=0.31 reste un echec de
-generalisation meme si le train est bon.
-
-Un run moins spectaculaire mais avec benchmark qui progresse et fronts qui
-baisse est meilleur pour V9.
-
-## 10. Validation locale
-
-Commandes de validation:
-
-```powershell
-python -m compileall -q war_orbit
-python -m pytest test_v9_robustness.py test_v9_smoke.py test_bot_v8_5_policy.py -q
-```
-
-Le smoke 4p attendu doit montrer une hausse claire des transferts et du
-backbone. Exemple de zone correcte:
-
-```text
-xfer ~= 0.30+
-bb ~= 0.15+
-lock ~= 0.90+
-fronts en baisse, cible <= 2.0
-```
-
-## 11. Points encore a analyser apres run
-
-Apres le run 1h, il faut comparer les echecs par label adversaire:
-
-- combos avec `notebook_orbitbotnext`;
-- combos avec `notebook_physics_accurate`;
-- combos avec `notebook_djenkivanov...sniper`;
-- cas ou `xfer` est bon mais `fronts` reste eleve;
-- cas ou `fronts` baisse mais le benchmark reste bas.
-
-Si `xfer`, `bb` et `lock` sont bons mais `fronts` reste > 2.0, le prochain patch
-doit durcir la selection d'un unique enemy focus et penaliser les commits hors
-front anchor.
-
-Si `fronts` est bon mais benchmark bas, le probleme sera plutot la qualite de
-finition: staged finisher trop lent, mauvaise estimation des flottes en route,
-ou mauvais timing contre les snipers.
+Un run avec `bench=0.417` mais `benchmark_4p=0.278` reste faible. Le score global
+est acceptable seulement si le 4p progresse vraiment.

@@ -20,6 +20,9 @@ class PlanningParameters:
     max_moves_per_plan: int = 12
     focus_enemy_id: Optional[int] = None
     front_anchor_id: Optional[int] = None
+    strict_single_target_4p: bool = False
+    disable_snipe_4p: bool = False
+    max_focus_targets_4p: int = 2
 
 
 class MoveBuilder:
@@ -698,6 +701,7 @@ class V9Planner:
         b = MoveBuilder(world, reserve_scale=1.0, max_moves=self.params.max_moves_per_plan)
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
         high_front_pressure = world.is_four_player and _active_front_count(world, focus) > 2
+        anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
         targets = sorted(
             world.enemy_planets,
             key=lambda t: (
@@ -707,8 +711,21 @@ class V9Planner:
                 float(t.ships),
             ),
         )
+        if world.is_four_player and not world.is_late and not world.is_very_late and focus is not None:
+            focus_targets = [t for t in targets if int(t.owner) == int(focus)]
+            if focus_targets:
+                targets = focus_targets
+            if anchor is not None:
+                targets = [
+                    t for t in targets
+                    if _dist(anchor, t) <= 42.0 + float(anchor.radius) + float(t.radius)
+                ] or focus_targets[:1]
         score = 0.0
-        for target in targets[:2 if high_front_pressure else 4]:
+        if world.is_four_player and not world.is_late and not world.is_very_late:
+            limit = 1 if (high_front_pressure or self.params.strict_single_target_4p) else max(1, int(self.params.max_focus_targets_4p))
+        else:
+            limit = 4
+        for target in targets[:limit]:
             score += _commit_target(
                 b,
                 target,
@@ -724,7 +741,7 @@ class V9Planner:
             b.moves,
             "resource_denial",
             base_score=score,
-            metadata=_candidate_metadata(world, focus, _frontier_anchor(world, focus, self.params.front_anchor_id), front_lock=1.0 if world.is_four_player else 0.0),
+            metadata=_candidate_metadata(world, focus, anchor, front_lock=1.0 if world.is_four_player else 0.0),
         )
 
     def _staged_finisher(self, world) -> Optional[PlanCandidate]:
@@ -755,19 +772,24 @@ class V9Planner:
         if anchor is None:
             return None
         b = MoveBuilder(world, reserve_scale=1.10, allow_reserve=True, max_moves=self.params.max_moves_per_plan)
+        finishing_window = (
+            len(focus_targets) <= 4
+            or focus_strength <= max(1.0, float(world.my_total) * 0.72)
+            or focus_prod <= max(1.0, float(world.my_prod) * 0.45)
+        )
         score = _stage_to_front(
             b,
-            ratio=0.62,
+            ratio=0.45 if finishing_window else 0.62,
             min_send=max(8, self.params.min_source_ships),
             focus_enemy_id=focus,
             preferred_anchor_id=anchor.id,
-            max_transfers=4,
+            max_transfers=2 if finishing_window else 4,
         )
         objectives = focus_targets
         front_sources = sorted(
             [p for p in world.my_planets if p.id not in world.doomed_candidates],
             key=lambda p: (min(_dist(p, t) for t in objectives), p.id in world.threatened_candidates, -float(p.ships)),
-        )[:2]
+        )[:3 if finishing_window else 2]
         targets = sorted(focus_targets, key=lambda t: (float(t.ships), -float(t.production), _dist(anchor, t)))
         for target in targets[:4]:
             if len(b.moves) >= self.params.max_moves_per_plan:
@@ -777,7 +799,7 @@ class V9Planner:
                 front_sources,
                 target,
                 family="endgame_finisher",
-                aggression=1.18 * self.params.finisher_bias,
+                aggression=(1.30 if finishing_window else 1.18) * self.params.finisher_bias,
                 min_send=5,
             )
         if not b.moves:
@@ -863,16 +885,33 @@ class V9Planner:
         )
 
     def _opportunistic_snipe(self, world) -> Optional[PlanCandidate]:
+        if self.params.disable_snipe_4p and world.is_four_player and not world.is_late and not world.is_very_late:
+            return None
+        focus = _focus_enemy_id(world, self.params.focus_enemy_id)
+        anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
         targets = [
             t for t in world.planets
             if t.owner != world.player and float(t.ships) <= 10.0 + 2.8 * float(t.production)
         ]
+        if world.is_four_player and not world.is_late and not world.is_very_late:
+            strict_targets = []
+            for target in targets:
+                if target.owner == -1:
+                    if anchor is not None and _dist(anchor, target) <= 38.0 + float(anchor.radius) + float(target.radius):
+                        strict_targets.append(target)
+                    continue
+                if focus is not None and int(target.owner) == int(focus):
+                    strict_targets.append(target)
+                elif anchor is not None and _dist(anchor, target) <= 28.0 + float(anchor.radius) + float(target.radius):
+                    strict_targets.append(target)
+            targets = strict_targets
         if not targets:
             return None
         b = MoveBuilder(world, reserve_scale=0.94, max_moves=self.params.max_moves_per_plan)
         targets.sort(key=lambda t: (-float(t.production), float(t.ships)))
         score = 0.0
-        for target in targets[:5]:
+        limit = 2 if world.is_four_player and not world.is_late and not world.is_very_late else 5
+        for target in targets[:limit]:
             score += _commit_target(
                 b,
                 target,
@@ -883,7 +922,13 @@ class V9Planner:
             )
         if not b.moves:
             return None
-        return PlanCandidate("v9_opportunistic_snipe", b.moves, "opportunistic_snipe", base_score=score)
+        return PlanCandidate(
+            "v9_opportunistic_snipe",
+            b.moves,
+            "opportunistic_snipe",
+            base_score=score,
+            metadata=_candidate_metadata(world, focus, anchor, front_lock=1.0 if world.is_four_player else 0.0),
+        )
 
     def _probe(self, world) -> Optional[PlanCandidate]:
         if not world.enemy_planets:

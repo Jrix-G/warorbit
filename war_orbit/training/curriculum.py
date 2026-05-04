@@ -156,6 +156,18 @@ def build_cross_play_specs(
         pool = ["heldout_random", "heldout_greedy"]
     specs: List[MatchSpec] = []
     rng = random.Random(seed + seed_offset)
+    if float(four_player_ratio) >= 0.999 and len(pool) >= 3:
+        for i in range(max(0, int(games))):
+            anchor = pool[i % len(pool)]
+            others = [name for name in pool if name != anchor] or [anchor]
+            specs.append(MatchSpec(
+                opponent_names=[anchor, others[i % len(others)], others[(i + 1) % len(others)]],
+                our_index=i % 4,
+                seed=seed * 100003 + seed_offset * 997 + len(specs),
+                max_steps=int(max_steps),
+                phase=phase,
+            ))
+        return specs
     for i, opponent in enumerate(pool):
         if len(specs) >= int(games):
             break
