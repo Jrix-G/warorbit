@@ -619,10 +619,11 @@ def _state_at_timeline(timeline, arrival_turn):
 def _count_players(planets, fleets):
     owners = set()
     for p in planets:
-        if p.owner != -1:
+        if p.owner >= 0:
             owners.add(p.owner)
     for f in fleets:
-        owners.add(f.owner)
+        if f.owner >= 0:
+            owners.add(f.owner)
     return max(2, len(owners))
 
 
@@ -657,7 +658,7 @@ class WorldModel:
 
         self.planet_by_id = {p.id: p for p in planets}
         self.my_planets = [p for p in planets if p.owner == player]
-        self.enemy_planets = [p for p in planets if p.owner not in (-1, player)]
+        self.enemy_planets = [p for p in planets if p.owner >= 0 and p.owner != player]
         self.neutral_planets = [p for p in planets if p.owner == -1]
         self.static_neutral_planets = [p for p in self.neutral_planets if is_static_planet(p)]
 
@@ -675,17 +676,18 @@ class WorldModel:
         self.owner_strength = defaultdict(int)
         self.owner_production = defaultdict(int)
         for p in planets:
-            if p.owner != -1:
+            if p.owner >= 0:
                 self.owner_strength[p.owner] += int(p.ships)
                 self.owner_production[p.owner] += int(p.production)
         for f in fleets:
-            self.owner_strength[f.owner] += int(f.ships)
+            if f.owner >= 0:
+                self.owner_strength[f.owner] += int(f.ships)
 
         self.my_total = self.owner_strength.get(player, 0)
-        self.enemy_total = sum(s for o, s in self.owner_strength.items() if o != player)
-        self.max_enemy_strength = max((s for o, s in self.owner_strength.items() if o != player), default=0)
+        self.enemy_total = sum(s for o, s in self.owner_strength.items() if o >= 0 and o != player)
+        self.max_enemy_strength = max((s for o, s in self.owner_strength.items() if o >= 0 and o != player), default=0)
         self.my_prod = self.owner_production.get(player, 0)
-        self.enemy_prod = sum(p for o, p in self.owner_production.items() if o != player)
+        self.enemy_prod = sum(p for o, p in self.owner_production.items() if o >= 0 and o != player)
 
         enemy_owners = sorted((s, o) for o, s in self.owner_strength.items() if o != player and o != -1)
         self.weakest_enemy_id = enemy_owners[0][1] if enemy_owners else None

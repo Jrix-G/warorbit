@@ -95,7 +95,7 @@ def score_state(state: FastState, n_players: int, player: int) -> Dict[str, floa
     fleets = state.fleets
     my_planets = planets[planets[:, P_OWNER] == player] if len(planets) else np.zeros((0, 7), dtype=np.float32)
     enemy_planets = planets[(planets[:, P_OWNER] >= 0) & (planets[:, P_OWNER] != player)] if len(planets) else np.zeros((0, 7), dtype=np.float32)
-    neutral_planets = planets[planets[:, P_OWNER] < 0] if len(planets) else np.zeros((0, 7), dtype=np.float32)
+    neutral_planets = planets[planets[:, P_OWNER] == -1] if len(planets) else np.zeros((0, 7), dtype=np.float32)
 
     owner_scores = []
     for owner in range(n_players):

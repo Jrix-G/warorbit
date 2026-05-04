@@ -24,6 +24,16 @@ P_ID, P_OWNER, P_X, P_Y, P_R, P_SHIPS, P_PROD = range(7)
 F_ID, F_OWNER, F_X, F_Y, F_ANGLE, F_FROM, F_SHIPS = range(7)
 
 TOTAL_STEPS = 500
+CENTER_X = 50.0
+CENTER_Y = 50.0
+SUN_R = 10.0
+SUN_SHOT_MARGIN = 4.0
+LAUNCH_CLEARANCE = 0.1
+MAX_SPEED = 6.0
+AIM_ITERATIONS = 10
+INTERCEPT_TOLERANCE = 1
+SHOT_HORIZON = 90
+SUN_GUARD_RAY_DISTANCE = 150.0
 
 STATE_FEATURE_NAMES = (
     "my_ship_share",
@@ -177,6 +187,10 @@ class World:
     my_planets: List[Planet]
     enemy_planets: List[Planet]
     neutral_planets: List[Planet]
+    initial_by_id: Dict[int, Planet]
+    angular_velocity: float
+    comets: List[dict]
+    comet_ids: set
     owner_strength: Dict[int, float]
     owner_production: Dict[int, float]
     my_total: float
@@ -189,6 +203,9 @@ class World:
     is_very_late: bool
     threatened_candidates: set
     doomed_candidates: set
+    incoming_enemy: Dict[int, float]
+    incoming_friendly: Dict[int, float]
+    incoming_enemy_eta: Dict[int, int]
     weakest_enemy_id: Optional[int]
     strongest_enemy_id: Optional[int]
 
@@ -208,6 +225,40 @@ def _angle(a, b) -> float:
 def _angle_delta(a: float, b: float) -> float:
     d = (a - b + math.pi) % (2.0 * math.pi) - math.pi
     return abs(d)
+
+
+def _fleet_speed(ships: float) -> float:
+    if ships <= 1:
+        return 1.0
+    ratio = math.log(max(float(ships), 1.0)) / math.log(1000.0)
+    ratio = max(0.0, min(1.0, ratio))
+    return 1.0 + (MAX_SPEED - 1.0) * (ratio ** 1.5)
+
+
+def _point_segment_distance(px: float, py: float, x1: float, y1: float, x2: float, y2: float) -> float:
+    dx = x2 - x1
+    dy = y2 - y1
+    lsq = dx * dx + dy * dy
+    if lsq <= 1e-9:
+        return math.hypot(px - x1, py - y1)
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / lsq))
+    return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+
+def _path_sun_clearance(src: Planet, angle: float, distance: float) -> float:
+    ca = math.cos(angle)
+    sa = math.sin(angle)
+    clearance = float(src.radius) + LAUNCH_CLEARANCE
+    x1 = float(src.x) + ca * clearance
+    y1 = float(src.y) + sa * clearance
+    x2 = x1 + ca * max(0.0, float(distance))
+    y2 = y1 + sa * max(0.0, float(distance))
+    return _point_segment_distance(CENTER_X, CENTER_Y, x1, y1, x2, y2)
+
+
+def _path_too_close_to_sun(src: Planet, angle: float, distance: float) -> bool:
+    guard_distance = max(float(distance), SUN_GUARD_RAY_DISTANCE)
+    return _path_sun_clearance(src, angle, guard_distance) < SUN_R + SUN_SHOT_MARGIN
 
 
 def _parse_planet(raw) -> Planet:
@@ -234,6 +285,138 @@ def _parse_fleet(raw) -> Fleet:
     )
 
 
+def _predict_planet_pos(planet: Planet, world: World, turns: int) -> Tuple[float, float]:
+    init = world.initial_by_id.get(int(planet.id))
+    if init is None:
+        return float(planet.x), float(planet.y)
+    radius_from_center = math.hypot(float(init.x) - CENTER_X, float(init.y) - CENTER_Y)
+    if radius_from_center + float(init.radius) >= 50.0:
+        return float(planet.x), float(planet.y)
+    cur_ang = math.atan2(float(planet.y) - CENTER_Y, float(planet.x) - CENTER_X)
+    new_ang = cur_ang + float(world.angular_velocity) * int(turns)
+    return CENTER_X + radius_from_center * math.cos(new_ang), CENTER_Y + radius_from_center * math.sin(new_ang)
+
+
+def _predict_comet_pos(planet_id: int, world: World, turns: int) -> Optional[Tuple[float, float]]:
+    for group in world.comets:
+        pids = group.get("planet_ids", []) or []
+        if planet_id not in pids:
+            continue
+        idx = pids.index(planet_id)
+        paths = group.get("paths", []) or []
+        path_index = int(group.get("path_index", 0) or 0)
+        if idx >= len(paths):
+            return None
+        path = paths[idx]
+        fi = path_index + int(turns)
+        if 0 <= fi < len(path):
+            return float(path[fi][0]), float(path[fi][1])
+        return None
+    return None
+
+
+def _comet_remaining_life(planet_id: int, world: World) -> int:
+    for group in world.comets:
+        pids = group.get("planet_ids", []) or []
+        if planet_id not in pids:
+            continue
+        idx = pids.index(planet_id)
+        paths = group.get("paths", []) or []
+        path_index = int(group.get("path_index", 0) or 0)
+        if idx < len(paths):
+            return max(0, len(paths[idx]) - path_index)
+    return 0
+
+
+def _predict_target_pos(target: Planet, world: World, turns: int) -> Optional[Tuple[float, float]]:
+    if int(target.id) in world.comet_ids:
+        return _predict_comet_pos(int(target.id), world, turns)
+    return _predict_planet_pos(target, world, turns)
+
+
+def _estimate_arrival(src: Planet, target: Planet, ships: int, tx: float, ty: float) -> Optional[Tuple[float, int, float]]:
+    angle = math.atan2(float(ty) - float(src.y), float(tx) - float(src.x))
+    raw_dist = math.hypot(float(tx) - float(src.x), float(ty) - float(src.y))
+    travel_dist = max(0.0, raw_dist - float(src.radius) - LAUNCH_CLEARANCE - float(target.radius))
+    if _path_too_close_to_sun(src, angle, travel_dist):
+        return None
+    turns = max(1, int(math.ceil(travel_dist / _fleet_speed(max(1, int(ships))))))
+    return angle, turns, travel_dist
+
+
+def _safe_plan_shot(world: World, src: Planet, target: Planet, ships: int) -> Optional[Tuple[float, int]]:
+    direct = _estimate_arrival(src, target, ships, float(target.x), float(target.y))
+    if direct is None:
+        return _search_safe_intercept(world, src, target, ships)
+
+    tx = float(target.x)
+    ty = float(target.y)
+    est = direct
+    for _ in range(AIM_ITERATIONS):
+        _angle_est, turns, _dist_est = est
+        pos = _predict_target_pos(target, world, turns)
+        if pos is None:
+            return None
+        ntx, nty = pos
+        next_est = _estimate_arrival(src, target, ships, ntx, nty)
+        if next_est is None:
+            return _search_safe_intercept(world, src, target, ships)
+        if abs(ntx - tx) < 0.25 and abs(nty - ty) < 0.25 and abs(int(next_est[1]) - int(turns)) <= INTERCEPT_TOLERANCE:
+            return float(next_est[0]), int(next_est[1])
+        tx, ty = ntx, nty
+        est = next_est
+    return float(est[0]), int(est[1])
+
+
+def _search_safe_intercept(world: World, src: Planet, target: Planet, ships: int) -> Optional[Tuple[float, int]]:
+    max_turns = SHOT_HORIZON
+    if int(target.id) in world.comet_ids:
+        max_turns = min(max_turns, max(0, _comet_remaining_life(int(target.id), world) - 1))
+    best = None
+    best_score = None
+    for cand_turn in range(1, max_turns + 1):
+        pos = _predict_target_pos(target, world, cand_turn)
+        if pos is None:
+            continue
+        est = _estimate_arrival(src, target, ships, pos[0], pos[1])
+        if est is None:
+            continue
+        angle, turns, _dist_est = est
+        if abs(int(turns) - int(cand_turn)) > INTERCEPT_TOLERANCE:
+            continue
+        score = (abs(int(turns) - int(cand_turn)), int(turns), int(cand_turn))
+        if best is None or score < best_score:
+            best = (float(angle), int(turns))
+            best_score = score
+    return best
+
+
+def _fleet_target_planet(fleet: Fleet, planets: Sequence[Planet]) -> Tuple[Optional[Planet], Optional[int]]:
+    best_planet = None
+    best_time = 1e9
+    dir_x = math.cos(float(fleet.angle))
+    dir_y = math.sin(float(fleet.angle))
+    speed = _fleet_speed(float(fleet.ships))
+    for planet in planets:
+        dx = float(planet.x) - float(fleet.x)
+        dy = float(planet.y) - float(fleet.y)
+        proj = dx * dir_x + dy * dir_y
+        if proj < 0:
+            continue
+        perp_sq = dx * dx + dy * dy - proj * proj
+        r2 = float(planet.radius) * float(planet.radius)
+        if perp_sq >= r2:
+            continue
+        hit_d = max(0.0, proj - math.sqrt(max(0.0, r2 - perp_sq)))
+        turns = hit_d / max(1e-6, speed)
+        if turns <= SHOT_HORIZON and turns < best_time:
+            best_time = turns
+            best_planet = planet
+    if best_planet is None:
+        return None, None
+    return best_planet, int(math.ceil(best_time))
+
+
 def _count_players(planets: Sequence[Planet], fleets: Sequence[Fleet], player: int) -> int:
     owners = {player}
     for p in planets:
@@ -242,7 +425,7 @@ def _count_players(planets: Sequence[Planet], fleets: Sequence[Fleet], player: i
     for f in fleets:
         if f.owner >= 0:
             owners.add(int(f.owner))
-    return max(2, len(owners))
+    return max(2, max(owners) + 1 if owners else 2)
 
 
 def _build_world(obs) -> World:
@@ -250,12 +433,25 @@ def _build_world(obs) -> World:
     step = int(_get(obs, "step", 0) or 0)
     raw_planets = list(_get(obs, "planets", []) or [])
     raw_fleets = list(_get(obs, "fleets", []) or [])
+    raw_initial = list(_get(obs, "initial_planets", []) or [])
+    raw_comets = list(_get(obs, "comets", []) or [])
+    comet_ids = set(int(x) for x in (_get(obs, "comet_planet_ids", []) or []))
+    angular_velocity = float(_get(obs, "angular_velocity", 0.0) or 0.0)
     planets = [_parse_planet(p) for p in raw_planets]
     fleets = [_parse_fleet(f) for f in raw_fleets]
+    initial_planets = [_parse_planet(p) for p in raw_initial] if raw_initial else list(planets)
+    initial_by_id = {p.id: p for p in initial_planets}
+    comets = []
+    for group in raw_comets:
+        comets.append({
+            "planet_ids": [int(x) for x in (_get(group, "planet_ids", []) or [])],
+            "paths": _get(group, "paths", []) or [],
+            "path_index": int(_get(group, "path_index", 0) or 0),
+        })
     planet_by_id = {p.id: p for p in planets}
 
     my_planets = [p for p in planets if p.owner == player]
-    enemy_planets = [p for p in planets if p.owner not in (-1, player)]
+    enemy_planets = [p for p in planets if p.owner >= 0 and p.owner != player]
     neutral_planets = [p for p in planets if p.owner == -1]
 
     owner_strength: Dict[int, float] = defaultdict(float)
@@ -273,7 +469,11 @@ def _build_world(obs) -> World:
     enemy_total = sum(v for o, v in owner_strength.items() if o not in (-1, player))
     enemy_prod = sum(v for o, v in owner_production.items() if o not in (-1, player))
 
-    n_players = _count_players(planets, fleets, player)
+    explicit_players = _get(obs, "n_players", None) or _get(obs, "players", None)
+    try:
+        n_players = max(2, int(explicit_players)) if explicit_players is not None else _count_players(planets, fleets, player)
+    except Exception:
+        n_players = _count_players(planets, fleets, player)
     is_four_player = n_players >= 4
     remaining_steps = max(1, TOTAL_STEPS - step)
     opening_limit = 80 if is_four_player else 60
@@ -281,20 +481,45 @@ def _build_world(obs) -> World:
     is_late = remaining_steps < 60
     is_very_late = remaining_steps < 25
 
+    incoming_enemy: Dict[int, float] = defaultdict(float)
+    incoming_friendly: Dict[int, float] = defaultdict(float)
+    incoming_enemy_eta: Dict[int, int] = {}
+    for fleet in fleets:
+        target, eta = _fleet_target_planet(fleet, planets)
+        if target is None or eta is None:
+            continue
+        if int(fleet.owner) == player:
+            incoming_friendly[int(target.id)] += float(fleet.ships)
+        elif int(fleet.owner) >= 0:
+            incoming_enemy[int(target.id)] += float(fleet.ships)
+            pid = int(target.id)
+            incoming_enemy_eta[pid] = min(int(eta), incoming_enemy_eta.get(pid, int(eta)))
+
     threatened: set[int] = set()
     doomed: set[int] = set()
     enemy_assets = [p for p in enemy_planets]
     for mine in my_planets:
         if not enemy_assets:
-            continue
-        nearest = min(enemy_assets, key=lambda p: _dist(mine, p))
-        d = _dist(mine, nearest)
-        ship_ratio = float(nearest.ships) / max(1.0, float(mine.ships))
-        pressure = d / max(1.0, float(mine.radius + nearest.radius))
-        if pressure < 1.8 and ship_ratio > 0.45:
-            threatened.add(mine.id)
-        if pressure < 1.25 and ship_ratio > 0.85:
-            doomed.add(mine.id)
+            nearest = None
+        else:
+            nearest = min(enemy_assets, key=lambda p: _dist(mine, p))
+        if nearest is not None:
+            d = _dist(mine, nearest)
+            ship_ratio = float(nearest.ships) / max(1.0, float(mine.ships))
+            pressure = d / max(1.0, float(mine.radius + nearest.radius))
+            if pressure < 1.8 and ship_ratio > 0.45:
+                threatened.add(mine.id)
+            if pressure < 1.25 and ship_ratio > 0.85:
+                doomed.add(mine.id)
+        enemy_in = float(incoming_enemy.get(int(mine.id), 0.0))
+        if enemy_in > 0.0:
+            eta = int(incoming_enemy_eta.get(int(mine.id), 1))
+            friendly_in = float(incoming_friendly.get(int(mine.id), 0.0))
+            projected = float(mine.ships) + max(0, eta) * float(mine.production) + friendly_in
+            if enemy_in >= max(4.0, 0.30 * projected):
+                threatened.add(mine.id)
+            if enemy_in + 2.0 >= projected:
+                doomed.add(mine.id)
 
     enemy_strengths = {o: s for o, s in owner_strength.items() if o not in (-1, player)}
     weakest_enemy_id = min(enemy_strengths, key=enemy_strengths.get) if enemy_strengths else None
@@ -310,6 +535,10 @@ def _build_world(obs) -> World:
         my_planets=my_planets,
         enemy_planets=enemy_planets,
         neutral_planets=neutral_planets,
+        initial_by_id=initial_by_id,
+        angular_velocity=angular_velocity,
+        comets=comets,
+        comet_ids=comet_ids,
         owner_strength=dict(owner_strength),
         owner_production=dict(owner_production),
         my_total=my_total,
@@ -322,6 +551,9 @@ def _build_world(obs) -> World:
         is_very_late=is_very_late,
         threatened_candidates=threatened,
         doomed_candidates=doomed,
+        incoming_enemy=dict(incoming_enemy),
+        incoming_friendly=dict(incoming_friendly),
+        incoming_enemy_eta=dict(incoming_enemy_eta),
         weakest_enemy_id=weakest_enemy_id,
         strongest_enemy_id=strongest_enemy_id,
     )
@@ -884,14 +1116,41 @@ def _available_ships(world: World, planet: Planet, front_pressure: int) -> int:
     reserve = 0.42 if planet.id in world.threatened_candidates else 0.58
     if world.is_four_player and front_pressure > 0:
         reserve = min(reserve, 0.48)
-    return max(0, int(float(planet.ships) * (1.0 - reserve)))
+    reserve_ships = float(planet.ships) * reserve
+    enemy_in = float(world.incoming_enemy.get(int(planet.id), 0.0))
+    friendly_in = float(world.incoming_friendly.get(int(planet.id), 0.0))
+    if enemy_in > 0.0:
+        eta = int(world.incoming_enemy_eta.get(int(planet.id), 1))
+        expected_growth = max(0, eta) * float(planet.production)
+        reserve_ships = max(reserve_ships, enemy_in - friendly_in - expected_growth + 4.0)
+    return max(0, int(float(planet.ships) - max(0.0, reserve_ships)))
 
 
-def _add_move(moves: List[List], src: Planet, target: Planet, ships: int, *, bias: float = 0.0) -> None:
+def _capture_need(target: Planet, world: World, *, family: str) -> int:
+    if target.owner == world.player:
+        enemy_in = float(world.incoming_enemy.get(int(target.id), 0.0))
+        friendly_in = float(world.incoming_friendly.get(int(target.id), 0.0))
+        return max(0, int(math.ceil(enemy_in - friendly_in + 4.0)))
+    if target.owner == -1:
+        return int(math.ceil(float(target.ships) + 1.0 * float(target.production) + 1.0))
+    pressure = 1.2 if family != "opportunistic_snipe" else 0.8
+    return int(math.ceil(float(target.ships) + pressure * float(target.production) + 2.0))
+
+
+def _add_move(moves: List[List], world: World, src: Planet, target: Planet, ships: int, *, bias: float = 0.0) -> bool:
     ships = int(ships)
     if ships <= 0:
-        return
-    moves.append([int(src.id), float(_angle(src, target) + bias), int(ships)])
+        return False
+    shot = _safe_plan_shot(world, src, target, ships)
+    if shot is None:
+        return False
+    angle, turns = shot
+    if world.is_very_late and turns > world.remaining_steps - 1:
+        return False
+    if world.is_late and turns > world.remaining_steps - 4:
+        return False
+    moves.append([int(src.id), float(angle + bias), int(ships)])
+    return True
 
 
 def _pick_targets(world: World, focus_enemy: Optional[int], *, family: str) -> List[Planet]:
@@ -919,19 +1178,19 @@ def _single_source_attack(world: World, focus_enemy: Optional[int], *, family: s
         left = _available_ships(world, src, 1 if family in ("resource_denial", "endgame_finisher") else 0)
         if left < 5:
             continue
-        for target in targets[:5]:
+        for target in targets[:10]:
             if target.owner == world.player:
                 continue
-            needed = int(float(target.ships) + 1.2 * float(target.production) + 2)
-            if target.owner == -1:
-                needed = int(float(target.ships) + 1.0 * float(target.production) + 1)
+            needed = _capture_need(target, world, family=family)
             if world.is_four_player and focus_enemy is not None and target.owner not in (-1, world.player) and int(target.owner) != int(focus_enemy):
                 needed = int(needed * 1.15)
+            if family != "probe" and left < needed:
+                continue
             send = min(left, max(4, int(needed * min_send_scale)))
             if send <= 0:
                 continue
-            _add_move(moves, src, target, send)
-            break
+            if _add_move(moves, world, src, target, send):
+                break
         if len(moves) >= max_moves:
             break
     return moves
@@ -959,10 +1218,10 @@ def _reinforce_threats(world: World, focus_enemy: Optional[int]) -> List[List]:
             if left < 4:
                 continue
             send = min(left, max(4, need))
-            _add_move(moves, src, target, send)
-            need -= send
-            if need <= 0:
-                break
+            if _add_move(moves, world, src, target, send):
+                need -= send
+                if need <= 0:
+                    break
     return moves
 
 
@@ -987,7 +1246,7 @@ def _staging_moves(world: World, focus_enemy: Optional[int], front_pressure: int
             continue
         send = int(left * (0.42 if front_pressure else 0.34))
         if send >= 6:
-            _add_move(moves, src, anchor, send)
+            _add_move(moves, world, src, anchor, send)
     return moves
 
 
@@ -1007,7 +1266,7 @@ def _consolidate(world: World, focus_enemy: Optional[int]) -> List[List]:
             continue
         send = int(left * 0.30)
         if send >= 6:
-            _add_move(moves, src, anchor, send)
+            _add_move(moves, world, src, anchor, send)
     return moves
 
 
@@ -1021,12 +1280,24 @@ def _build_candidates(world: World, focus_enemy: Optional[int]) -> List[PlanCand
     if anchor is not None and world.my_planets:
         for src in sorted(world.my_planets, key=lambda p: float(p.ships), reverse=True)[:2]:
             if src.id != anchor.id and _available_ships(world, src, front_pressure) >= 8:
-                _add_move(balanced, src, anchor, max(6, int(_available_ships(world, src, front_pressure) * 0.22)))
+                _add_move(balanced, world, src, anchor, max(6, int(_available_ships(world, src, front_pressure) * 0.22)))
 
     aggressive = _single_source_attack(world, focus_enemy, family="aggressive_expansion", max_moves=3, min_send_scale=0.92)
     delayed = _single_source_attack(world, focus_enemy, family="delayed_strike", max_moves=2, min_send_scale=1.08)
     denial = _single_source_attack(world, focus_enemy, family="resource_denial", max_moves=3, min_send_scale=1.05)
-    finisher = _single_source_attack(world, world.weakest_enemy_id or focus_enemy, family="endgame_finisher", max_moves=3, min_send_scale=1.12)
+    strongest_ships = max((s for o, s in world.owner_strength.items() if o not in (-1, world.player)), default=0.0)
+    strongest_prod = max((p for o, p in world.owner_production.items() if o not in (-1, world.player)), default=0.0)
+    finisher_ready = (
+        world.is_late
+        or world.is_very_late
+        or world.my_total >= max(1.0, strongest_ships) * 1.20
+        or world.my_prod >= max(1.0, strongest_prod) * 1.20
+    )
+    finisher = (
+        _single_source_attack(world, world.weakest_enemy_id or focus_enemy, family="endgame_finisher", max_moves=3, min_send_scale=1.12)
+        if finisher_ready
+        else []
+    )
     opportunistic = _single_source_attack(world, focus_enemy, family="opportunistic_snipe", max_moves=3, min_send_scale=0.90)
     probe = _single_source_attack(world, focus_enemy, family="probe", max_moves=2, min_send_scale=0.70)
     defensive = _reinforce_threats(world, focus_enemy) + _consolidate(world, focus_enemy)
@@ -1075,7 +1346,12 @@ def _build_candidates(world: World, focus_enemy: Optional[int]) -> List[PlanCand
             finisher[:12],
             "endgame_finisher",
             0.04,
-            {"active_fronts": float(front_count), "focus_enemy_id": float(world.weakest_enemy_id or focus_enemy or -1), "front_anchor_id": float(anchor_id or -1), "staged_finisher": 1.0},
+            {
+                "active_fronts": float(front_count),
+                "focus_enemy_id": float(world.weakest_enemy_id or focus_enemy or -1),
+                "front_anchor_id": float(anchor_id or -1),
+                "staged_finisher": 1.0 if finisher_ready else 0.0,
+            },
         ),
         PlanCandidate(
             "defensive_consolidation",

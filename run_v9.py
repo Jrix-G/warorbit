@@ -24,6 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-max-steps", type=int, default=220)
     parser.add_argument("--four-player-ratio", type=float, default=0.80)
     parser.add_argument("--eval-four-player-ratio", type=float, default=None)
+    parser.add_argument("--benchmark-four-player-ratio", type=float, default=0.80)
     parser.add_argument("--sigma", type=float, default=0.07)
     parser.add_argument("--lr", type=float, default=0.035)
     parser.add_argument("--l2", type=float, default=0.0004)
@@ -106,6 +107,7 @@ def main() -> None:
         benchmark_games=args.benchmark_games,
         min_promotion_benchmark_games=args.min_promotion_benchmark_games,
         benchmark_progress_every=args.benchmark_progress_every,
+        benchmark_four_player_ratio=args.benchmark_four_player_ratio,
         min_benchmark_score=args.min_benchmark_score,
         max_generalization_gap=args.max_generalization_gap,
         seed=args.seed,
