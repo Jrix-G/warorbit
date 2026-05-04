@@ -33,6 +33,8 @@ Il utilise un curriculum d'adversaires persistant :
 basic_300      -> random / greedy / starter
 heuristic_500  -> greedy / starter / distance / sun_dodge / structured / orbit_stars
 mixed_700      -> heuristiques + notebooks de départ
+notebook_core4 -> 4 notebooks principaux + heuristiques
+notebook_mid8  -> 8 premiers notebooks
 notebook_open  -> pool notebook complet
 ```
 
@@ -81,9 +83,13 @@ Le runner force les paramètres importants suivants :
 - `duration_minutes = 90`
   - plafond d'exécution: `480` minutes
 - `workers = 6`
-- `hidden_dim = 256`
+- `hidden_dim = 320`
 - `notebook_pool_limit = 15`
 - `train_notebook_opponents = 3`
+- `max_actions_per_turn = 4`
+- `worker_train_steps >= 24`
+- warm-start imitation court depuis les adversaires du tier courant
+- reward dense stratégique activé pendant le RL populationnel
 - `four_player_ratio = 1.0`
 - `eval_four_player_ratio = 1.0`
 
@@ -91,7 +97,7 @@ En 4 joueurs, `train_notebook_opponents = 3` signifie que notre agent occupe un 
 
 ## Taille du réseau
 
-Le réseau existant utilise `hidden_dim = 256`.
+Le réseau par défaut utilise maintenant `hidden_dim = 320`.
 
 Avec l'encodeur actuel :
 
@@ -99,9 +105,9 @@ Avec l'encodeur actuel :
 input_dim = 11 + 64 * 19 + 128 * 10 + 4 * 8 = 2539
 ```
 
-Cette taille d'entrée donne déjà environ 1,31 million de paramètres avec `hidden_dim = 256`.
-
-Il n'est donc pas nécessaire de monter `hidden_dim` à 352 pour atteindre la cible d'environ 1,3M paramètres. Une taille plus grande augmenterait le coût CPU/GPU du run sans garantir une meilleure convergence sur 90 minutes.
+Cette taille d'entrée donne environ 1,31 million de paramètres avec `hidden_dim = 256`
+et environ 1,85 million avec `hidden_dim = 320`. Le passage à 320 reste dans
+la cible de budget tout en augmentant la capacité sur le pool notebook.
 
 ## Checkpoints
 
@@ -147,6 +153,11 @@ Chaque ligne contient notamment :
 - `promotion_eval_episodes`
 - `tier_best_checkpoint`
 - `winrate_by_position`
+- `eval_by_opponent`
+- `evaluated_tier`
+- `next_curriculum_tier`
+- `base_checkpoint`
+- `tier_checkpoint_loaded`
 - `eval_mean`
 - `rank_mean`
 - `eval_do_nothing_rate`

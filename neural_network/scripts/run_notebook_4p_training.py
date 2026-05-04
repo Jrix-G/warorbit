@@ -26,6 +26,8 @@ def _prepare_config(cfg: dict, duration_minutes: float, eval_episodes: int) -> d
     cfg["eval_four_player_ratio"] = 1.0
     cfg["notebook_pool_limit"] = 15
     cfg["train_notebook_opponents"] = 3
+    cfg["hidden_dim"] = max(320, int(cfg.get("hidden_dim", 320)))
+    cfg["max_actions_per_turn"] = 4
     cfg["eval_every"] = max(1, int(cfg["train_steps"] // 10))
     cfg.setdefault("temperature_start", 1.2)
     cfg.setdefault("temperature_end", 0.35)

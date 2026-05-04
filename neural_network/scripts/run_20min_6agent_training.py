@@ -40,10 +40,10 @@ def _prepare_config(cfg: dict, workers: int, eval_episodes: int) -> dict:
     cfg = dict(cfg)
     cfg["duration_minutes"] = 20.0
     cfg["workers"] = max(1, int(workers))
-    cfg["hidden_dim"] = 256
+    cfg["hidden_dim"] = max(320, int(cfg.get("hidden_dim", 320)))
     cfg["learning_rate"] = min(float(cfg.get("learning_rate", 0.0003)), 0.00025)
     cfg["train_steps"] = 200
-    cfg["worker_train_steps"] = max(4, int(cfg.get("worker_train_steps", 4)))
+    cfg["worker_train_steps"] = max(12, int(cfg.get("worker_train_steps", 12)))
     cfg["eval_episodes"] = max(4, int(eval_episodes))
     cfg["candidate_eval_episodes"] = max(4, min(cfg["eval_episodes"], int(cfg.get("candidate_eval_episodes", 4))))
     cfg["promotion_eval_episodes"] = max(12, cfg["eval_episodes"])
@@ -58,6 +58,9 @@ def _prepare_config(cfg: dict, workers: int, eval_episodes: int) -> dict:
     cfg["notebook_pool_limit_max"] = 15
     cfg["train_notebook_opponents"] = 3
     cfg["train_stop_on_elimination"] = bool(cfg.get("train_stop_on_elimination", True))
+    cfg["max_actions_per_turn"] = 4
+    cfg["dense_reward_enabled"] = bool(cfg.get("dense_reward_enabled", True))
+    cfg.setdefault("imitation_warmstart_steps", 4)
     cfg["opponent_curriculum_enabled"] = bool(cfg.get("opponent_curriculum_enabled", True))
     cfg.setdefault("opponent_curriculum_start_tier", 0)
     cfg.setdefault("opponent_curriculum_state", "neural_network/logs/opponent_curriculum_state.json")

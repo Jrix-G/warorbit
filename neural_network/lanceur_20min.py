@@ -33,6 +33,7 @@ def main() -> None:
     cfg["max_wall_seconds"] = duration_minutes * 60.0
     cfg["worker_train_steps"] = 4
     cfg["train_notebook_opponents"] = 3
+    cfg["max_actions_per_turn"] = 4
     cfg["temperature_start"] = float(cfg.get("temperature_start", 1.2))
     cfg["temperature_end"] = float(cfg.get("temperature_end", 0.35))
     cfg["log_dir"] = str((ROOT / "logs").resolve())

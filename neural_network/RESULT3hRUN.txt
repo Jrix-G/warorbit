@@ -1,0 +1,2723 @@
+{
+  "cells": [
+    {
+      "cell_type": "code",
+      "execution_count": 1,
+      "id": "e80db438",
+      "metadata": {
+        "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+        "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+        "execution": {
+          "iopub.execute_input": "2026-05-04T10:12:16.181789Z",
+          "iopub.status.busy": "2026-05-04T10:12:16.181492Z",
+          "iopub.status.idle": "2026-05-04T10:12:32.581228Z",
+          "shell.execute_reply": "2026-05-04T10:12:32.580310Z"
+        },
+        "papermill": {
+          "duration": 16.405351,
+          "end_time": "2026-05-04T10:12:32.583175+00:00",
+          "exception": false,
+          "start_time": "2026-05-04T10:12:16.177824+00:00",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "outputs": [
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Cloning into 'warorbit'...\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "remote: Enumerating objects: 4267, done.\u001b[K\r\n",
+            "remote: Counting objects:   0% (1/483)\u001b[K\r",
+            "remote: Counting objects:   1% (5/483)\u001b[K\r",
+            "remote: Counting objects:   2% (10/483)\u001b[K\r",
+            "remote: Counting objects:   3% (15/483)\u001b[K\r",
+            "remote: Counting objects:   4% (20/483)\u001b[K\r",
+            "remote: Counting objects:   5% (25/483)\u001b[K\r",
+            "remote: Counting objects:   6% (29/483)\u001b[K\r",
+            "remote: Counting objects:   7% (34/483)\u001b[K\r",
+            "remote: Counting objects:   8% (39/483)\u001b[K\r",
+            "remote: Counting objects:   9% (44/483)\u001b[K\r",
+            "remote: Counting objects:  10% (49/483)\u001b[K\r",
+            "remote: Counting objects:  11% (54/483)\u001b[K\r",
+            "remote: Counting objects:  12% (58/483)\u001b[K\r",
+            "remote: Counting objects:  13% (63/483)\u001b[K\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "remote: Counting objects:  14% (68/483)\u001b[K\r",
+            "remote: Counting objects:  15% (73/483)\u001b[K\r",
+            "remote: Counting objects:  16% (78/483)\u001b[K\r",
+            "remote: Counting objects:  17% (83/483)\u001b[K\r",
+            "remote: Counting objects:  18% (87/483)\u001b[K\r",
+            "remote: Counting objects:  19% (92/483)\u001b[K\r",
+            "remote: Counting objects:  20% (97/483)\u001b[K\r",
+            "remote: Counting objects:  21% (102/483)\u001b[K\r",
+            "remote: Counting objects:  22% (107/483)\u001b[K\r",
+            "remote: Counting objects:  23% (112/483)\u001b[K\r",
+            "remote: Counting objects:  24% (116/483)\u001b[K\r",
+            "remote: Counting objects:  25% (121/483)\u001b[K\r",
+            "remote: Counting objects:  26% (126/483)\u001b[K\r",
+            "remote: Counting objects:  27% (131/483)\u001b[K\r",
+            "remote: Counting objects:  28% (136/483)\u001b[K\r",
+            "remote: Counting objects:  29% (141/483)\u001b[K\r",
+            "remote: Counting objects:  30% (145/483)\u001b[K\r",
+            "remote: Counting objects:  31% (150/483)\u001b[K\r",
+            "remote: Counting objects:  32% (155/483)\u001b[K\r",
+            "remote: Counting objects:  33% (160/483)\u001b[K\r",
+            "remote: Counting objects:  34% (165/483)\u001b[K\r",
+            "remote: Counting objects:  35% (170/483)\u001b[K\r",
+            "remote: Counting objects:  36% (174/483)\u001b[K\r",
+            "remote: Counting objects:  37% (179/483)\u001b[K\r",
+            "remote: Counting objects:  38% (184/483)\u001b[K\r",
+            "remote: Counting objects:  39% (189/483)\u001b[K\r",
+            "remote: Counting objects:  40% (194/483)\u001b[K\r",
+            "remote: Counting objects:  41% (199/483)\u001b[K\r",
+            "remote: Counting objects:  42% (203/483)\u001b[K\r",
+            "remote: Counting objects:  43% (208/483)\u001b[K\r",
+            "remote: Counting objects:  44% (213/483)\u001b[K\r",
+            "remote: Counting objects:  45% (218/483)\u001b[K\r",
+            "remote: Counting objects:  46% (223/483)\u001b[K\r",
+            "remote: Counting objects:  47% (228/483)\u001b[K\r",
+            "remote: Counting objects:  48% (232/483)\u001b[K\r",
+            "remote: Counting objects:  49% (237/483)\u001b[K\r",
+            "remote: Counting objects:  50% (242/483)\u001b[K\r",
+            "remote: Counting objects:  51% (247/483)\u001b[K\r",
+            "remote: Counting objects:  52% (252/483)\u001b[K\r",
+            "remote: Counting objects:  53% (256/483)\u001b[K\r",
+            "remote: Counting objects:  54% (261/483)\u001b[K\r",
+            "remote: Counting objects:  55% (266/483)\u001b[K\r",
+            "remote: Counting objects:  56% (271/483)\u001b[K\r",
+            "remote: Counting objects:  57% (276/483)\u001b[K\r",
+            "remote: Counting objects:  58% (281/483)\u001b[K\r",
+            "remote: Counting objects:  59% (285/483)\u001b[K\r",
+            "remote: Counting objects:  60% (290/483)\u001b[K\r",
+            "remote: Counting objects:  61% (295/483)\u001b[K\r",
+            "remote: Counting objects:  62% (300/483)\u001b[K\r",
+            "remote: Counting objects:  63% (305/483)\u001b[K\r",
+            "remote: Counting objects:  64% (310/483)\u001b[K\r",
+            "remote: Counting objects:  65% (314/483)\u001b[K\r",
+            "remote: Counting objects:  66% (319/483)\u001b[K\r",
+            "remote: Counting objects:  67% (324/483)\u001b[K\r",
+            "remote: Counting objects:  68% (329/483)\u001b[K\r",
+            "remote: Counting objects:  69% (334/483)\u001b[K\r",
+            "remote: Counting objects:  70% (339/483)\u001b[K\r",
+            "remote: Counting objects:  71% (343/483)\u001b[K\r",
+            "remote: Counting objects:  72% (348/483)\u001b[K\r",
+            "remote: Counting objects:  73% (353/483)\u001b[K\r",
+            "remote: Counting objects:  74% (358/483)\u001b[K\r",
+            "remote: Counting objects:  75% (363/483)\u001b[K\r",
+            "remote: Counting objects:  76% (368/483)\u001b[K\r",
+            "remote: Counting objects:  77% (372/483)\u001b[K\r",
+            "remote: Counting objects:  78% (377/483)\u001b[K\r",
+            "remote: Counting objects:  79% (382/483)\u001b[K\r",
+            "remote: Counting objects:  80% (387/483)\u001b[K\r",
+            "remote: Counting objects:  81% (392/483)\u001b[K\r",
+            "remote: Counting objects:  82% (397/483)\u001b[K\r",
+            "remote: Counting objects:  83% (401/483)\u001b[K\r",
+            "remote: Counting objects:  84% (406/483)\u001b[K\r",
+            "remote: Counting objects:  85% (411/483)\u001b[K\r",
+            "remote: Counting objects:  86% (416/483)\u001b[K\r",
+            "remote: Counting objects:  87% (421/483)\u001b[K\r",
+            "remote: Counting objects:  88% (426/483)\u001b[K\r",
+            "remote: Counting objects:  89% (430/483)\u001b[K\r",
+            "remote: Counting objects:  90% (435/483)\u001b[K\r",
+            "remote: Counting objects:  91% (440/483)\u001b[K\r",
+            "remote: Counting objects:  92% (445/483)\u001b[K\r",
+            "remote: Counting objects:  93% (450/483)\u001b[K\r",
+            "remote: Counting objects:  94% (455/483)\u001b[K\r",
+            "remote: Counting objects:  95% (459/483)\u001b[K\r",
+            "remote: Counting objects:  96% (464/483)\u001b[K\r",
+            "remote: Counting objects:  97% (469/483)\u001b[K\r",
+            "remote: Counting objects:  98% (474/483)\u001b[K\r",
+            "remote: Counting objects:  99% (479/483)\u001b[K\r",
+            "remote: Counting objects: 100% (483/483)\u001b[K\r",
+            "remote: Counting objects: 100% (483/483), done.\u001b[K\r\n",
+            "remote: Compressing objects:   0% (1/389)\u001b[K\r",
+            "remote: Compressing objects:   1% (4/389)\u001b[K\r",
+            "remote: Compressing objects:   2% (8/389)\u001b[K\r",
+            "remote: Compressing objects:   3% (12/389)\u001b[K\r",
+            "remote: Compressing objects:   4% (16/389)\u001b[K\r",
+            "remote: Compressing objects:   5% (20/389)\u001b[K\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "remote: Compressing objects:   6% (24/389)\u001b[K\r",
+            "remote: Compressing objects:   7% (28/389)\u001b[K\r",
+            "remote: Compressing objects:   8% (32/389)\u001b[K\r",
+            "remote: Compressing objects:   9% (36/389)\u001b[K\r",
+            "remote: Compressing objects:  10% (39/389)\u001b[K\r",
+            "remote: Compressing objects:  11% (43/389)\u001b[K\r",
+            "remote: Compressing objects:  12% (47/389)\u001b[K\r",
+            "remote: Compressing objects:  13% (51/389)\u001b[K\r",
+            "remote: Compressing objects:  14% (55/389)\u001b[K\r",
+            "remote: Compressing objects:  15% (59/389)\u001b[K\r",
+            "remote: Compressing objects:  16% (63/389)\u001b[K\r",
+            "remote: Compressing objects:  17% (67/389)\u001b[K\r",
+            "remote: Compressing objects:  18% (71/389)\u001b[K\r",
+            "remote: Compressing objects:  19% (74/389)\u001b[K\r",
+            "remote: Compressing objects:  20% (78/389)\u001b[K\r",
+            "remote: Compressing objects:  21% (82/389)\u001b[K\r",
+            "remote: Compressing objects:  22% (86/389)\u001b[K\r",
+            "remote: Compressing objects:  23% (90/389)\u001b[K\r",
+            "remote: Compressing objects:  24% (94/389)\u001b[K\r",
+            "remote: Compressing objects:  25% (98/389)\u001b[K\r",
+            "remote: Compressing objects:  26% (102/389)\u001b[K\r",
+            "remote: Compressing objects:  27% (106/389)\u001b[K\r",
+            "remote: Compressing objects:  28% (109/389)\u001b[K\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "remote: Compressing objects:  28% (111/389)\u001b[K\r",
+            "remote: Compressing objects:  29% (113/389)\u001b[K\r",
+            "remote: Compressing objects:  30% (117/389)\u001b[K\r",
+            "remote: Compressing objects:  31% (121/389)\u001b[K\r",
+            "remote: Compressing objects:  32% (125/389)\u001b[K\r",
+            "remote: Compressing objects:  33% (129/389)\u001b[K\r",
+            "remote: Compressing objects:  34% (133/389)\u001b[K\r",
+            "remote: Compressing objects:  35% (137/389)\u001b[K\r",
+            "remote: Compressing objects:  36% (141/389)\u001b[K\r",
+            "remote: Compressing objects:  37% (144/389)\u001b[K\r",
+            "remote: Compressing objects:  38% (148/389)\u001b[K\r",
+            "remote: Compressing objects:  39% (152/389)\u001b[K\r",
+            "remote: Compressing objects:  40% (156/389)\u001b[K\r",
+            "remote: Compressing objects:  41% (160/389)\u001b[K\r",
+            "remote: Compressing objects:  42% (164/389)\u001b[K\r",
+            "remote: Compressing objects:  43% (168/389)\u001b[K\r",
+            "remote: Compressing objects:  44% (172/389)\u001b[K\r",
+            "remote: Compressing objects:  45% (176/389)\u001b[K\r",
+            "remote: Compressing objects:  46% (179/389)\u001b[K\r",
+            "remote: Compressing objects:  47% (183/389)\u001b[K\r",
+            "remote: Compressing objects:  48% (187/389)\u001b[K\r",
+            "remote: Compressing objects:  49% (191/389)\u001b[K\r",
+            "remote: Compressing objects:  50% (195/389)\u001b[K\r",
+            "remote: Compressing objects:  51% (199/389)\u001b[K\r",
+            "remote: Compressing objects:  52% (203/389)\u001b[K\r",
+            "remote: Compressing objects:  53% (207/389)\u001b[K\r",
+            "remote: Compressing objects:  54% (211/389)\u001b[K\r",
+            "remote: Compressing objects:  55% (214/389)\u001b[K\r",
+            "remote: Compressing objects:  56% (218/389)\u001b[K\r",
+            "remote: Compressing objects:  57% (222/389)\u001b[K\r",
+            "remote: Compressing objects:  58% (226/389)\u001b[K\r",
+            "remote: Compressing objects:  59% (230/389)\u001b[K\r",
+            "remote: Compressing objects:  60% (234/389)\u001b[K\r",
+            "remote: Compressing objects:  61% (238/389)\u001b[K\r",
+            "remote: Compressing objects:  62% (242/389)\u001b[K\r",
+            "remote: Compressing objects:  63% (246/389)\u001b[K\r",
+            "remote: Compressing objects:  64% (249/389)\u001b[K\r",
+            "remote: Compressing objects:  65% (253/389)\u001b[K\r",
+            "remote: Compressing objects:  66% (257/389)\u001b[K\r",
+            "remote: Compressing objects:  67% (261/389)\u001b[K\r",
+            "remote: Compressing objects:  68% (265/389)\u001b[K\r",
+            "remote: Compressing objects:  69% (269/389)\u001b[K\r",
+            "remote: Compressing objects:  70% (273/389)\u001b[K\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "remote: Compressing objects:  71% (277/389)\u001b[K\r",
+            "remote: Compressing objects:  72% (281/389)\u001b[K\r",
+            "remote: Compressing objects:  73% (284/389)\u001b[K\r",
+            "remote: Compressing objects:  74% (288/389)\u001b[K\r",
+            "remote: Compressing objects:  75% (292/389)\u001b[K\r",
+            "remote: Compressing objects:  76% (296/389)\u001b[K\r",
+            "remote: Compressing objects:  77% (300/389)\u001b[K\r",
+            "remote: Compressing objects:  78% (304/389)\u001b[K\r",
+            "remote: Compressing objects:  79% (308/389)\u001b[K\r",
+            "remote: Compressing objects:  80% (312/389)\u001b[K\r",
+            "remote: Compressing objects:  81% (316/389)\u001b[K\r",
+            "remote: Compressing objects:  82% (319/389)\u001b[K\r",
+            "remote: Compressing objects:  83% (323/389)\u001b[K\r",
+            "remote: Compressing objects:  84% (327/389)\u001b[K\r",
+            "remote: Compressing objects:  85% (331/389)\u001b[K\r",
+            "remote: Compressing objects:  86% (335/389)\u001b[K\r",
+            "remote: Compressing objects:  87% (339/389)\u001b[K\r",
+            "remote: Compressing objects:  88% (343/389)\u001b[K\r",
+            "remote: Compressing objects:  89% (347/389)\u001b[K\r",
+            "remote: Compressing objects:  90% (351/389)\u001b[K\r",
+            "remote: Compressing objects:  91% (354/389)\u001b[K\r",
+            "remote: Compressing objects:  92% (358/389)\u001b[K\r",
+            "remote: Compressing objects:  93% (362/389)\u001b[K\r",
+            "remote: Compressing objects:  94% (366/389)\u001b[K\r",
+            "remote: Compressing objects:  95% (370/389)\u001b[K\r",
+            "remote: Compressing objects:  96% (374/389)\u001b[K\r",
+            "remote: Compressing objects:  97% (378/389)\u001b[K\r",
+            "remote: Compressing objects:  98% (382/389)\u001b[K\r",
+            "remote: Compressing objects:  99% (386/389)\u001b[K\r",
+            "remote: Compressing objects: 100% (389/389)\u001b[K\r",
+            "remote: Compressing objects: 100% (389/389), done.\u001b[K\r\n",
+            "Receiving objects:   0% (1/4267)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   1% (43/4267)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   1% (62/4267), 1.74 MiB | 3.40 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   1% (80/4267), 27.11 MiB | 13.49 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   2% (86/4267), 27.11 MiB | 13.49 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   2% (107/4267), 36.96 MiB | 14.73 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   3% (129/4267), 47.06 MiB | 15.64 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   4% (171/4267), 65.60 MiB | 18.69 MiB/s\r",
+            "Receiving objects:   5% (214/4267), 65.60 MiB | 18.69 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   6% (257/4267), 65.60 MiB | 18.69 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   7% (299/4267), 65.60 MiB | 18.69 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   7% (334/4267), 82.44 MiB | 20.54 MiB/s\r",
+            "Receiving objects:   8% (342/4267), 82.44 MiB | 20.54 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:   9% (385/4267), 82.44 MiB | 20.54 MiB/s\r",
+            "Receiving objects:  10% (427/4267), 82.44 MiB | 20.54 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  11% (470/4267), 82.44 MiB | 20.54 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  12% (513/4267), 82.44 MiB | 20.54 MiB/s\r",
+            "Receiving objects:  13% (555/4267), 82.44 MiB | 20.54 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  14% (598/4267), 82.44 MiB | 20.54 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  15% (641/4267), 82.44 MiB | 20.54 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  16% (683/4267), 95.42 MiB | 21.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  17% (726/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  18% (769/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  19% (811/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  20% (854/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  21% (897/4267), 95.42 MiB | 21.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  22% (939/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  23% (982/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  24% (1025/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  25% (1067/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  26% (1110/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  27% (1153/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  28% (1195/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  29% (1238/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  30% (1281/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  31% (1323/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  32% (1366/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  33% (1409/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  34% (1451/4267), 95.42 MiB | 21.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  35% (1494/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  36% (1537/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  37% (1579/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  38% (1622/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  39% (1665/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  40% (1707/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  41% (1750/4267), 95.42 MiB | 21.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  42% (1793/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  43% (1835/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  44% (1878/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  45% (1921/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  46% (1963/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  47% (2006/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  48% (2049/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  49% (2091/4267), 95.42 MiB | 21.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  50% (2134/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  51% (2177/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  52% (2219/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  53% (2262/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  54% (2305/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  55% (2347/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  56% (2390/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  57% (2433/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  58% (2475/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  59% (2518/4267), 95.42 MiB | 21.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  60% (2561/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  61% (2603/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  62% (2646/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  63% (2689/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  64% (2731/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  65% (2774/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  66% (2817/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  67% (2859/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  68% (2902/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  69% (2945/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  70% (2987/4267), 95.42 MiB | 21.14 MiB/s\r",
+            "Receiving objects:  71% (3030/4267), 95.42 MiB | 21.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  71% (3063/4267), 109.98 MiB | 23.89 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  72% (3073/4267), 109.98 MiB | 23.89 MiB/s\r",
+            "Receiving objects:  73% (3115/4267), 109.98 MiB | 23.89 MiB/s\r",
+            "Receiving objects:  74% (3158/4267), 109.98 MiB | 23.89 MiB/s\r",
+            "Receiving objects:  75% (3201/4267), 109.98 MiB | 23.89 MiB/s\r",
+            "Receiving objects:  76% (3243/4267), 109.98 MiB | 23.89 MiB/s\r",
+            "Receiving objects:  77% (3286/4267), 109.98 MiB | 23.89 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  78% (3329/4267), 120.29 MiB | 24.70 MiB/s\r",
+            "Receiving objects:  79% (3371/4267), 120.29 MiB | 24.70 MiB/s\r",
+            "Receiving objects:  80% (3414/4267), 120.29 MiB | 24.70 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  80% (3450/4267), 130.43 MiB | 25.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  81% (3457/4267), 130.43 MiB | 25.14 MiB/s\r",
+            "Receiving objects:  82% (3499/4267), 130.43 MiB | 25.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  83% (3542/4267), 130.43 MiB | 25.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  84% (3585/4267), 130.43 MiB | 25.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  85% (3627/4267), 130.43 MiB | 25.14 MiB/s\r",
+            "Receiving objects:  86% (3670/4267), 130.43 MiB | 25.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  87% (3713/4267), 130.43 MiB | 25.14 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  87% (3730/4267), 164.01 MiB | 27.95 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  88% (3755/4267), 178.47 MiB | 28.91 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  89% (3798/4267), 178.47 MiB | 28.91 MiB/s\r",
+            "Receiving objects:  90% (3841/4267), 178.47 MiB | 28.91 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  90% (3865/4267), 190.52 MiB | 27.49 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  91% (3883/4267), 190.52 MiB | 27.49 MiB/s\r",
+            "Receiving objects:  92% (3926/4267), 190.52 MiB | 27.49 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  93% (3969/4267), 190.52 MiB | 27.49 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  94% (4011/4267), 205.88 MiB | 27.17 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  95% (4054/4267), 205.88 MiB | 27.17 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  96% (4097/4267), 205.88 MiB | 27.17 MiB/s\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Receiving objects:  97% (4139/4267), 205.88 MiB | 27.17 MiB/s\r",
+            "remote: Total 4267 (delta 123), reused 342 (delta 79), pack-reused 3784 (from 3)\u001b[K\r\n",
+            "Receiving objects:  98% (4182/4267), 205.88 MiB | 27.17 MiB/s\r",
+            "Receiving objects:  99% (4225/4267), 205.88 MiB | 27.17 MiB/s\r",
+            "Receiving objects: 100% (4267/4267), 205.88 MiB | 27.17 MiB/s\r",
+            "Receiving objects: 100% (4267/4267), 213.99 MiB | 24.14 MiB/s, done.\r\n",
+            "Resolving deltas:   0% (0/1345)\r",
+            "Resolving deltas:   1% (14/1345)\r",
+            "Resolving deltas:   2% (27/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:   3% (41/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:   4% (54/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:   5% (68/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:   6% (81/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:   6% (85/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:   7% (95/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:   8% (108/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:   8% (117/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:   9% (122/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:  10% (135/1345)\r",
+            "Resolving deltas:  11% (148/1345)\r",
+            "Resolving deltas:  12% (162/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:  13% (175/1345)\r",
+            "Resolving deltas:  14% (189/1345)\r",
+            "Resolving deltas:  15% (202/1345)\r",
+            "Resolving deltas:  16% (216/1345)\r",
+            "Resolving deltas:  17% (229/1345)\r",
+            "Resolving deltas:  18% (243/1345)\r",
+            "Resolving deltas:  19% (256/1345)\r",
+            "Resolving deltas:  20% (269/1345)\r",
+            "Resolving deltas:  21% (283/1345)\r",
+            "Resolving deltas:  22% (296/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:  23% (310/1345)\r",
+            "Resolving deltas:  24% (323/1345)\r",
+            "Resolving deltas:  25% (337/1345)\r",
+            "Resolving deltas:  26% (350/1345)\r",
+            "Resolving deltas:  27% (364/1345)\r",
+            "Resolving deltas:  28% (377/1345)\r",
+            "Resolving deltas:  29% (391/1345)\r",
+            "Resolving deltas:  30% (404/1345)\r",
+            "Resolving deltas:  31% (417/1345)\r",
+            "Resolving deltas:  32% (431/1345)\r",
+            "Resolving deltas:  33% (444/1345)\r",
+            "Resolving deltas:  34% (458/1345)\r",
+            "Resolving deltas:  35% (471/1345)\r",
+            "Resolving deltas:  36% (485/1345)\r",
+            "Resolving deltas:  37% (498/1345)\r",
+            "Resolving deltas:  38% (512/1345)\r",
+            "Resolving deltas:  39% (525/1345)\r",
+            "Resolving deltas:  40% (538/1345)\r",
+            "Resolving deltas:  41% (552/1345)\r",
+            "Resolving deltas:  42% (565/1345)\r",
+            "Resolving deltas:  43% (579/1345)\r",
+            "Resolving deltas:  44% (592/1345)\r",
+            "Resolving deltas:  45% (606/1345)\r",
+            "Resolving deltas:  46% (619/1345)\r",
+            "Resolving deltas:  47% (633/1345)\r",
+            "Resolving deltas:  48% (646/1345)\r",
+            "Resolving deltas:  49% (660/1345)\r",
+            "Resolving deltas:  50% (673/1345)\r",
+            "Resolving deltas:  51% (686/1345)\r",
+            "Resolving deltas:  52% (700/1345)\r",
+            "Resolving deltas:  53% (713/1345)\r",
+            "Resolving deltas:  54% (727/1345)\r",
+            "Resolving deltas:  55% (740/1345)\r",
+            "Resolving deltas:  56% (754/1345)\r",
+            "Resolving deltas:  57% (767/1345)\r",
+            "Resolving deltas:  58% (781/1345)\r",
+            "Resolving deltas:  59% (794/1345)\r",
+            "Resolving deltas:  60% (807/1345)\r",
+            "Resolving deltas:  61% (821/1345)\r",
+            "Resolving deltas:  62% (834/1345)\r",
+            "Resolving deltas:  63% (848/1345)\r",
+            "Resolving deltas:  64% (861/1345)\r",
+            "Resolving deltas:  65% (876/1345)\r",
+            "Resolving deltas:  66% (888/1345)\r",
+            "Resolving deltas:  67% (902/1345)\r",
+            "Resolving deltas:  68% (915/1345)\r",
+            "Resolving deltas:  69% (929/1345)\r",
+            "Resolving deltas:  70% (942/1345)\r",
+            "Resolving deltas:  71% (955/1345)\r",
+            "Resolving deltas:  72% (969/1345)\r",
+            "Resolving deltas:  73% (982/1345)\r",
+            "Resolving deltas:  74% (996/1345)\r",
+            "Resolving deltas:  75% (1009/1345)\r",
+            "Resolving deltas:  76% (1023/1345)\r",
+            "Resolving deltas:  77% (1036/1345)\r",
+            "Resolving deltas:  78% (1050/1345)\r",
+            "Resolving deltas:  79% (1063/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas:  80% (1076/1345)\r",
+            "Resolving deltas:  81% (1090/1345)\r",
+            "Resolving deltas:  82% (1103/1345)\r",
+            "Resolving deltas:  83% (1117/1345)\r",
+            "Resolving deltas:  84% (1130/1345)\r",
+            "Resolving deltas:  85% (1144/1345)\r",
+            "Resolving deltas:  86% (1157/1345)\r",
+            "Resolving deltas:  87% (1171/1345)\r",
+            "Resolving deltas:  88% (1184/1345)\r",
+            "Resolving deltas:  89% (1198/1345)\r",
+            "Resolving deltas:  90% (1211/1345)\r",
+            "Resolving deltas:  91% (1224/1345)\r",
+            "Resolving deltas:  92% (1238/1345)\r",
+            "Resolving deltas:  93% (1251/1345)\r",
+            "Resolving deltas:  94% (1265/1345)\r",
+            "Resolving deltas:  95% (1278/1345)\r",
+            "Resolving deltas:  96% (1292/1345)\r",
+            "Resolving deltas:  97% (1305/1345)\r",
+            "Resolving deltas:  98% (1319/1345)\r",
+            "Resolving deltas:  99% (1332/1345)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Resolving deltas: 100% (1345/1345)\r",
+            "Resolving deltas: 100% (1345/1345), done.\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Updating files:  95% (2306/2410)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Updating files:  96% (2314/2410)\r"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "Updating files:  97% (2338/2410)\r",
+            "Updating files:  98% (2362/2410)\r",
+            "Updating files:  99% (2386/2410)\r",
+            "Updating files: 100% (2410/2410)\r",
+            "Updating files: 100% (2410/2410), done.\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "/kaggle/working/warorbit/neural_network\n",
+            "total 76\r\n",
+            "drwxr-xr-x 11 root root 4096 May  4 10:12 .\r\n",
+            "drwxr-xr-x 23 root root 4096 May  4 10:12 ..\r\n",
+            "-rw-r--r--  1 root root 1782 May  4 10:12 AGENT_PROMPT.md\r\n",
+            "-rw-r--r--  1 root root    0 May  4 10:12 .codex\r\n",
+            "drwxr-xr-x  2 root root 4096 May  4 10:12 configs\r\n",
+            "drwxr-xr-x  2 root root 4096 May  4 10:12 docs\r\n",
+            "-rw-r--r--  1 root root   46 May  4 10:12 __init__.py\r\n",
+            "drwxr-xr-x  2 root root 4096 May  4 10:12 kaggle_test\r\n",
+            "-rw-r--r--  1 root root   76 May  4 10:12 lanceur_20min.cmd\r\n",
+            "-rw-r--r--  1 root root 2529 May  4 10:12 lanceur_20min.py\r\n",
+            "-rw-r--r--  1 root root  175 May  4 10:12 lanceur_5min.cmd\r\n",
+            "drwxr-xr-x  3 root root 4096 May  4 10:12 logs\r\n",
+            "drwxr-xr-x  3 root root 4096 May  4 10:12 neural_network\r\n",
+            "-rw-r--r--  1 root root 1490 May  4 10:12 README.md\r\n",
+            "-rw-r--r--  1 root root  423 May  4 10:12 run_smoke_notebook_4p.ps1\r\n",
+            "drwxr-xr-x  2 root root 4096 May  4 10:12 scripts\r\n",
+            "drwxr-xr-x  2 root root 4096 May  4 10:12 src\r\n",
+            "-rw-r--r--  1 root root 3452 May  4 10:12 supervisor.sh\r\n",
+            "drwxr-xr-x  2 root root 4096 May  4 10:12 tests\r\n",
+            "drwxr-xr-x  3 root root 4096 May  4 10:12 .test_tmp\r\n"
+          ]
+        }
+      ],
+      "source": [
+        "!rm -rf warorbit\n",
+        "!git clone https://github.com/Jrix-G/warorbit.git\n",
+        "%cd warorbit/neural_network\n",
+        "!ls -la"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 2,
+      "id": "07b39953",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-05-04T10:12:32.592641Z",
+          "iopub.status.busy": "2026-05-04T10:12:32.592356Z",
+          "iopub.status.idle": "2026-05-04T10:12:32.600297Z",
+          "shell.execute_reply": "2026-05-04T10:12:32.598969Z"
+        },
+        "papermill": {
+          "duration": 0.014802,
+          "end_time": "2026-05-04T10:12:32.602047+00:00",
+          "exception": false,
+          "start_time": "2026-05-04T10:12:32.587245+00:00",
+          "status": "completed"
+        },
+        "tags": []
+      },
+      "outputs": [
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "/kaggle/working/warorbit\n"
+          ]
+        }
+      ],
+      "source": [
+        "cd /kaggle/working/warorbit/"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 3,
+      "id": "97e7bd11",
+      "metadata": {
+        "execution": {
+          "iopub.execute_input": "2026-05-04T10:12:32.610015Z",
+          "iopub.status.busy": "2026-05-04T10:12:32.609743Z"
+        },
+        "papermill": {
+          "duration": null,
+          "end_time": null,
+          "exception": false,
+          "start_time": "2026-05-04T10:12:32.605524+00:00",
+          "status": "running"
+        },
+        "tags": []
+      },
+      "outputs": [
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 start elapsed=0.0m global_best=-1000000000.000 tier_best=-1000000000.000 tier=basic_300 pool=3 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 train done 1/6 elapsed=2.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 train done 2/6 elapsed=2.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 train done 3/6 elapsed=2.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 train done 4/6 elapsed=3.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 train done 5/6 elapsed=3.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 train done 6/6 elapsed=3.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 fast_eval done 1/6 elapsed=3.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 fast_eval done 2/6 elapsed=4.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 fast_eval done 3/6 elapsed=4.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 fast_eval done 4/6 elapsed=4.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 fast_eval done 5/6 elapsed=4.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 fast_eval done 6/6 elapsed=5.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 0 candidate_score=0.815 winrate=0.781 rank=1.38 noop=0.04 promoted=1 global_best=0.815 tier_best=0.815 tier=basic_300 params=1314050 pool=3\r\n",
+            "generation 1 start elapsed=9.5m global_best=0.815 tier_best=0.815 tier=basic_300 pool=3 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 train done 1/6 elapsed=12.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 train done 2/6 elapsed=12.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 train done 3/6 elapsed=12.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 train done 4/6 elapsed=12.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 train done 5/6 elapsed=12.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 train done 6/6 elapsed=12.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 fast_eval done 1/6 elapsed=13.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 fast_eval done 2/6 elapsed=14.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 fast_eval done 3/6 elapsed=14.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 fast_eval done 4/6 elapsed=15.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 fast_eval done 5/6 elapsed=15.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 fast_eval done 6/6 elapsed=15.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 1 candidate_score=0.820 winrate=0.750 rank=1.25 noop=0.05 promoted=0 global_best=0.815 tier_best=-1000000000.000 tier=heuristic_500 params=1314050 pool=6\r\n",
+            "generation 2 start elapsed=15.6m global_best=0.815 tier_best=-1000000000.000 tier=heuristic_500 pool=6 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 train done 1/6 elapsed=16.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 train done 2/6 elapsed=17.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 train done 3/6 elapsed=17.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 train done 4/6 elapsed=17.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 train done 5/6 elapsed=17.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 train done 6/6 elapsed=17.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 fast_eval done 1/6 elapsed=18.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 fast_eval done 2/6 elapsed=18.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 fast_eval done 3/6 elapsed=19.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 fast_eval done 4/6 elapsed=19.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 fast_eval done 5/6 elapsed=19.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 fast_eval done 6/6 elapsed=19.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 2 candidate_score=0.303 winrate=0.188 rank=2.53 noop=0.24 promoted=1 global_best=0.815 tier_best=0.303 tier=heuristic_500 params=1314050 pool=6\r\n",
+            "generation 3 start elapsed=22.1m global_best=0.815 tier_best=0.303 tier=heuristic_500 pool=6 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 train done 1/6 elapsed=23.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 train done 2/6 elapsed=23.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 train done 3/6 elapsed=24.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 train done 4/6 elapsed=24.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 train done 5/6 elapsed=24.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 train done 6/6 elapsed=24.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 fast_eval done 1/6 elapsed=25.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 fast_eval done 2/6 elapsed=25.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 fast_eval done 3/6 elapsed=25.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 fast_eval done 4/6 elapsed=26.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 fast_eval done 5/6 elapsed=26.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 fast_eval done 6/6 elapsed=26.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 3 candidate_score=0.541 winrate=0.469 rank=2.03 noop=0.18 promoted=1 global_best=0.815 tier_best=-1000000000.000 tier=mixed_700 params=1314050 pool=8\r\n",
+            "generation 4 start elapsed=30.1m global_best=0.815 tier_best=-1000000000.000 tier=mixed_700 pool=8 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[?25l   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m?\u001b[0m eta \u001b[36m-:--:--\u001b[0m\u001b[?25l   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m?\u001b[0m eta \u001b[36m-:--:--\u001b[0m\u001b[?25l   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m?\u001b[0m eta \u001b[36m-:--:--\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m2.3 MB/s\u001b[0m eta \u001b[36m0:00:06\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m2.6 MB/s\u001b[0m eta \u001b[36m0:00:06\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m2.4 MB/s\u001b[0m eta \u001b[36m0:00:06\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.1/13.4 MB\u001b[0m \u001b[31m1.6 MB/s\u001b[0m eta \u001b[36m0:00:09\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.1/13.4 MB\u001b[0m \u001b[31m1.8 MB/s\u001b[0m eta \u001b[36m0:00:08\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.1/13.4 MB\u001b[0m \u001b[31m1.7 MB/s\u001b[0m eta \u001b[36m0:00:08\u001b[0m\r",
+            "\u001b[2K   \u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.3/13.4 MB\u001b[0m \u001b[31m2.5 MB/s\u001b[0m eta \u001b[36m0:00:06\u001b[0m\r",
+            "\u001b[2K   \u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.3/13.4 MB\u001b[0m \u001b[31m2.6 MB/s\u001b[0m eta \u001b[36m0:00:06\u001b[0m\r",
+            "\u001b[2K   \u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.3/13.4 MB\u001b[0m \u001b[31m2.3 MB/s\u001b[0m eta \u001b[36m0:00:06\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.5/13.4 MB\u001b[0m \u001b[31m3.5 MB/s\u001b[0m eta \u001b[36m0:00:04\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.6/13.4 MB\u001b[0m \u001b[31m3.9 MB/s\u001b[0m eta \u001b[36m0:00:04\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.5/13.4 MB\u001b[0m \u001b[31m3.2 MB/s\u001b[0m eta \u001b[36m0:00:05\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.0/13.4 MB\u001b[0m \u001b[31m5.3 MB/s\u001b[0m eta \u001b[36m0:00:03\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.0/13.4 MB\u001b[0m \u001b[31m5.5 MB/s\u001b[0m eta \u001b[36m0:00:03\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.8/13.4 MB\u001b[0m \u001b[31m4.5 MB/s\u001b[0m eta \u001b[36m0:00:03\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.7/13.4 MB\u001b[0m \u001b[31m7.8 MB/s\u001b[0m eta \u001b[36m0:00:02\u001b[0m\u001b[?25l   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m?\u001b[0m eta \u001b[36m-:--:--\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.7/13.4 MB\u001b[0m \u001b[31m8.0 MB/s\u001b[0m eta \u001b[36m0:00:02\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.4/13.4 MB\u001b[0m \u001b[31m6.5 MB/s\u001b[0m eta \u001b[36m0:00:02\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m2.9/13.4 MB\u001b[0m \u001b[31m11.7 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\u001b[?25l\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m1.8 MB/s\u001b[0m eta \u001b[36m0:00:08\u001b[0m   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m?\u001b[0m eta \u001b[36m-:--:--\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m3.0/13.4 MB\u001b[0m \u001b[31m12.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m2.6/13.4 MB\u001b[0m \u001b[31m10.7 MB/s\u001b[0m eta \u001b[36m0:00:02\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[?25l\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m5.4/13.4 MB\u001b[0m \u001b[31m18.9 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m?\u001b[0m eta \u001b[36m-:--:--\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.1/13.4 MB\u001b[0m \u001b[31m1.2 MB/s\u001b[0m eta \u001b[36m0:00:12\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m5.3/13.4 MB\u001b[0m \u001b[31m18.4 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m2.4 MB/s\u001b[0m eta \u001b[36m0:00:06\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m5.2/13.4 MB\u001b[0m \u001b[31m18.3 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━\u001b[0m \u001b[32m9.1/13.4 MB\u001b[0m \u001b[31m28.6 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.0/13.4 MB\u001b[0m \u001b[31m2.2 MB/s\u001b[0m eta \u001b[36m0:00:07\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.1/13.4 MB\u001b[0m \u001b[31m1.3 MB/s\u001b[0m eta \u001b[36m0:00:11\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.1/13.4 MB\u001b[0m \u001b[31m1.8 MB/s\u001b[0m eta \u001b[36m0:00:08\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━\u001b[0m \u001b[32m9.3/13.4 MB\u001b[0m \u001b[31m29.3 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━\u001b[0m \u001b[32m8.8/13.4 MB\u001b[0m \u001b[31m27.2 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━\u001b[0m \u001b[32m12.6/13.4 MB\u001b[0m \u001b[31m80.9 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.1/13.4 MB\u001b[0m \u001b[31m1.5 MB/s\u001b[0m eta \u001b[36m0:00:10\u001b[0m\r",
+            "\u001b[2K   \u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.3/13.4 MB\u001b[0m \u001b[31m1.9 MB/s\u001b[0m eta \u001b[36m0:00:07\u001b[0m\r",
+            "\u001b[2K   \u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.3/13.4 MB\u001b[0m \u001b[31m2.6 MB/s\u001b[0m eta \u001b[36m0:00:06\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━\u001b[0m \u001b[32m12.5/13.4 MB\u001b[0m \u001b[31m78.0 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━\u001b[0m \u001b[32m11.5/13.4 MB\u001b[0m \u001b[31m62.9 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m86.2 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.2/13.4 MB\u001b[0m \u001b[31m1.4 MB/s\u001b[0m eta \u001b[36m0:00:10\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.5/13.4 MB\u001b[0m \u001b[31m2.6 MB/s\u001b[0m eta \u001b[36m0:00:05\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m87.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.5/13.4 MB\u001b[0m \u001b[31m3.5 MB/s\u001b[0m eta \u001b[36m0:00:04\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m83.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m86.2 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.3/13.4 MB\u001b[0m \u001b[31m2.1 MB/s\u001b[0m eta \u001b[36m0:00:07\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.7/13.4 MB\u001b[0m \u001b[31m3.4 MB/s\u001b[0m eta \u001b[36m0:00:04\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m87.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.0/13.4 MB\u001b[0m \u001b[31m5.5 MB/s\u001b[0m eta \u001b[36m0:00:03\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m83.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m86.2 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m0.6/13.4 MB\u001b[0m \u001b[31m3.2 MB/s\u001b[0m eta \u001b[36m0:00:04\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.2/13.4 MB\u001b[0m \u001b[31m5.1 MB/s\u001b[0m eta \u001b[36m0:00:03\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m87.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.7/13.4 MB\u001b[0m \u001b[31m8.0 MB/s\u001b[0m eta \u001b[36m0:00:02\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m83.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m41.7 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\r\n",
+            "\u001b[?25h\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m43.3 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\r\n",
+            "\u001b[?25h\r",
+            "\u001b[2K   \u001b[91m━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.0/13.4 MB\u001b[0m \u001b[31m4.4 MB/s\u001b[0m eta \u001b[36m0:00:03\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m2.2/13.4 MB\u001b[0m \u001b[31m7.7 MB/s\u001b[0m eta \u001b[36m0:00:02\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m3.1/13.4 MB\u001b[0m \u001b[31m12.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m83.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.5/13.4 MB\u001b[0m \u001b[31m5.8 MB/s\u001b[0m eta \u001b[36m0:00:03\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m3.6/13.4 MB\u001b[0m \u001b[31m11.0 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m5.4/13.4 MB\u001b[0m \u001b[31m18.7 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m83.1 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m34.6 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\r\n",
+            "\u001b[?25h"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━\u001b[0m \u001b[32m9.3/13.4 MB\u001b[0m \u001b[31m28.3 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m5.4/13.4 MB\u001b[0m \u001b[31m14.7 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m2.6/13.4 MB\u001b[0m \u001b[31m9.1 MB/s\u001b[0m eta \u001b[36m0:00:02\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━\u001b[0m \u001b[32m10.7/13.4 MB\u001b[0m \u001b[31m44.0 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m5.2/13.4 MB\u001b[0m \u001b[31m15.4 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━━━━━━━━━━━\u001b[0m \u001b[32m8.2/13.4 MB\u001b[0m \u001b[31m20.0 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m6.7/13.4 MB\u001b[0m \u001b[31m17.8 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.3/13.4 MB\u001b[0m \u001b[31m64.5 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━\u001b[0m \u001b[32m10.5/13.4 MB\u001b[0m \u001b[31m34.8 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[90m╺\u001b[0m\u001b[90m━━━━━━━━\u001b[0m \u001b[32m10.4/13.4 MB\u001b[0m \u001b[31m31.6 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m63.8 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━\u001b[0m \u001b[32m12.6/13.4 MB\u001b[0m \u001b[31m49.9 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m\u001b[90m━━━━━\u001b[0m \u001b[32m11.6/13.4 MB\u001b[0m \u001b[31m48.5 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m63.8 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m51.9 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m60.7 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m63.8 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m36.8 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\r\n",
+            "\u001b[?25h\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m51.9 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m60.7 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m51.9 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m60.7 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m51.9 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m60.7 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\r",
+            "\u001b[2K   \u001b[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[91m╸\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m51.9 MB/s\u001b[0m eta \u001b[36m0:00:01\u001b[0m\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m30.4 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\r\n",
+            "\u001b[?25h\r",
+            "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m13.4/13.4 MB\u001b[0m \u001b[31m25.4 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\r\n",
+            "\u001b[?25h"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[31mERROR: Could not install packages due to an OSError: [Errno 2] No such file or directory: '/usr/local/bin/kaggle-environments'\r\n",
+            "\u001b[0m\u001b[31m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Ignoring invalid distribution ~aggle-environments (/usr/local/lib/python3.12/dist-packages)\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Ignoring invalid distribution ~aggle-environments (/usr/local/lib/python3.12/dist-packages)\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Ignoring invalid distribution ~aggle-environments (/usr/local/lib/python3.12/dist-packages)\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Skipping kaggle-environments as it is not installed.\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Skipping kaggle-environments as it is not installed.\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Skipping kaggle-environments as it is not installed.\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[31mERROR: Could not install packages due to an OSError: [Errno 2] No such file or directory: '/usr/local/lib/python3.12/dist-packages/kaggle_environments-1.29.0.dist-info/INSTALLERr0qprqa8.tmp'\r\n",
+            "\u001b[0m\u001b[31m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[31mERROR: Exception:\r\n",
+            "Traceback (most recent call last):\r\n",
+            "  File \"/usr/local/lib/python3.12/dist-packages/pip/_internal/cli/base_command.py\", line 179, in exc_logging_wrapper\r\n",
+            "    status = run_func(*args)\r\n",
+            "             ^^^^^^^^^^^^^^^\r\n",
+            "  File \"/usr/local/lib/python3.12/dist-packages/pip/_internal/cli/req_command.py\", line 67, in wrapper\r\n",
+            "    return func(self, options, args)\r\n",
+            "           ^^^^^^^^^^^^^^^^^^^^^^^^^\r\n",
+            "  File \"/usr/local/lib/python3.12/dist-packages/pip/_internal/commands/install.py\", line 455, in run\r\n",
+            "    installed = install_given_reqs(\r\n",
+            "                ^^^^^^^^^^^^^^^^^^^\r\n",
+            "  File \"/usr/local/lib/python3.12/dist-packages/pip/_internal/req/__init__.py\", line 70, in install_given_reqs\r\n",
+            "    requirement.install(\r\n",
+            "  File \"/usr/local/lib/python3.12/dist-packages/pip/_internal/req/req_install.py\", line 851, in install\r\n",
+            "    install_wheel(\r\n",
+            "  File \"/usr/local/lib/python3.12/dist-packages/pip/_internal/operations/install/wheel.py\", line 726, in install_wheel\r\n",
+            "    _install_wheel(\r\n",
+            "  File \"/usr/local/lib/python3.12/dist-packages/pip/_internal/operations/install/wheel.py\", line 615, in _install_wheel\r\n",
+            "    assert os.path.exists(pyc_path)\r\n",
+            "           ^^^^^^^^^^^^^^^^^^^^^^^^\r\n",
+            "AssertionError\u001b[0m\u001b[31m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 train done 1/6 elapsed=32.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 train done 2/6 elapsed=32.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 train done 3/6 elapsed=32.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 train done 4/6 elapsed=32.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 train done 5/6 elapsed=32.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 train done 6/6 elapsed=32.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33mWARNING: Skipping /usr/local/lib/python3.12/dist-packages/kaggle_environments-1.29.0.dist-info due to invalid metadata entry 'name'\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Skipping /usr/local/lib/python3.12/dist-packages/kaggle_environments-1.29.0.dist-info due to invalid metadata entry 'name'\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Skipping /usr/local/lib/python3.12/dist-packages/kaggle_environments-1.29.0.dist-info due to invalid metadata entry 'name'\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Skipping kaggle-environments as it is not installed.\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "\u001b[33m    WARNING: Skipping kaggle-environments as it is not installed.\u001b[0m\u001b[33m\r\n",
+            "\u001b[0m"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 fast_eval done 1/6 elapsed=33.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 fast_eval done 2/6 elapsed=33.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 fast_eval done 3/6 elapsed=33.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 fast_eval done 4/6 elapsed=34.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 fast_eval done 5/6 elapsed=34.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 fast_eval done 6/6 elapsed=34.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 4 candidate_score=0.525 winrate=0.438 rank=2.06 noop=0.12 promoted=1 global_best=0.815 tier_best=0.525 tier=mixed_700 params=1314050 pool=8\r\n",
+            "generation 5 start elapsed=38.0m global_best=0.815 tier_best=0.525 tier=mixed_700 pool=8 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 train done 1/6 elapsed=39.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 train done 2/6 elapsed=39.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 train done 3/6 elapsed=39.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 train done 4/6 elapsed=39.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 train done 5/6 elapsed=40.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 train done 6/6 elapsed=40.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 fast_eval done 1/6 elapsed=42.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 fast_eval done 2/6 elapsed=42.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 fast_eval done 3/6 elapsed=42.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 fast_eval done 4/6 elapsed=43.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 fast_eval done 5/6 elapsed=43.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 fast_eval done 6/6 elapsed=43.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 5 candidate_score=0.674 winrate=0.625 rank=1.75 noop=0.09 promoted=1 global_best=0.815 tier_best=0.674 tier=mixed_700 params=1314050 pool=8\r\n",
+            "generation 6 start elapsed=47.6m global_best=0.815 tier_best=0.674 tier=mixed_700 pool=8 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 train done 1/6 elapsed=49.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 train done 2/6 elapsed=49.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 train done 3/6 elapsed=49.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 train done 4/6 elapsed=49.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 train done 5/6 elapsed=49.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 train done 6/6 elapsed=49.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 fast_eval done 1/6 elapsed=50.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 fast_eval done 2/6 elapsed=50.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 fast_eval done 3/6 elapsed=51.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 fast_eval done 4/6 elapsed=51.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 fast_eval done 5/6 elapsed=51.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 fast_eval done 6/6 elapsed=51.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 6 candidate_score=0.694 winrate=0.625 rank=1.62 noop=0.07 promoted=0 global_best=0.815 tier_best=-1000000000.000 tier=notebook_open params=1314050 pool=15\r\n",
+            "generation 7 start elapsed=51.8m global_best=0.815 tier_best=-1000000000.000 tier=notebook_open pool=15 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 train done 1/6 elapsed=56.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 train done 2/6 elapsed=57.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 train done 3/6 elapsed=58.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 train done 4/6 elapsed=58.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 train done 5/6 elapsed=58.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 train done 6/6 elapsed=58.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 fast_eval done 1/6 elapsed=64.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 fast_eval done 2/6 elapsed=64.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 fast_eval done 3/6 elapsed=65.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 fast_eval done 4/6 elapsed=65.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 fast_eval done 5/6 elapsed=66.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 fast_eval done 6/6 elapsed=66.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 7 candidate_score=0.095 winrate=0.094 rank=3.38 noop=0.49 promoted=1 global_best=0.815 tier_best=0.095 tier=notebook_open params=1314050 pool=15\r\n",
+            "generation 8 start elapsed=76.3m global_best=0.815 tier_best=0.095 tier=notebook_open pool=15 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 train done 1/6 elapsed=80.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 train done 2/6 elapsed=81.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 train done 3/6 elapsed=81.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 train done 4/6 elapsed=82.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 train done 5/6 elapsed=82.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 train done 6/6 elapsed=82.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 fast_eval done 1/6 elapsed=87.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 fast_eval done 2/6 elapsed=88.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 fast_eval done 3/6 elapsed=88.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 fast_eval done 4/6 elapsed=88.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 fast_eval done 5/6 elapsed=89.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 fast_eval done 6/6 elapsed=90.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 8 candidate_score=0.053 winrate=0.031 rank=3.50 noop=0.43 promoted=0 global_best=0.815 tier_best=0.095 tier=notebook_open params=1314050 pool=15\r\n",
+            "generation 9 start elapsed=97.7m global_best=0.815 tier_best=0.095 tier=notebook_open pool=15 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 train done 1/6 elapsed=102.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 train done 2/6 elapsed=102.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 train done 3/6 elapsed=103.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 train done 4/6 elapsed=103.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 train done 5/6 elapsed=103.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 train done 6/6 elapsed=103.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 fast_eval done 1/6 elapsed=110.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 fast_eval done 2/6 elapsed=110.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 fast_eval done 3/6 elapsed=110.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 fast_eval done 4/6 elapsed=111.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 fast_eval done 5/6 elapsed=111.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 fast_eval done 6/6 elapsed=111.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 9 candidate_score=0.104 winrate=0.031 rank=3.16 noop=0.37 promoted=0 global_best=0.815 tier_best=0.095 tier=notebook_open params=1314050 pool=15\r\n",
+            "generation 10 start elapsed=121.1m global_best=0.815 tier_best=0.095 tier=notebook_open pool=15 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 train done 1/6 elapsed=126.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 train done 2/6 elapsed=127.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 train done 3/6 elapsed=127.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 train done 4/6 elapsed=127.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 train done 5/6 elapsed=128.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 train done 6/6 elapsed=128.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 fast_eval done 1/6 elapsed=133.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 fast_eval done 2/6 elapsed=134.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 fast_eval done 3/6 elapsed=135.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 fast_eval done 4/6 elapsed=135.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 fast_eval done 5/6 elapsed=135.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 fast_eval done 6/6 elapsed=135.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 10 candidate_score=0.087 winrate=0.000 rank=3.25 noop=0.34 promoted=0 global_best=0.815 tier_best=0.095 tier=notebook_open params=1314050 pool=15\r\n",
+            "generation 11 start elapsed=135.7m global_best=0.815 tier_best=0.095 tier=notebook_open pool=15 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 train done 1/6 elapsed=140.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 train done 2/6 elapsed=141.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 train done 3/6 elapsed=141.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 train done 4/6 elapsed=141.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 train done 5/6 elapsed=141.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 train done 6/6 elapsed=142.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 fast_eval done 1/6 elapsed=147.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 fast_eval done 2/6 elapsed=147.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 fast_eval done 3/6 elapsed=147.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 fast_eval done 4/6 elapsed=147.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 fast_eval done 5/6 elapsed=148.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 fast_eval done 6/6 elapsed=148.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 11 candidate_score=0.167 winrate=0.094 rank=3.03 noop=0.37 promoted=1 global_best=0.815 tier_best=0.167 tier=notebook_open params=1314050 pool=15\r\n",
+            "generation 12 start elapsed=159.4m global_best=0.815 tier_best=0.167 tier=notebook_open pool=15 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 train done 1/6 elapsed=161.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 train done 2/6 elapsed=163.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 train done 3/6 elapsed=163.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 train done 4/6 elapsed=163.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 train done 5/6 elapsed=164.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 train done 6/6 elapsed=164.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 fast_eval done 1/6 elapsed=170.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 fast_eval done 2/6 elapsed=170.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 fast_eval done 3/6 elapsed=171.0m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 fast_eval done 4/6 elapsed=171.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 fast_eval done 5/6 elapsed=171.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 fast_eval done 6/6 elapsed=172.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 12 candidate_score=0.117 winrate=0.000 rank=2.88 noop=0.45 promoted=0 global_best=0.815 tier_best=0.167 tier=notebook_open params=1314050 pool=15\r\n",
+            "generation 13 start elapsed=172.1m global_best=0.815 tier_best=0.167 tier=notebook_open pool=15 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 train done 1/6 elapsed=176.3m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 train done 2/6 elapsed=176.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 train done 3/6 elapsed=177.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 train done 4/6 elapsed=177.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 train done 5/6 elapsed=177.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 train done 6/6 elapsed=177.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 fast_eval done 1/6 elapsed=183.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 fast_eval done 2/6 elapsed=183.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 fast_eval done 3/6 elapsed=183.8m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 fast_eval done 4/6 elapsed=184.2m\r\n",
+            "generation 13 fast_eval done 5/6 elapsed=184.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 fast_eval done 6/6 elapsed=184.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 13 candidate_score=0.105 winrate=0.031 rank=3.22 noop=0.31 promoted=0 global_best=0.815 tier_best=0.167 tier=notebook_open params=1314050 pool=15\r\n",
+            "generation 14 start elapsed=194.8m global_best=0.815 tier_best=0.167 tier=notebook_open pool=15 workers=6 eval_fast=8\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 train done 1/6 elapsed=199.7m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 train done 2/6 elapsed=199.9m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 train done 3/6 elapsed=201.1m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 train done 4/6 elapsed=201.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 train done 5/6 elapsed=201.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 train done 6/6 elapsed=201.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 fast_eval done 1/6 elapsed=206.5m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 fast_eval done 2/6 elapsed=207.4m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 fast_eval done 3/6 elapsed=208.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 fast_eval done 4/6 elapsed=208.2m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 fast_eval done 5/6 elapsed=208.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 fast_eval done 6/6 elapsed=208.6m\r\n"
+          ]
+        },
+        {
+          "name": "stdout",
+          "output_type": "stream",
+          "text": [
+            "generation 14 candidate_score=0.067 winrate=0.000 rank=3.28 noop=0.43 promoted=0 global_best=0.815 tier_best=0.167 tier=notebook_open params=1314050 pool=15\r\n",
+            "generation 15 start elapsed=217.9m global_best=0.815 tier_best=0.167 tier=notebook_open pool=15 workers=6 eval_fast=8\r\n"
+          ]
+        }
+      ],
+      "source": [
+        "!python -u neural_network/scripts/run_90min_6agent_training.py --duration-minutes 480 --workers 6 --eval-episodes 32"
+      ]
+    }
+  ],
+  "metadata": {
+    "kaggle": {
+      "accelerator": "none",
+      "dataSources": [],
+      "dockerImageVersionId": 31328,
+      "isGpuEnabled": false,
+      "isInternetEnabled": true,
+      "language": "python",
+      "sourceType": "notebook"
+    },
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3",
+      "version": "3.12.12"
+    },
+    "papermill": {
+      "default_parameters": {},
+      "duration": null,
+      "end_time": null,
+      "environment_variables": {},
+      "exception": null,
+      "input_path": "__notebook__.ipynb",
+      "output_path": "__notebook__.ipynb",
+      "parameters": {},
+      "start_time": "2026-05-04T10:12:13.334162+00:00",
+      "version": "2.7.0"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5

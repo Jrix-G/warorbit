@@ -15,7 +15,7 @@ from SimGame import SimGame
 from .encoder import encode_game_state
 from .model import ModelConfig, NeuralNetworkModel, load_compatible_state_dict
 from .orbit_wars_adapter import obs_to_game_dict
-from .policy import build_action_candidates, choose_action, reconstruct_action
+from .policy import build_action_candidates, choose_action_from_candidates, reconstruct_action
 from .reward import compute_dense_reward
 from .storage import append_jsonl, load_checkpoint, save_checkpoint
 from .torch_compat import ensure_torch_dynamo_stub
@@ -221,6 +221,22 @@ def _candidate_move(game: Dict[str, Any], action: tuple[int, int, int]) -> list[
     return [[int(src_id), float(angle), int(ships)]]
 
 
+def _copy_planning_game(game: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        **game,
+        "planets": [dict(p) for p in game.get("planets", [])],
+        "fleets": [dict(f) for f in game.get("fleets", [])],
+        "player_ids": list(game.get("player_ids", [])),
+    }
+
+
+def _reserve_planned_ships(game: Dict[str, Any], src_id: int, ships: int) -> None:
+    for planet in game.get("planets", []):
+        if int(planet.get("id", -1)) == int(src_id):
+            planet["ships"] = max(1.0, float(planet.get("ships", 0.0)) - float(max(0, ships)))
+            return
+
+
 def _send_ratios(config: Dict[str, Any]) -> Tuple[float, ...]:
     values = config.get("send_ratios", [0.25, 0.5, 0.75])
     ratios = tuple(float(v) for v in values if 0.0 < float(v) < 1.0)
@@ -309,39 +325,48 @@ def _make_our_agent(
     log_probs: List[torch.Tensor],
     action_records: List[Dict[str, Any]],
     temperature: float,
+    explore: bool = True,
 ):
     def agent(obs, _config=None):
         game = obs_to_game_dict(obs)
-        encoded = encode_game_state(game, config)
         ratios = _send_ratios(config)
-        candidates = build_action_candidates(game, send_ratios=ratios)
-        candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
-        outputs = model(
-            torch.tensor(encoded.features, dtype=torch.float32),
-            torch.tensor(candidate_features, dtype=torch.float32),
-        )
-        cand, log_prob, entropy = choose_action(
-            outputs,
-            game,
-            temperature=temperature,
-            explore=True,
-            return_entropy=True,
-            send_ratios=ratios,
-            prior_strength=float(config.get("policy_prior_strength", 0.8)),
-        )
-        log_probs.append(log_prob)
-        action = reconstruct_action(cand, game)
-        move = _candidate_move(game, action)
-        executed_ships = int(move[0][2]) if move else 0
-        action_records.append(
-            {
-                "mission": cand.mission if move else "do_nothing",
-                "ships": executed_ships,
-                "_value": outputs["value"].reshape(-1)[0],
-                "_entropy": entropy,
-            }
-        )
-        return move
+        max_actions = max(1, int(config.get("max_actions_per_turn", 4)))
+        planning_game = _copy_planning_game(game)
+        moves: list[list[int | float]] = []
+        for _ in range(max_actions):
+            encoded = encode_game_state(planning_game, config)
+            candidates = build_action_candidates(planning_game, send_ratios=ratios)
+            candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
+            outputs = model(
+                torch.tensor(encoded.features, dtype=torch.float32),
+                torch.tensor(candidate_features, dtype=torch.float32),
+            )
+            cand, log_prob, entropy = choose_action_from_candidates(
+                outputs,
+                planning_game,
+                candidates,
+                temperature=temperature,
+                explore=explore,
+                return_entropy=True,
+                prior_strength=float(config.get("policy_prior_strength", 0.8)),
+            )
+            log_probs.append(log_prob)
+            action = reconstruct_action(cand, planning_game)
+            move = _candidate_move(planning_game, action)
+            executed_ships = int(move[0][2]) if move else 0
+            action_records.append(
+                {
+                    "mission": cand.mission if move else "do_nothing",
+                    "ships": executed_ships,
+                    "_value": outputs["value"].reshape(-1)[0],
+                    "_entropy": entropy,
+                }
+            )
+            if not move:
+                break
+            moves.extend(move)
+            _reserve_planned_ships(planning_game, action[0], executed_ships)
+        return moves
 
     return agent
 
@@ -355,13 +380,13 @@ def _sample_opponents(pool: Sequence[str], seed: int, count: int = 3) -> List[st
     return [names[i % len(names)] for i in range(max(1, count))]
 
 
-def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, our_index: int, temperature: float, pool: Sequence[str]):
+def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, our_index: int, temperature: float, pool: Sequence[str], explore: bool = True):
     log_probs: List[torch.Tensor] = []
     action_records: List[Dict[str, Any]] = []
     opp_names = _sample_opponents(pool, seed, int(config.get("train_notebook_opponents", 1)))
     opp_iter = iter(opp_names)
     agents = []
-    our_agent = _make_our_agent(model, config, log_probs, action_records, temperature)
+    our_agent = _make_our_agent(model, config, log_probs, action_records, temperature, explore=explore)
     for slot in range(4):
         if slot == our_index:
             agents.append(our_agent)
@@ -449,7 +474,7 @@ def _train_episode(
 
 
 def _eval_match(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, our_index: int, pool: Sequence[str], temperature: float = 0.0) -> Dict[str, Any]:
-    agents, log_probs, action_records, opp_names = _build_agents(model, config, seed, our_index, temperature, pool)
+    agents, log_probs, action_records, opp_names = _build_agents(model, config, seed, our_index, temperature, pool, explore=False)
     result = _run_match_compat(
         agents,
         seed=seed,
@@ -486,11 +511,21 @@ def evaluate_4p(model: NeuralNetworkModel, config: Dict[str, Any], pool: Sequenc
         f"p{pos}": float(np.mean([1.0 if r["winner"] == r["our_index"] else 0.0 for r in rows if r["our_index"] == pos]) if any(r["our_index"] == pos for r in rows) else 0.0)
         for pos in range(4)
     }
+    opponent_names = sorted({name for row in rows for name in row.get("opponents", [])})
+    by_opponent = {}
+    for name in opponent_names:
+        matched = [row for row in rows if name in row.get("opponents", [])]
+        by_opponent[name] = {
+            "games": len(matched),
+            "winrate": float(np.mean([1.0 if r["winner"] == r["our_index"] else 0.0 for r in matched]) if matched else 0.0),
+            "rank_mean": float(np.mean([r["rank"] for r in matched]) if matched else 4.0),
+        }
     return {
         "eval_mean": float(np.mean(rewards) if rewards else 0.0),
         "eval_std": float(np.std(rewards) if rewards else 0.0),
         "winrate": float(np.mean(wins) if wins else 0.0),
         "winrate_by_position": by_position,
+        "eval_by_opponent": by_opponent,
         "rank_mean": float(np.mean([r["rank"] for r in rows]) if rows else 4.0),
         "avg_score": float(np.mean(scores) if scores else 0.0),
         "avg_episode_length": float(np.mean([r["steps"] for r in rows]) if rows else 0.0),

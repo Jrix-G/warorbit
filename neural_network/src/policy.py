@@ -147,6 +147,26 @@ def choose_action(
     prior_strength: float = 0.0,
 ) -> Tuple[ActionCandidate, torch.Tensor] | Tuple[ActionCandidate, torch.Tensor, torch.Tensor]:
     candidates = build_action_candidates(game, send_ratios=send_ratios)
+    return choose_action_from_candidates(
+        outputs,
+        game,
+        candidates,
+        temperature=temperature,
+        explore=explore,
+        return_entropy=return_entropy,
+        prior_strength=prior_strength,
+    )
+
+
+def choose_action_from_candidates(
+    outputs: Dict[str, torch.Tensor],
+    game: Dict[str, Any],
+    candidates: Sequence[ActionCandidate],
+    temperature: float = 1.0,
+    explore: bool = False,
+    return_entropy: bool = False,
+    prior_strength: float = 0.0,
+) -> Tuple[ActionCandidate, torch.Tensor] | Tuple[ActionCandidate, torch.Tensor, torch.Tensor]:
     logits = outputs["policy_logits"]
     if logits.dim() == 1:
         logits = logits.unsqueeze(0)

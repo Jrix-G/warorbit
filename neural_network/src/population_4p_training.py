@@ -9,9 +9,29 @@ from typing import Any, Dict, List, Sequence
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 
+from SimGame import SimGame
+
+from .encoder import encode_game_state
 from .model import ModelConfig, NeuralNetworkModel, count_parameters, load_compatible_state_dict
-from .notebook_4p_training import _action_summary, _build_agents, _episode_reward, _infer_input_dim, _train_episode, evaluate_4p, run_match, training_pool
+from .notebook_4p_training import (
+    _action_summary,
+    _agent_for_name,
+    _build_agents,
+    _candidate_move,
+    _copy_planning_game,
+    _episode_reward,
+    _infer_input_dim,
+    _reserve_planned_ships,
+    _send_ratios,
+    _train_episode,
+    evaluate_4p,
+    run_match,
+    training_pool,
+)
+from .orbit_wars_adapter import obs_to_game_dict
+from .policy import build_action_candidates, reconstruct_action
 from .storage import append_jsonl, load_checkpoint, save_checkpoint
 from .torch_compat import ensure_torch_dynamo_stub
 from .utils import ensure_dir
@@ -60,6 +80,37 @@ DEFAULT_CURRICULUM_TIERS: List[Dict[str, Any]] = [
         "advance_rank_mean": 2.75,
         "advance_do_nothing_rate": 0.60,
         "candidate_eval_episodes": 6,
+    },
+    {
+        "name": "notebook_core4",
+        "label": "core notebooks plus heuristics",
+        "opponents": [
+            "distance",
+            "sun_dodge",
+            "structured",
+            "orbit_stars",
+            "notebook_orbitbotnext",
+            "notebook_distance_prioritized",
+            "notebook_physics_accurate",
+            "notebook_tactical_heuristic",
+        ],
+        "min_generations": 4,
+        "advance_score": 0.44,
+        "advance_winrate": 0.24,
+        "advance_rank_mean": 3.00,
+        "advance_do_nothing_rate": 0.50,
+        "candidate_eval_episodes": 8,
+    },
+    {
+        "name": "notebook_mid8",
+        "label": "first eight notebook opponents",
+        "opponents": "notebook_pool:8",
+        "min_generations": 5,
+        "advance_score": 0.38,
+        "advance_winrate": 0.18,
+        "advance_rank_mean": 3.10,
+        "advance_do_nothing_rate": 0.50,
+        "candidate_eval_episodes": 8,
     },
     {
         "name": "notebook_open",
@@ -180,6 +231,164 @@ def _score_record(record: Dict[str, Any]) -> tuple[float, float, float, float, f
     )
 
 
+def _player_snapshot(game: Dict[str, Any], player_id: int) -> Dict[str, float]:
+    planets = game.get("planets", [])
+    fleets = game.get("fleets", [])
+    my_planets = [p for p in planets if int(p.get("owner", -1)) == int(player_id)]
+    my_fleets = [f for f in fleets if int(f.get("owner", -1)) == int(player_id)]
+    total_ships = sum(float(p.get("ships", 0.0)) for p in planets) + sum(float(f.get("ships", 0.0)) for f in fleets)
+    my_ships = sum(float(p.get("ships", 0.0)) for p in my_planets) + sum(float(f.get("ships", 0.0)) for f in my_fleets)
+    return {
+        "planets": float(len(my_planets)),
+        "production": float(sum(float(p.get("production", 0.0)) for p in my_planets)),
+        "ships": my_ships,
+        "ship_share": my_ships / max(1.0, total_ships),
+        "alive": 1.0 if my_planets or my_fleets else 0.0,
+    }
+
+
+def _strategic_dense_reward(result: Dict[str, Any], our_index: int, config: Dict[str, Any]) -> float:
+    initial_obs = result.get("initial_state")
+    final_obs = result.get("final_state")
+    if initial_obs is None or final_obs is None:
+        return 0.0
+    initial = obs_to_game_dict(initial_obs)
+    final = obs_to_game_dict(final_obs)
+    start = _player_snapshot(initial, our_index)
+    end = _player_snapshot(final, our_index)
+    scores = [float(v) for v in result.get("scores", [])]
+    our_score = scores[our_index] if len(scores) > our_index else 0.0
+    other_scores = [score for idx, score in enumerate(scores) if idx != our_index]
+    score_advantage = (our_score - float(np.mean(other_scores) if other_scores else 0.0)) / 1000.0
+    reward = (
+        float(config.get("dense_planet_coef", 0.08)) * (end["planets"] - start["planets"])
+        + float(config.get("dense_production_coef", 0.05)) * (end["production"] - start["production"])
+        + float(config.get("dense_ship_share_coef", 0.45)) * (end["ship_share"] - start["ship_share"])
+        + float(config.get("dense_score_coef", 0.20)) * max(-1.0, min(1.0, score_advantage))
+        + float(config.get("dense_survival_coef", 0.12)) * (2.0 * end["alive"] - 1.0)
+    )
+    limit = float(config.get("dense_reward_clip", 0.75))
+    return float(max(-limit, min(limit, reward)))
+
+
+def _angle_distance(a: float, b: float) -> float:
+    return abs((float(a) - float(b) + np.pi) % (2.0 * np.pi) - np.pi)
+
+
+def _teacher_action_index(candidates, planning_game: Dict[str, Any], teacher_move: Sequence[Any]) -> int | None:
+    if not isinstance(teacher_move, (list, tuple)) or len(teacher_move) < 3:
+        return None
+    try:
+        src_id = int(teacher_move[0])
+        teacher_angle = float(teacher_move[1])
+        teacher_ships = max(1.0, float(teacher_move[2]))
+    except (TypeError, ValueError):
+        return None
+    best_idx: int | None = None
+    best_score = float("inf")
+    for idx, candidate in enumerate(candidates):
+        if candidate.mission == "do_nothing" or int(candidate.source_id) != src_id:
+            continue
+        action = reconstruct_action(candidate, planning_game)
+        move = _candidate_move(planning_game, action)
+        if not move:
+            continue
+        angle = float(move[0][1])
+        ships = max(1.0, float(move[0][2]))
+        score = _angle_distance(angle, teacher_angle) + 0.15 * abs(np.log(ships / teacher_ships))
+        if score < best_score:
+            best_score = score
+            best_idx = idx
+    return best_idx
+
+
+def _train_imitation_observation(
+    model: NeuralNetworkModel,
+    optimizer: torch.optim.Optimizer,
+    obs: Any,
+    teacher_moves: Sequence[Any],
+    config: Dict[str, Any],
+) -> Dict[str, float]:
+    if not teacher_moves:
+        return {"loss": 0.0, "targets": 0.0}
+    ratios = _send_ratios(config)
+    planning_game = _copy_planning_game(obs_to_game_dict(obs))
+    losses: List[torch.Tensor] = []
+    max_actions = max(1, int(config.get("max_actions_per_turn", 4)))
+    for teacher_move in list(teacher_moves)[:max_actions]:
+        encoded = encode_game_state(planning_game, config)
+        candidates = build_action_candidates(planning_game, send_ratios=ratios)
+        target_idx = _teacher_action_index(candidates, planning_game, teacher_move)
+        if target_idx is None:
+            continue
+        candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
+        outputs = model(
+            torch.tensor(encoded.features, dtype=torch.float32),
+            torch.tensor(candidate_features, dtype=torch.float32),
+        )
+        logits = outputs["policy_logits"]
+        if logits.dim() == 1:
+            logits = logits.unsqueeze(0)
+        target = torch.tensor([target_idx], dtype=torch.long, device=logits.device)
+        losses.append(F.cross_entropy(logits, target))
+        action = reconstruct_action(candidates[target_idx], planning_game)
+        move = _candidate_move(planning_game, action)
+        if move:
+            _reserve_planned_ships(planning_game, action[0], int(move[0][2]))
+    if not losses:
+        return {"loss": 0.0, "targets": 0.0}
+    loss = torch.stack(losses).mean()
+    optimizer.zero_grad()
+    loss.backward()
+    grad_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0).item())
+    optimizer.step()
+    return {"loss": float(loss.item()), "targets": float(len(losses)), "grad_norm": grad_norm}
+
+
+def _run_imitation_warmstart(
+    model: NeuralNetworkModel,
+    optimizer: torch.optim.Optimizer,
+    config: Dict[str, Any],
+    pool: Sequence[str],
+    seed: int,
+) -> Dict[str, float]:
+    steps = max(0, int(config.get("imitation_warmstart_steps", 0)))
+    if steps <= 0:
+        return {"imitation_loss": 0.0, "imitation_targets": 0.0, "imitation_updates": 0.0}
+    teacher_pool = [name for name in pool if str(name).startswith("notebook_")]
+    if not teacher_pool:
+        teacher_pool = list(pool)
+    losses: List[float] = []
+    targets: List[float] = []
+    for idx in range(steps):
+        teacher_name = teacher_pool[idx % len(teacher_pool)] if teacher_pool else "greedy"
+        teacher = _agent_for_name(teacher_name)
+        player = idx % 4
+        game = SimGame.random_game(
+            seed=seed + idx * 7919,
+            n_players=4,
+            neutral_pairs=8,
+            max_steps=int(config.get("max_turns", 100)),
+            overage_time=60.0,
+        )
+        obs = game.observation(player)
+        try:
+            teacher_moves = teacher(obs, None)
+        except TypeError:
+            teacher_moves = teacher(obs)
+        if not isinstance(teacher_moves, list):
+            teacher_moves = []
+        metrics = _train_imitation_observation(model, optimizer, obs, teacher_moves, config)
+        if metrics["targets"] > 0:
+            losses.append(metrics["loss"])
+            targets.append(metrics["targets"])
+    return {
+        "imitation_loss": float(np.mean(losses) if losses else 0.0),
+        "imitation_targets": float(np.sum(targets) if targets else 0.0),
+        "imitation_updates": float(len(losses)),
+    }
+
+
 def _should_try_promotion(record: Dict[str, Any], best_score: float, margin: float) -> bool:
     if best_score < -1e8:
         return True
@@ -235,6 +444,11 @@ def _tier_pool(config: Dict[str, Any], tier: Dict[str, Any]) -> List[str]:
     if opponents == "notebook_pool":
         return _notebook_pool(int(config.get("notebook_pool_limit", 15)))
     if isinstance(opponents, str):
+        if opponents.startswith("notebook_pool:"):
+            try:
+                return _notebook_pool(int(opponents.split(":", 1)[1]))
+            except (TypeError, ValueError):
+                return _notebook_pool(int(config.get("notebook_pool_limit", 15)))
         opponents = [opponents]
     names = [str(name) for name in opponents]
     return names or ["random", "greedy", "starter"]
@@ -353,8 +567,10 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
 
     model = _load_base_model(config, checkpoint_path)
     optimizer = torch.optim.Adam(model.parameters(), lr=float(config["learning_rate"]))
+    imitation_metrics = _run_imitation_warmstart(model, optimizer, config, pool, seed)
     baseline = float(config.get("moving_average_baseline", 0.0))
     rewards: List[float] = []
+    dense_rewards: List[float] = []
     wins: List[float] = []
     ranks: List[float] = []
     do_nothing_rates: List[float] = []
@@ -375,7 +591,9 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
         agents, log_probs, action_records, opp_names = _build_agents(model, config, episode_seed, our_index, temperature, pool)
         stop_player = our_index if bool(config.get("train_stop_on_elimination", True)) else None
         result = run_match(agents, seed=episode_seed, n_players=4, max_steps=int(config.get("max_turns", 100)), stop_player=stop_player)
-        reward = _episode_reward(result, our_index)
+        terminal_reward = _episode_reward(result, our_index)
+        dense_reward = _strategic_dense_reward(result, our_index, config) if bool(config.get("dense_reward_enabled", True)) else 0.0
+        reward = terminal_reward + dense_reward
         action_metrics = _action_summary(action_records)
         scores = result.get("scores", [])
         ordered = sorted(((float(score), idx) for idx, score in enumerate(scores)), reverse=True)
@@ -396,6 +614,7 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
             value_coef=float(config.get("value_loss_coef", 0.25)),
         )
         rewards.append(reward)
+        dense_rewards.append(dense_reward)
         wins.append(1.0 if int(result.get("winner", -1)) == our_index else 0.0)
         ranks.append(float(rank))
         do_nothing_rates.append(float(action_metrics["do_nothing_rate"]))
@@ -405,6 +624,8 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
             "worker_id": worker_id,
             "local_step": local_step,
             "reward": reward,
+            "terminal_reward": terminal_reward,
+            "dense_reward": dense_reward,
             "baseline": baseline,
             "temperature": temperature,
             "entropy_coef": entropy_coef,
@@ -426,11 +647,13 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
         "seed": seed,
         "state": _state_to_cpu(model.state_dict()),
         "train_reward_mean": float(np.mean(rewards) if rewards else 0.0),
+        "train_dense_reward_mean": float(np.mean(dense_rewards) if dense_rewards else 0.0),
         "train_winrate": float(np.mean(wins) if wins else 0.0),
         "train_rank_mean": float(np.mean(ranks) if ranks else 4.0),
         "train_do_nothing_rate": float(np.mean(do_nothing_rates) if do_nothing_rates else 1.0),
         "train_avg_ships_sent": float(np.mean(ships_sent) if ships_sent else 0.0),
         "train_action_count": float(np.mean(action_counts) if action_counts else 0.0),
+        **imitation_metrics,
         "last_record": last_record,
     }
 
@@ -615,6 +838,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             break
         base_checkpoint = _training_base_checkpoint(cfg, resume, checkpoint_dir, tier_name, base_checkpoint)
         checkpoint_str = str(base_checkpoint) if base_checkpoint else None
+        tier_checkpoint_loaded = bool(checkpoint_str and Path(checkpoint_str) == tier_checkpoint_path)
         task_config = dict(cfg)
         task_config["curriculum_tier"] = current_tier.get("name")
         task_config["curriculum_tier_label"] = current_tier.get("label", current_tier.get("name"))
@@ -667,17 +891,27 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 "worker_id": int(candidate["worker_id"]),
                 "parameter_count": parameter_count,
                 "curriculum_tier": current_tier.get("name"),
+                "evaluated_tier": tier_name,
                 "curriculum_tier_label": current_tier.get("label", current_tier.get("name")),
                 "tier_generation": int(curriculum_state.get("tier_generation", 0)),
                 "tier_best_checkpoint": str(tier_checkpoint_path),
+                "tier_checkpoint_loaded": tier_checkpoint_loaded,
+                "base_checkpoint": checkpoint_str or "",
+                "global_best_before": float(global_best_score),
+                "tier_best_before": float(tier_best_score),
                 "pool_size": len(pool),
                 "pool": pool,
+                "pool_names": list(pool),
                 "train_reward_mean": float(candidate["train_reward_mean"]),
+                "train_dense_reward_mean": float(candidate.get("train_dense_reward_mean", 0.0)),
                 "train_winrate": float(candidate["train_winrate"]),
                 "train_rank_mean": float(candidate.get("train_rank_mean", 4.0)),
                 "train_do_nothing_rate": float(candidate.get("train_do_nothing_rate", 1.0)),
                 "train_avg_ships_sent": float(candidate.get("train_avg_ships_sent", 0.0)),
                 "train_action_count": float(candidate.get("train_action_count", 0.0)),
+                "imitation_loss": float(candidate.get("imitation_loss", 0.0)),
+                "imitation_targets": float(candidate.get("imitation_targets", 0.0)),
+                "imitation_updates": float(candidate.get("imitation_updates", 0.0)),
                 **eval_stats,
                 "candidate_eval_episodes": active_candidate_eval_episodes,
                 "eval_phase": "fast",
@@ -793,7 +1027,8 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             f"rank={generation_best['record'].get('rank_mean', 4.0):.2f} "
             f"noop={generation_best['record'].get('eval_do_nothing_rate', 1.0):.2f} "
             f"promoted={int(bool(generation_best['record'].get('checkpoint_promoted', False)))} "
-            f"global_best={global_best_score:.3f} tier_best={tier_best_score:.3f} tier={current_tier.get('name')} "
+            f"global_best={global_best_score:.3f} tier_best={tier_best_score:.3f} "
+            f"eval_tier={tier_name} next_tier={current_tier.get('name')} "
             f"params={parameter_count} pool={len(pool)}",
             flush=True,
         )

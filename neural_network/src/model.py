@@ -36,18 +36,29 @@ def load_compatible_state_dict(module: nn.Module, state: Dict[str, Any]) -> Dict
     current = module.state_dict()
     compatible = {}
     skipped = {}
+    partial = {}
     for key, value in state.items():
         if key not in current:
             skipped[key] = "missing"
             continue
         tensor = torch.as_tensor(value, dtype=current[key].dtype, device=current[key].device)
         if tuple(tensor.shape) != tuple(current[key].shape):
-            skipped[key] = f"shape_mismatch:{tuple(tensor.shape)}!= {tuple(current[key].shape)}"
-            continue
-        compatible[key] = tensor
+            if tensor.dim() != current[key].dim():
+                skipped[key] = f"shape_mismatch:{tuple(tensor.shape)}!= {tuple(current[key].shape)}"
+                continue
+            slices = tuple(slice(0, min(src, dst)) for src, dst in zip(tensor.shape, current[key].shape))
+            if not slices:
+                skipped[key] = f"shape_mismatch:{tuple(tensor.shape)}!= {tuple(current[key].shape)}"
+                continue
+            expanded = current[key].clone()
+            expanded[slices] = tensor[slices]
+            compatible[key] = expanded
+            partial[key] = f"{tuple(tensor.shape)} -> {tuple(current[key].shape)}"
+        else:
+            compatible[key] = tensor
     current.update(compatible)
     module.load_state_dict(current)
-    return {"loaded": list(compatible.keys()), "skipped": skipped}
+    return {"loaded": list(compatible.keys()), "partial": partial, "skipped": skipped}
 
 
 class NeuralNetworkModel(nn.Module):

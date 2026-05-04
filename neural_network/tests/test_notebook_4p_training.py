@@ -33,14 +33,16 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     out = _prepare_population_config(cfg, 90.0, 6, 16)
     assert out["duration_minutes"] == 90.0
     assert out["workers"] == 6
-    assert out["hidden_dim"] == 256
+    assert out["hidden_dim"] == 320
     assert out["notebook_pool_limit"] == 15
     assert out["train_notebook_opponents"] == 3
-    assert out["worker_train_steps"] >= 6
+    assert out["worker_train_steps"] >= 24
+    assert out["max_actions_per_turn"] == 4
+    assert out["dense_reward_enabled"] is True
     assert out["candidate_eval_episodes"] < out["eval_episodes"]
     assert out["opponent_curriculum_enabled"] is True
     assert out["resume_from_tier_best"] is True
-    assert out["tier_checkpoint_dir"].endswith("neural_network/checkpoints/tiers")
+    assert out["tier_checkpoint_dir"].replace("\\", "/").endswith("neural_network/checkpoints/tiers")
 
 
 def test_population_config_resumes_from_best_and_confirms_promotions():
@@ -125,6 +127,8 @@ def test_population_curriculum_starts_weak_and_advances():
     state = _load_curriculum_state("missing_curriculum_state_for_test.json", tiers, {}, resume=True)
     assert tiers[state["tier_index"]]["name"] == "basic_300"
     assert _tier_pool({}, tiers[0]) == ["random", "greedy", "starter"]
+    assert any(tier["name"] == "notebook_core4" for tier in tiers)
+    assert any(tier["name"] == "notebook_mid8" for tier in tiers)
     state["tier_generation"] = int(tiers[0]["min_generations"])
     state["total_generations"] = 3
     advanced, _reason = _maybe_advance_curriculum(
@@ -144,6 +148,6 @@ def test_population_config_caps_duration_at_eight_hours():
 
 def test_population_model_parameter_budget_is_near_target():
     input_dim = 11 + 64 * 19 + 128 * 10 + 4 * 8
-    model = NeuralNetworkModel(ModelConfig(input_dim=input_dim, hidden_dim=256))
+    model = NeuralNetworkModel(ModelConfig(input_dim=input_dim, hidden_dim=320))
     params = count_parameters(model)
-    assert 1_200_000 <= params <= 1_500_000
+    assert 1_700_000 <= params <= 2_100_000
