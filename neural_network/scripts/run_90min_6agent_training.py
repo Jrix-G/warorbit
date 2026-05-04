@@ -69,12 +69,14 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
     cfg["opponent_curriculum_enabled"] = bool(cfg.get("opponent_curriculum_enabled", True))
     cfg.setdefault("opponent_curriculum_start_tier", 0)
     cfg.setdefault("opponent_curriculum_state", "neural_network/logs/opponent_curriculum_state.json")
+    cfg.setdefault("resume_from_tier_best", True)
+    cfg.setdefault("tier_checkpoint_dir", "neural_network/checkpoints/tiers")
     cfg["temperature_start"] = float(cfg.get("temperature_start", 1.15))
     cfg["temperature_end"] = float(cfg.get("temperature_end", 0.25))
     cfg.setdefault("send_ratios", [0.25, 0.5, 0.75])
     cfg.setdefault("policy_prior_strength", 0.8)
     cfg["promotion_margin"] = max(0.02, float(cfg.get("promotion_margin", 0.02)))
-    for key in ("checkpoint_dir", "log_dir", "candidate_checkpoint", "best_checkpoint", "latest_checkpoint", "export_path", "opponent_curriculum_state"):
+    for key in ("checkpoint_dir", "log_dir", "candidate_checkpoint", "best_checkpoint", "latest_checkpoint", "tier_checkpoint_dir", "export_path", "opponent_curriculum_state"):
         if key in cfg:
             cfg[key] = _resolve_path(str(cfg[key]))
     if cfg.get("best_checkpoint"):

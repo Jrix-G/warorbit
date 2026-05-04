@@ -110,12 +110,18 @@ Les checkpoints utilisés restent ceux du projet :
 - `checkpoints/best.npz` : meilleur modèle promu après évaluation.
 - `checkpoints/latest.npz` : meilleur candidat de la dernière génération.
 - `checkpoints/candidate.npz` : candidat courant sauvegardé.
+- `checkpoints/tiers/<tier>.npz` : meilleur modèle confirmé dans le tier
+  courant. Tant que le curriculum reste dans ce tier, les générations suivantes
+  repartent de ce checkpoint plutôt que de revenir au meilleur global d'un tier
+  plus facile.
 
 Au démarrage, le runner reprend en priorité depuis :
 
-1. `resume_checkpoint` si défini et existant ;
-2. `best_checkpoint` si existant ;
-3. `latest_checkpoint` si existant.
+1. `checkpoints/tiers/<tier>.npz` pour le tier courant, si `resume_from_tier_best`
+   est actif et que le fichier existe ;
+2. `resume_checkpoint` si défini et existant ;
+3. `best_checkpoint` si existant ;
+4. `latest_checkpoint` si existant.
 
 ## Logs
 
@@ -139,6 +145,7 @@ Chaque ligne contient notamment :
 - `tier_generation`
 - `candidate_eval_episodes`
 - `promotion_eval_episodes`
+- `tier_best_checkpoint`
 - `winrate_by_position`
 - `eval_mean`
 - `rank_mean`

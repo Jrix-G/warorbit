@@ -85,6 +85,61 @@ def _checkpoint_to_load(config: Dict[str, Any], resume: bool) -> Path | None:
     return None
 
 
+def _checkpoint_score(metadata: Dict[str, Any]) -> float:
+    try:
+        value = metadata.get(
+            "score",
+            metadata.get("composite_score", metadata.get("winrate", metadata.get("best_score", -1e9))),
+        )
+        return float(value)
+    except (TypeError, ValueError):
+        return -1e9
+
+
+def _safe_checkpoint_stem(name: str) -> str:
+    safe = "".join(ch if ch.isalnum() or ch in ("-", "_", ".") else "_" for ch in str(name))
+    return safe.strip("._") or "tier"
+
+
+def _tier_checkpoint_dir(config: Dict[str, Any], checkpoint_dir: Path) -> Path:
+    value = config.get("tier_checkpoint_dir")
+    return Path(value) if value else checkpoint_dir / "tiers"
+
+
+def _tier_best_checkpoint_path(config: Dict[str, Any], checkpoint_dir: Path, tier_name: str) -> Path:
+    tier_paths = config.get("tier_best_checkpoints")
+    if isinstance(tier_paths, dict) and tier_name in tier_paths:
+        return Path(tier_paths[tier_name])
+    return _tier_checkpoint_dir(config, checkpoint_dir) / f"{_safe_checkpoint_stem(tier_name)}.npz"
+
+
+def _training_base_checkpoint(
+    config: Dict[str, Any],
+    resume: bool,
+    checkpoint_dir: Path,
+    tier_name: str,
+    fallback: Path | None,
+) -> Path | None:
+    if resume and bool(config.get("resume_from_tier_best", True)):
+        tier_path = _tier_best_checkpoint_path(config, checkpoint_dir, tier_name)
+        if tier_path.exists():
+            return tier_path
+    return fallback
+
+
+def _next_base_checkpoint(
+    config: Dict[str, Any],
+    resume: bool,
+    tier_path: Path,
+    current_base: Path | None,
+    fallback: Path | None,
+) -> Path | None:
+    if bool(config.get("resume_from_tier_best", True)) and tier_path.exists():
+        if resume or current_base == tier_path:
+            return tier_path
+    return fallback
+
+
 def _clip01(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
 
@@ -250,6 +305,7 @@ def _write_curriculum_state(
     best_score: float,
     best_record: Dict[str, Any],
     last_record: Dict[str, Any] | None = None,
+    tier_best_checkpoint: str | None = None,
 ) -> None:
     snapshot = dict(state)
     snapshot.update(
@@ -260,6 +316,7 @@ def _write_curriculum_state(
             "best_score": float(best_score),
             "best_record": best_record,
             "last_record": last_record or {},
+            "tier_best_checkpoint": tier_best_checkpoint or "",
             "updated_at": time.time(),
         }
     )
@@ -484,31 +541,47 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
     deadline_epoch = started_at + duration_seconds
     generation = int(curriculum_state.get("total_generations", 0)) if resume else 0
     curriculum_state["total_generations"] = generation
-    base_checkpoint = _checkpoint_to_load(cfg, resume)
+    fallback_checkpoint = _checkpoint_to_load(cfg, resume)
     global_best_score = -1e9
     tier_best_score = -1e9
     best_record: Dict[str, Any] = {}
 
-    if base_checkpoint and base_checkpoint.exists():
-        _, metadata = load_checkpoint(base_checkpoint)
+    score_checkpoint = best_path if resume and best_path.exists() else fallback_checkpoint
+    if score_checkpoint and score_checkpoint.exists():
+        _, metadata = load_checkpoint(score_checkpoint)
         best_record = dict(metadata)
-        try:
-            global_best_score = float(metadata.get("score", metadata.get("composite_score", metadata.get("winrate", metadata.get("best_score", -1e9)))))
-        except (TypeError, ValueError):
-            global_best_score = -1e9
+        global_best_score = _checkpoint_score(metadata)
+
+    base_checkpoint = _training_base_checkpoint(
+        cfg,
+        resume,
+        checkpoint_dir,
+        str(current_tier.get("name")),
+        fallback_checkpoint,
+    )
 
     tier_best_score = _best_for_tier(curriculum_state, str(current_tier.get("name")))
+    tier_checkpoint_path = _tier_best_checkpoint_path(cfg, checkpoint_dir, str(current_tier.get("name")))
+    if tier_best_score < -1e8 and tier_checkpoint_path.exists():
+        _, tier_metadata = load_checkpoint(tier_checkpoint_path)
+        tier_best_score = _checkpoint_score(tier_metadata)
+        curriculum_state.setdefault("tier_best_scores", {})[str(current_tier.get("name"))] = tier_best_score
     if tier_best_score < -1e8 and best_record:
         checkpoint_tier = best_record.get("curriculum_tier")
         if checkpoint_tier == current_tier.get("name"):
-            try:
-                tier_best_score = float(best_record.get("score", best_record.get("composite_score", best_record.get("winrate", -1e9))))
-            except (TypeError, ValueError):
-                tier_best_score = -1e9
+            tier_best_score = _checkpoint_score(best_record)
 
     probe = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(cfg), hidden_dim=int(cfg["hidden_dim"])))
     parameter_count = count_parameters(probe)
-    _write_curriculum_state(curriculum_state_path, curriculum_state, current_tier, pool, global_best_score, best_record)
+    _write_curriculum_state(
+        curriculum_state_path,
+        curriculum_state,
+        current_tier,
+        pool,
+        global_best_score,
+        best_record,
+        tier_best_checkpoint=str(tier_checkpoint_path),
+    )
 
     while time.time() < deadline_epoch:
         elapsed = time.time() - started_at
@@ -525,6 +598,11 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
         pool = _tier_pool(cfg, current_tier) if curriculum_enabled else pool
         tier_name = str(current_tier.get("name"))
         tier_best_score = _best_for_tier(curriculum_state, tier_name) if curriculum_enabled else global_best_score
+        tier_checkpoint_path = _tier_best_checkpoint_path(cfg, checkpoint_dir, tier_name)
+        if curriculum_enabled and tier_best_score < -1e8 and tier_checkpoint_path.exists():
+            _, tier_metadata = load_checkpoint(tier_checkpoint_path)
+            tier_best_score = _checkpoint_score(tier_metadata)
+            curriculum_state.setdefault("tier_best_scores", {})[tier_name] = tier_best_score
         tier_eval_default = min(eval_episodes, int(current_tier.get("candidate_eval_episodes", candidate_eval_episodes)))
         active_candidate_eval_episodes = max(4, int(cfg.get("candidate_eval_episodes", tier_eval_default)))
         print(
@@ -535,6 +613,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
         )
         if time.time() >= deadline_epoch:
             break
+        base_checkpoint = _training_base_checkpoint(cfg, resume, checkpoint_dir, tier_name, base_checkpoint)
         checkpoint_str = str(base_checkpoint) if base_checkpoint else None
         task_config = dict(cfg)
         task_config["curriculum_tier"] = current_tier.get("name")
@@ -590,6 +669,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 "curriculum_tier": current_tier.get("name"),
                 "curriculum_tier_label": current_tier.get("label", current_tier.get("name")),
                 "tier_generation": int(curriculum_state.get("tier_generation", 0)),
+                "tier_best_checkpoint": str(tier_checkpoint_path),
                 "pool_size": len(pool),
                 "pool": pool,
                 "train_reward_mean": float(candidate["train_reward_mean"]),
@@ -644,24 +724,26 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 curriculum_state.setdefault("tier_best_scores", {})[tier_name] = tier_best_score
                 generation_best["record"]["checkpoint_promoted"] = True
                 generation_best["record"]["promotion_reason"] = f"confirmed best composite score {tier_best_score:.4f}"
+                generation_best["record"]["tier_best_checkpoint"] = str(tier_checkpoint_path)
+                save_checkpoint(tier_checkpoint_path, generation_best["state"], generation_best["record"])
                 if promoted_score > global_best_score:
                     global_best_score = promoted_score
                     best_record = dict(generation_best["record"])
                     save_checkpoint(best_path, generation_best["state"], generation_best["record"])
-                    base_checkpoint = best_path
-                else:
-                    base_checkpoint = latest_path if latest_path.exists() else base_checkpoint
+                base_checkpoint = tier_checkpoint_path
             else:
                 generation_best["record"]["checkpoint_promoted"] = False
                 generation_best["record"]["promotion_reason"] = (
                     f"promotion rejected after confirmation "
                     f"score {generation_best['record']['score']:.4f} < required {tier_best_score + promotion_margin:.4f}"
                 )
-                base_checkpoint = best_path if best_path.exists() else latest_path
+                fallback_base = best_path if best_path.exists() else latest_path
+                base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
         else:
             if should_promote:
                 generation_best["record"]["promotion_reason"] = "promotion skipped: not enough time for confirmation eval"
-            base_checkpoint = best_path if best_path.exists() else latest_path
+            fallback_base = best_path if best_path.exists() else latest_path
+            base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
 
         curriculum_state["total_generations"] = generation
         curriculum_state["tier_generation"] = int(curriculum_state.get("tier_generation", 0)) + 1
@@ -675,18 +757,35 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 tier_best_score = _best_for_tier(curriculum_state, next_tier_name)
                 current_tier = next_tier
                 pool = _tier_pool(cfg, current_tier)
-                base_checkpoint = best_path if best_path.exists() else latest_path
+                next_tier_checkpoint = _tier_best_checkpoint_path(cfg, checkpoint_dir, next_tier_name)
+                if resume and bool(cfg.get("resume_from_tier_best", True)) and next_tier_checkpoint.exists():
+                    base_checkpoint = next_tier_checkpoint
+                else:
+                    fallback_base = best_path if best_path.exists() else latest_path
+                    base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
         curriculum_state["total_generations"] = generation + 1
         generation_best["record"]["curriculum_advanced"] = advanced
         generation_best["record"]["curriculum_reason"] = advance_reason
         generation_best["record"]["next_curriculum_tier"] = current_tier.get("name")
+        save_checkpoint(candidate_path, generation_best["state"], generation_best["record"])
+        save_checkpoint(latest_path, generation_best["state"], generation_best["record"])
 
         for item in evaluated:
             if item is generation_best:
                 item["record"].update(generation_best["record"])
             append_jsonl(log_path, item["record"])
 
-        _write_curriculum_state(curriculum_state_path, curriculum_state, current_tier, pool, global_best_score, best_record, generation_best["record"])
+        current_tier_checkpoint_path = _tier_best_checkpoint_path(cfg, checkpoint_dir, str(current_tier.get("name")))
+        _write_curriculum_state(
+            curriculum_state_path,
+            curriculum_state,
+            current_tier,
+            pool,
+            global_best_score,
+            best_record,
+            generation_best["record"],
+            tier_best_checkpoint=str(current_tier_checkpoint_path),
+        )
 
         print(
             f"generation {generation} candidate_score={generation_best['record']['score']:.3f} "
@@ -713,5 +812,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
         "curriculum_state": str(curriculum_state_path),
         "curriculum_tier": current_tier.get("name"),
         "curriculum_tier_label": current_tier.get("label", current_tier.get("name")),
+        "tier_checkpoint_dir": str(_tier_checkpoint_dir(cfg, checkpoint_dir)),
+        "tier_best_checkpoint": str(_tier_best_checkpoint_path(cfg, checkpoint_dir, str(current_tier.get("name")))),
         "best_record": best_record,
     }

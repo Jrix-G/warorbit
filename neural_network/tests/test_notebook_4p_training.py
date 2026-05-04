@@ -1,7 +1,19 @@
+from pathlib import Path
+
 from neural_network.scripts.run_notebook_4p_training import _prepare_config
 from neural_network.scripts.run_90min_6agent_training import _prepare_config as _prepare_population_config
 from neural_network.src.model import ModelConfig, NeuralNetworkModel, count_parameters
-from neural_network.src.population_4p_training import _composite_score, _load_curriculum_state, _maybe_advance_curriculum, _should_try_promotion, _tier_pool, DEFAULT_CURRICULUM_TIERS
+from neural_network.src.population_4p_training import (
+    _composite_score,
+    _load_curriculum_state,
+    _maybe_advance_curriculum,
+    _next_base_checkpoint,
+    _should_try_promotion,
+    _tier_best_checkpoint_path,
+    _tier_pool,
+    _training_base_checkpoint,
+    DEFAULT_CURRICULUM_TIERS,
+)
 from neural_network.src.trajectory import safe_plan_shot
 
 
@@ -27,6 +39,8 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     assert out["worker_train_steps"] >= 6
     assert out["candidate_eval_episodes"] < out["eval_episodes"]
     assert out["opponent_curriculum_enabled"] is True
+    assert out["resume_from_tier_best"] is True
+    assert out["tier_checkpoint_dir"].endswith("neural_network/checkpoints/tiers")
 
 
 def test_population_config_resumes_from_best_and_confirms_promotions():
@@ -48,6 +62,29 @@ def test_population_config_resumes_from_best_and_confirms_promotions():
 def test_population_promotion_requires_real_improvement():
     assert not _should_try_promotion({"score": 0.375}, best_score=0.375, margin=0.02)
     assert _should_try_promotion({"score": 0.5}, best_score=0.375, margin=0.02)
+
+
+def test_population_uses_tier_checkpoint_when_available(tmp_path):
+    checkpoint_dir = tmp_path / "checkpoints"
+    tier_dir = tmp_path / "tiers"
+    fallback = checkpoint_dir / "best.npz"
+    tier_checkpoint = tier_dir / "heuristic_500.npz"
+    tier_checkpoint.parent.mkdir(parents=True)
+    tier_checkpoint.write_bytes(b"exists")
+
+    cfg = {"tier_checkpoint_dir": str(tier_dir)}
+    assert _tier_best_checkpoint_path(cfg, checkpoint_dir, "heuristic_500") == tier_checkpoint
+    assert _training_base_checkpoint(cfg, True, checkpoint_dir, "heuristic_500", fallback) == tier_checkpoint
+    assert _training_base_checkpoint(cfg, False, checkpoint_dir, "heuristic_500", fallback) == fallback
+    assert _training_base_checkpoint({**cfg, "resume_from_tier_best": False}, True, checkpoint_dir, "heuristic_500", fallback) == fallback
+    assert _next_base_checkpoint(cfg, True, tier_checkpoint, fallback, fallback) == tier_checkpoint
+    assert _next_base_checkpoint(cfg, False, tier_checkpoint, fallback, fallback) == fallback
+    assert _next_base_checkpoint(cfg, False, tier_checkpoint, tier_checkpoint, fallback) == tier_checkpoint
+
+
+def test_population_tier_checkpoint_path_sanitizes_custom_tier(tmp_path):
+    path = _tier_best_checkpoint_path({"tier_checkpoint_dir": str(tmp_path)}, Path("unused"), "mixed 700/notebook")
+    assert path == tmp_path / "mixed_700_notebook.npz"
 
 
 def test_population_composite_score_penalizes_rank_and_noop():

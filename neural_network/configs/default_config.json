@@ -45,10 +45,12 @@
   "opponent_curriculum_enabled": true,
   "opponent_curriculum_start_tier": 0,
   "opponent_curriculum_state": "neural_network/logs/opponent_curriculum_state.json",
+  "resume_from_tier_best": true,
   "checkpoint_dir": "neural_network/checkpoints",
   "log_dir": "neural_network/logs",
   "candidate_checkpoint": "neural_network/checkpoints/candidate.npz",
   "best_checkpoint": "neural_network/checkpoints/best.npz",
   "latest_checkpoint": "neural_network/checkpoints/latest.npz",
+  "tier_checkpoint_dir": "neural_network/checkpoints/tiers",
   "export_path": "neural_network/checkpoints/export.npz"
 }
