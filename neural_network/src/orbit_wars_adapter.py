@@ -47,14 +47,25 @@ def obs_to_game_dict(obs: Any) -> Dict[str, Any]:
             "production": float(p[6]),
         })
 
+    comets = []
+    for c in list(_get(obs, "comets", []) or []):
+        comets.append(list(c))
+
+    owners = {int(p["owner"]) for p in planets if int(p["owner"]) >= 0}
+    owners.update({int(p["owner"]) for p in init_planets if int(p["owner"]) >= 0})
+    owners.update({int(f["owner"]) for f in fleets if int(f["owner"]) >= 0})
+
     return {
         "my_id": int(_get(obs, "player", 0) or 0),
         "turn": int(_get(obs, "step", 0) or 0),
         "planets": planets,
         "fleets": fleets,
         "initial_planets": init_planets,
-        "player_ids": sorted({int(p["owner"]) for p in planets if int(p["owner"]) >= 0}),
-        "is_four_player": len({int(p["owner"]) for p in planets if int(p["owner"]) >= 0}) >= 4,
+        "angular_velocity": float(_get(obs, "angular_velocity", 0.0) or 0.0),
+        "comets": comets,
+        "comet_planet_ids": list(_get(obs, "comet_planet_ids", []) or []),
+        "player_ids": sorted(owners),
+        "is_four_player": len(owners) >= 4,
         "remaining_overage_time": int(_get(obs, "remainingOverageTime", 0) or 0),
     }
 
@@ -64,4 +75,3 @@ def action_to_kaggle_list(action_tuple: tuple[int, int, int]) -> List[List[int]]
     if src < 0 or tgt < 0 or ships <= 0:
         return []
     return [[int(src), int(tgt), int(ships)]]
-

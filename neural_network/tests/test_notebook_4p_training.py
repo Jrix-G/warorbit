@@ -2,6 +2,7 @@ from neural_network.scripts.run_notebook_4p_training import _prepare_config
 from neural_network.scripts.run_90min_6agent_training import _prepare_config as _prepare_population_config
 from neural_network.src.model import ModelConfig, NeuralNetworkModel, count_parameters
 from neural_network.src.population_4p_training import _composite_score, _load_curriculum_state, _maybe_advance_curriculum, _should_try_promotion, _tier_pool, DEFAULT_CURRICULUM_TIERS
+from neural_network.src.trajectory import safe_plan_shot
 
 
 def test_prepare_config_forces_four_player():
@@ -39,7 +40,7 @@ def test_population_config_resumes_from_best_and_confirms_promotions():
     assert out["resume_checkpoint"] == out["best_checkpoint"]
     assert out["eval_episodes"] == 8
     assert out["promotion_eval_episodes"] == 16
-    assert out["candidate_eval_episodes"] == 6
+    assert out["candidate_eval_episodes"] == 8
     assert out["promotion_margin"] == 0.02
     assert out["promotion_min_remaining_minutes"] == 12.0
 
@@ -53,6 +54,33 @@ def test_population_composite_score_penalizes_rank_and_noop():
     good = {"winrate": 0.25, "rank_mean": 2.0, "eval_mean": 0.2, "avg_score": 300.0, "eval_do_nothing_rate": 0.2, "eval_avg_ships_sent": 20.0}
     bad = {"winrate": 0.25, "rank_mean": 3.8, "eval_mean": -0.8, "avg_score": 10.0, "eval_do_nothing_rate": 0.9, "eval_avg_ships_sent": 0.0}
     assert _composite_score(good) > _composite_score(bad)
+
+
+def test_population_composite_score_ignores_stale_cached_score():
+    stale = {
+        "composite_score": 0.95,
+        "score": 0.95,
+        "winrate": 0.0,
+        "rank_mean": 4.0,
+        "eval_mean": -1.0,
+        "avg_score": 0.0,
+        "eval_do_nothing_rate": 1.0,
+        "eval_avg_ships_sent": 0.0,
+    }
+    assert _composite_score(stale) < 0.0
+
+
+def test_safe_planner_rejects_sun_crossing_shot():
+    game = {
+        "turn": 0,
+        "angular_velocity": 0.0,
+        "initial_planets": [],
+        "planets": [
+            {"id": 0, "owner": 0, "ships": 50, "x": 18.0, "y": 50.0, "radius": 3.0, "production": 3.0},
+            {"id": 1, "owner": 1, "ships": 50, "x": 82.0, "y": 50.0, "radius": 3.0, "production": 3.0},
+        ],
+    }
+    assert safe_plan_shot(game["planets"][0], game["planets"][1], game) is None
 
 
 def test_population_curriculum_starts_weak_and_advances():

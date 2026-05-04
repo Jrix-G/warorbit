@@ -7,6 +7,8 @@ import numpy as np
 import torch
 from torch.distributions import Categorical
 
+from .trajectory import safe_plan_shot
+
 
 @dataclass
 class ActionCandidate:
@@ -75,6 +77,8 @@ def build_action_candidates(game: Dict[str, Any], send_ratios: Sequence[float] |
         for tgt in planets:
             if tgt["id"] == src["id"]:
                 continue
+            if safe_plan_shot(src, tgt, game) is None:
+                continue
             distance = float(np.hypot(float(src.get("x", 0.0)) - float(tgt.get("x", 0.0)), float(src.get("y", 0.0)) - float(tgt.get("y", 0.0))))
             mission = "do_nothing"
             if tgt["owner"] == -1:
@@ -113,9 +117,11 @@ def build_action_candidates(game: Dict[str, Any], send_ratios: Sequence[float] |
     return candidates
 
 
-def is_valid_action(candidate: ActionCandidate, game: Dict[str, Any]) -> bool:
+def is_valid_action(candidate: ActionCandidate, game: Dict[str, Any], check_trajectory: bool = True) -> bool:
     if candidate.mission == "do_nothing":
         return True
+    if not candidate.valid:
+        return False
     planets = _planet_lookup(game)
     src = planets.get(candidate.source_id)
     tgt = planets.get(candidate.target_id)
@@ -126,7 +132,9 @@ def is_valid_action(candidate: ActionCandidate, game: Dict[str, Any]) -> bool:
         return False
     if candidate.amount <= 0 or candidate.amount >= int(float(src.get("ships", 0.0))):
         return False
-    return candidate.source_id != candidate.target_id
+    if candidate.source_id == candidate.target_id:
+        return False
+    return (not check_trajectory) or safe_plan_shot(src, tgt, game) is not None
 
 
 def choose_action(
@@ -148,7 +156,7 @@ def choose_action(
     if prior_strength:
         priors = torch.tensor([_candidate_prior(c, game) for c in candidates], dtype=torch.float32, device=masked_logits.device)
         masked_logits = masked_logits + float(prior_strength) * priors
-    valid_mask = torch.tensor([is_valid_action(c, game) for c in candidates], dtype=torch.bool, device=masked_logits.device)
+    valid_mask = torch.tensor([is_valid_action(c, game, check_trajectory=False) for c in candidates], dtype=torch.bool, device=masked_logits.device)
     masked_logits = masked_logits.masked_fill(~valid_mask, -1e9)
     probs = torch.softmax(masked_logits, dim=-1)
     dist = Categorical(probs=probs)

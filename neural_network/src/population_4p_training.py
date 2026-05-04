@@ -90,10 +90,11 @@ def _clip01(value: float) -> float:
 
 
 def _composite_score(record: Dict[str, Any]) -> float:
-    if "composite_score" in record:
-        return float(record["composite_score"])
-    if "score" in record and not any(key in record for key in ("winrate", "rank_mean", "eval_mean", "eval_do_nothing_rate")):
+    metric_keys = ("winrate", "rank_mean", "eval_mean", "eval_do_nothing_rate", "avg_score", "eval_avg_ships_sent")
+    if "score" in record and not any(key in record for key in metric_keys):
         return float(record["score"])
+    if "composite_score" in record and not any(key in record for key in metric_keys):
+        return float(record["composite_score"])
     winrate = _clip01(float(record.get("winrate", 0.0)))
     rank_mean = float(record.get("rank_mean", 4.0))
     rank_score = _clip01((4.0 - rank_mean) / 3.0)
@@ -322,8 +323,21 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
         scores = result.get("scores", [])
         ordered = sorted(((float(score), idx) for idx, score in enumerate(scores)), reverse=True)
         rank = next((rank for rank, (_, idx) in enumerate(ordered, start=1) if idx == our_index), 4)
-        baseline = 0.95 * baseline + 0.05 * reward
-        train_metrics = _train_episode(model, optimizer, log_probs, reward, baseline)
+        baseline_rate = max(0.0, min(1.0, float(config.get("baseline_momentum", 0.05))))
+        baseline = (1.0 - baseline_rate) * baseline + baseline_rate * reward
+        entropy_coef = float(config.get("entropy_coef_start", 0.03)) + (
+            float(config.get("entropy_coef_end", 0.005)) - float(config.get("entropy_coef_start", 0.03))
+        ) * min(1.0, max(0.0, progress))
+        train_metrics = _train_episode(
+            model,
+            optimizer,
+            log_probs,
+            reward,
+            baseline,
+            entropy_coef=entropy_coef,
+            action_records=action_records,
+            value_coef=float(config.get("value_loss_coef", 0.25)),
+        )
         rewards.append(reward)
         wins.append(1.0 if int(result.get("winner", -1)) == our_index else 0.0)
         ranks.append(float(rank))
@@ -336,8 +350,12 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
             "reward": reward,
             "baseline": baseline,
             "temperature": temperature,
+            "entropy_coef": entropy_coef,
             "grad_norm": train_metrics["grad_norm"],
             "loss": train_metrics["loss"],
+            "policy_loss": train_metrics.get("policy_loss", 0.0),
+            "value_loss": train_metrics.get("value_loss", 0.0),
+            "policy_entropy": train_metrics.get("policy_entropy", 0.0),
             "winner": int(result.get("winner", -1)),
             "our_index": our_index,
             "rank": int(rank),
@@ -414,8 +432,8 @@ def _run_parallel(tasks: List[Dict[str, Any]], workers: int, fn, label: str, sta
                 if job.ready():
                     try:
                         results.append(job.get())
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        print(f"{label} task_failed {type(exc).__name__}: {exc}", flush=True)
                     newly_done.append(idx)
             if not newly_done:
                 time.sleep(0.2)
@@ -494,6 +512,15 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
 
     while time.time() < deadline_epoch:
         elapsed = time.time() - started_at
+        remaining_seconds = deadline_epoch - time.time()
+        min_generation_seconds = max(0.0, float(cfg.get("min_generation_remaining_minutes", 0.0)) * 60.0)
+        if min_generation_seconds > 0.0 and remaining_seconds < min_generation_seconds:
+            print(
+                f"stopping before generation {generation}: remaining={remaining_seconds/60.0:.1f}m "
+                f"< min_generation_remaining={min_generation_seconds/60.0:.1f}m",
+                flush=True,
+            )
+            break
         current_tier = _current_tier(curriculum_state, tiers) if curriculum_enabled else current_tier
         pool = _tier_pool(cfg, current_tier) if curriculum_enabled else pool
         tier_name = str(current_tier.get("name"))
@@ -663,7 +690,10 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
 
         print(
             f"generation {generation} candidate_score={generation_best['record']['score']:.3f} "
-            f"best_winrate={generation_best['record'].get('winrate', 0.0):.3f} "
+            f"winrate={generation_best['record'].get('winrate', 0.0):.3f} "
+            f"rank={generation_best['record'].get('rank_mean', 4.0):.2f} "
+            f"noop={generation_best['record'].get('eval_do_nothing_rate', 1.0):.2f} "
+            f"promoted={int(bool(generation_best['record'].get('checkpoint_promoted', False)))} "
             f"global_best={global_best_score:.3f} tier_best={tier_best_score:.3f} tier={current_tier.get('name')} "
             f"params={parameter_count} pool={len(pool)}",
             flush=True,

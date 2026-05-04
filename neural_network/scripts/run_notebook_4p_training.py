@@ -31,6 +31,7 @@ def _prepare_config(cfg: dict, duration_minutes: float, eval_episodes: int) -> d
     cfg.setdefault("temperature_end", 0.35)
     cfg.setdefault("send_ratios", [0.25, 0.5, 0.75])
     cfg.setdefault("policy_prior_strength", 0.8)
+    cfg.setdefault("value_loss_coef", 0.25)
     cfg.setdefault("promotion_margin", 0.05)
     cfg.setdefault("promotion_min_eval_std", 0.20)
     return cfg

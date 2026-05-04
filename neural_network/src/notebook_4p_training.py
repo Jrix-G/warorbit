@@ -19,6 +19,7 @@ from .policy import build_action_candidates, choose_action, reconstruct_action
 from .reward import compute_dense_reward
 from .storage import append_jsonl, load_checkpoint, save_checkpoint
 from .torch_compat import ensure_torch_dynamo_stub
+from .trajectory import safe_plan_shot
 from .utils import ensure_dir
 
 
@@ -214,7 +215,9 @@ def _candidate_move(game: Dict[str, Any], action: tuple[int, int, int]) -> list[
     tgt = next((p for p in game.get("planets", []) if int(p["id"]) == int(tgt_id)), None)
     if src is None or tgt is None:
         return []
-    angle = math.atan2(float(tgt["y"]) - float(src["y"]), float(tgt["x"]) - float(src["x"]))
+    angle = safe_plan_shot(src, tgt, game)
+    if angle is None:
+        return []
     return [[int(src_id), float(angle), int(ships)]]
 
 
@@ -247,6 +250,7 @@ def run_match(
     )
     started = time.perf_counter()
     stop_player = None if stop_player is None else int(stop_player)
+    initial_state = game.observation(stop_player if stop_player is not None else 0)
 
     while not game.is_terminal():
         actions = {}
@@ -268,6 +272,7 @@ def run_match(
         "steps": int(game.state.step),
         "seconds": elapsed,
         "steps_per_second": game.state.step / max(elapsed, 1e-9),
+        "initial_state": initial_state,
         "final_state": game.observation(stop_player if stop_player is not None else 0),
     }
 
@@ -315,18 +320,28 @@ def _make_our_agent(
             torch.tensor(encoded.features, dtype=torch.float32),
             torch.tensor(candidate_features, dtype=torch.float32),
         )
-        cand, log_prob = choose_action(
+        cand, log_prob, entropy = choose_action(
             outputs,
             game,
             temperature=temperature,
             explore=True,
+            return_entropy=True,
             send_ratios=ratios,
             prior_strength=float(config.get("policy_prior_strength", 0.8)),
         )
         log_probs.append(log_prob)
         action = reconstruct_action(cand, game)
-        action_records.append({"mission": cand.mission, "ships": int(action[2])})
-        return _candidate_move(game, action)
+        move = _candidate_move(game, action)
+        executed_ships = int(move[0][2]) if move else 0
+        action_records.append(
+            {
+                "mission": cand.mission if move else "do_nothing",
+                "ships": executed_ships,
+                "_value": outputs["value"].reshape(-1)[0],
+                "_entropy": entropy,
+            }
+        )
+        return move
 
     return agent
 
@@ -395,15 +410,31 @@ def _train_episode(
     reward: float,
     baseline: float,
     entropy_coef: float = 0.01,
+    action_records: Sequence[Dict[str, Any]] | None = None,
+    value_coef: float = 0.25,
 ) -> Dict[str, float]:
     if not log_probs:
-        return {"loss": 0.0, "grad_norm": 0.0, "policy_entropy": 0.0}
+        return {"loss": 0.0, "grad_norm": 0.0, "policy_entropy": 0.0, "value_loss": 0.0, "policy_loss": 0.0}
     stacked = torch.stack(log_probs)
-    advantage = reward - baseline
-    policy_loss = -stacked.sum() * float(advantage)
-    # Bonus d'entropie : encourage l'exploration, évite le collapse
-    entropy = -(stacked * stacked.exp()).sum()
-    loss = policy_loss - entropy_coef * entropy
+    advantage = torch.as_tensor(float(reward - baseline), dtype=stacked.dtype, device=stacked.device)
+    policy_loss = -(stacked * advantage.detach()).mean()
+    entropy_values = []
+    value_values = []
+    for record in action_records or []:
+        entropy = record.get("_entropy")
+        value = record.get("_value")
+        if isinstance(entropy, torch.Tensor):
+            entropy_values.append(entropy)
+        if isinstance(value, torch.Tensor):
+            value_values.append(value)
+    entropy_tensor = torch.stack(entropy_values).mean() if entropy_values else torch.zeros((), dtype=stacked.dtype, device=stacked.device)
+    if value_values:
+        values = torch.stack(value_values).reshape(-1)
+        target = torch.full_like(values, float(reward))
+        value_loss = (values - target).pow(2).mean()
+    else:
+        value_loss = torch.zeros((), dtype=stacked.dtype, device=stacked.device)
+    loss = policy_loss + float(value_coef) * value_loss - float(entropy_coef) * entropy_tensor
     optimizer.zero_grad()
     loss.backward()
     grad_norm = float(clip_grad_norm_(model.parameters(), 5.0).item())
@@ -411,7 +442,9 @@ def _train_episode(
     return {
         "loss": float(loss.item()),
         "grad_norm": grad_norm,
-        "policy_entropy": float(entropy.item()),
+        "policy_entropy": float(entropy_tensor.item()),
+        "value_loss": float(value_loss.item()),
+        "policy_loss": float(policy_loss.item()),
     }
 
 
@@ -522,10 +555,13 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
         # Dense curriculum reward (annealed, actif uniquement en début d'entraînement)
         # On utilise l'état final du match comme approximation de next_state terminal
         final_state = result.get("final_state", {})
-        if final_state:
+        initial_state = result.get("initial_state", {})
+        if final_state and initial_state:
+            prev_game = obs_to_game_dict(initial_state)
+            next_game = obs_to_game_dict(final_state)
             dense = compute_dense_reward(
-                prev_state={},   # pas d'état précédent disponible au niveau épisode
-                next_state=final_state,
+                prev_state=prev_game,
+                next_state=next_game,
                 current_step=step,
                 curriculum_steps=max(train_steps // 2, 1),
             )
@@ -533,13 +569,23 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
             dense = 0.0
         reward = _episode_reward(result, our_index) + dense
         action_summary = _action_summary(action_records)
-        baseline = 0.95 * baseline + 0.05 * reward
+        baseline_rate = max(0.0, min(1.0, float(config.get("baseline_momentum", 0.05))))
+        baseline = (1.0 - baseline_rate) * baseline + baseline_rate * reward
         entropy_coef = _linear_schedule(
             float(config.get("entropy_coef_start", 0.05)),
             float(config.get("entropy_coef_end", 0.005)),
             progress,
         )
-        train_metrics = _train_episode(model, optimizer, log_probs, reward, baseline, entropy_coef)
+        train_metrics = _train_episode(
+            model,
+            optimizer,
+            log_probs,
+            reward,
+            baseline,
+            entropy_coef,
+            action_records=action_records,
+            value_coef=float(config.get("value_loss_coef", 0.25)),
+        )
         record = {
             "step": step,
             "reward": reward,
@@ -549,6 +595,8 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
             "grad_norm": train_metrics["grad_norm"],
             "loss": train_metrics["loss"],
             "policy_entropy": train_metrics.get("policy_entropy", 0.0),
+            "value_loss": train_metrics.get("value_loss", 0.0),
+            "policy_loss": train_metrics.get("policy_loss", 0.0),
             "winner": int(result.get("winner", -1)),
             "our_index": our_index,
             "opponents": opp_names,

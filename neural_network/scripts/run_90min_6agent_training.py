@@ -47,9 +47,13 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
     cfg["train_steps"] = max(1, int(duration_minutes * 10))
     cfg["worker_train_steps"] = max(6, int(cfg.get("worker_train_steps", 6)))
     cfg["eval_episodes"] = max(4, int(eval_episodes))
-    cfg["candidate_eval_episodes"] = max(4, min(cfg["eval_episodes"], int(cfg.get("candidate_eval_episodes", 6))))
+    cfg["candidate_eval_episodes"] = max(8, min(cfg["eval_episodes"], int(cfg.get("candidate_eval_episodes", 8))))
     cfg["promotion_eval_episodes"] = max(16, cfg["eval_episodes"])
     cfg["promotion_min_remaining_minutes"] = max(8.0, float(cfg.get("promotion_min_remaining_minutes", 12.0)))
+    cfg["min_generation_remaining_minutes"] = max(
+        2.0,
+        min(18.0, float(duration_minutes) * 0.08),
+    )
     cfg["benchmark_games"] = cfg["eval_episodes"]
     cfg["curriculum_enabled"] = True
     cfg["curriculum_early_4p_ratio"] = 1.0
@@ -61,6 +65,7 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
     cfg["notebook_pool_limit_max"] = 15
     cfg["train_notebook_opponents"] = 3
     cfg["train_stop_on_elimination"] = bool(cfg.get("train_stop_on_elimination", True))
+    cfg["value_loss_coef"] = float(cfg.get("value_loss_coef", 0.25))
     cfg["opponent_curriculum_enabled"] = bool(cfg.get("opponent_curriculum_enabled", True))
     cfg.setdefault("opponent_curriculum_start_tier", 0)
     cfg.setdefault("opponent_curriculum_state", "neural_network/logs/opponent_curriculum_state.json")
