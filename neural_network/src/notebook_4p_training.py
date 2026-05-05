@@ -430,10 +430,9 @@ def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, 
 
 def _episode_reward(result: Dict[str, Any], our_index: int) -> float:
     """
-    Reward basée uniquement sur le rang relatif — somme nulle entre joueurs.
-    Rang 1 → +1.0 | Rang 2 → +0.33 | Rang 3 → -0.33 | Rang 4 → -1.0
-    Supprime tous les anciens signaux (terminal, rank_bonus, score_signal,
-    score_floor_penalty) qui rendaient l'espérance structurellement négative.
+    Reward terminale centrée sur la victoire.
+    Rang 1 -> +1.0 | Rang 2 -> 0.0 | Rang 3 -> -0.5 | Rang 4 -> -1.0
+    La deuxieme place n'est plus une "petite victoire": elle ne rapporte rien.
     """
     scores = result.get("scores", [])
     ordered = sorted(
@@ -444,8 +443,13 @@ def _episode_reward(result: Dict[str, Any], our_index: int) -> float:
         (r for r, (_, idx) in enumerate(ordered, start=1) if idx == our_index),
         4,
     )
-    n_players = 4
-    return float((n_players - rank) / (n_players - 1) * 2 - 1)
+    reward_by_rank = {
+        1: 1.0,
+        2: 0.0,
+        3: -0.5,
+        4: -1.0,
+    }
+    return float(reward_by_rank.get(rank, -1.0))
 
 
 def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:

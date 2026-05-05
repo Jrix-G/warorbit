@@ -1,0 +1,18 @@
+{
+  "best_record": {},
+  "best_score": -1000000000.0,
+  "history": [],
+  "last_record": {},
+  "pool": [
+    "random",
+    "greedy",
+    "starter"
+  ],
+  "tier_best_checkpoint": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\neural_network\\checkpoints\\tiers\\basic_300.npz",
+  "tier_generation": 0,
+  "tier_index": 0,
+  "tier_label": "300 Elo: random/greedy/starter",
+  "tier_name": "basic_300",
+  "total_generations": 0,
+  "updated_at": 1778001291.873159
+}

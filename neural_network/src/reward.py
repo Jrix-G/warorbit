@@ -25,7 +25,7 @@ def compute_dense_reward(
     next_my = sum(1 for p in next_planets if p["owner"] == my_id)
     delta = next_my - prev_my  # >0 si capture, <0 si perte
 
-    return float(0.1 * delta * annealing)
+    return float(0.03 * delta * annealing)
 
 
 def compute_reward(

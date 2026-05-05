@@ -14,6 +14,7 @@ from neural_network.src.population_4p_training import (
     _training_base_checkpoint,
     DEFAULT_CURRICULUM_TIERS,
 )
+from neural_network.src.notebook_4p_training import _episode_reward
 from neural_network.src.trajectory import safe_plan_shot
 
 
@@ -39,10 +40,12 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     assert out["worker_train_steps"] >= 24
     assert out["max_actions_per_turn"] == 4
     assert out["dense_reward_enabled"] is True
-    assert out["candidate_eval_episodes"] < out["eval_episodes"]
+    assert out["game_engine"] == "official_fast"
+    assert out["candidate_eval_episodes"] <= out["eval_episodes"]
     assert out["opponent_curriculum_enabled"] is True
     assert out["resume_from_tier_best"] is True
     assert out["tier_checkpoint_dir"].replace("\\", "/").endswith("neural_network/checkpoints/tiers")
+    assert out["dense_reward_clip"] == 0.35
 
 
 def test_population_config_resumes_from_best_and_confirms_promotions():
@@ -64,6 +67,14 @@ def test_population_config_resumes_from_best_and_confirms_promotions():
 def test_population_promotion_requires_real_improvement():
     assert not _should_try_promotion({"score": 0.375}, best_score=0.375, margin=0.02)
     assert _should_try_promotion({"score": 0.5}, best_score=0.375, margin=0.02)
+    assert not _should_try_promotion({"score": 0.8, "winrate": 0.1}, best_score=-1e9, margin=0.02, min_winrate=0.25)
+
+
+def test_rank_reward_prioritizes_wins_over_second_place():
+    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 0) == 1.0
+    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 1) == 0.0
+    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 2) == -0.5
+    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 3) == -1.0
 
 
 def test_population_uses_tier_checkpoint_when_available(tmp_path):

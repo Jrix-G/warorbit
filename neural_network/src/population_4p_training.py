@@ -222,8 +222,8 @@ def _composite_score(record: Dict[str, Any]) -> float:
 def _score_record(record: Dict[str, Any]) -> tuple[float, float, float, float, float, float]:
     score = _composite_score(record)
     return (
-        score,
         float(record.get("winrate", 0.0)),
+        score,
         float(record.get("eval_mean", 0.0)),
         -float(record.get("rank_mean", 4.0)),
         float(record.get("avg_score", 0.0)),
@@ -261,13 +261,13 @@ def _strategic_dense_reward(result: Dict[str, Any], our_index: int, config: Dict
     other_scores = [score for idx, score in enumerate(scores) if idx != our_index]
     score_advantage = (our_score - float(np.mean(other_scores) if other_scores else 0.0)) / 1000.0
     reward = (
-        float(config.get("dense_planet_coef", 0.08)) * (end["planets"] - start["planets"])
-        + float(config.get("dense_production_coef", 0.05)) * (end["production"] - start["production"])
-        + float(config.get("dense_ship_share_coef", 0.45)) * (end["ship_share"] - start["ship_share"])
-        + float(config.get("dense_score_coef", 0.20)) * max(-1.0, min(1.0, score_advantage))
-        + float(config.get("dense_survival_coef", 0.12)) * (2.0 * end["alive"] - 1.0)
+        float(config.get("dense_planet_coef", 0.04)) * (end["planets"] - start["planets"])
+        + float(config.get("dense_production_coef", 0.03)) * (end["production"] - start["production"])
+        + float(config.get("dense_ship_share_coef", 0.12)) * (end["ship_share"] - start["ship_share"])
+        + float(config.get("dense_score_coef", 0.08)) * max(-1.0, min(1.0, score_advantage))
+        + float(config.get("dense_survival_coef", 0.05)) * (2.0 * end["alive"] - 1.0)
     )
-    limit = float(config.get("dense_reward_clip", 0.75))
+    limit = float(config.get("dense_reward_clip", 0.35))
     return float(max(-limit, min(limit, reward)))
 
 
@@ -389,7 +389,16 @@ def _run_imitation_warmstart(
     }
 
 
-def _should_try_promotion(record: Dict[str, Any], best_score: float, margin: float) -> bool:
+def _promotion_min_winrate(tier: Dict[str, Any], config: Dict[str, Any]) -> float:
+    if "promotion_min_winrate" in config:
+        return max(0.0, min(1.0, float(config["promotion_min_winrate"])))
+    advance_winrate = float(tier.get("advance_winrate", 0.0))
+    return max(0.125, min(0.35, advance_winrate * 0.5))
+
+
+def _should_try_promotion(record: Dict[str, Any], best_score: float, margin: float, min_winrate: float = 0.0) -> bool:
+    if float(record.get("winrate", 0.0)) < float(min_winrate):
+        return False
     if best_score < -1e8:
         return True
     return _composite_score(record) >= best_score + margin
@@ -852,6 +861,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
         tier_name = str(current_tier.get("name"))
         tier_best_score = _best_for_tier(curriculum_state, tier_name) if curriculum_enabled else global_best_score
         tier_checkpoint_path = _tier_best_checkpoint_path(cfg, checkpoint_dir, tier_name)
+        promotion_min_winrate = _promotion_min_winrate(current_tier, cfg)
         if curriculum_enabled and tier_best_score < -1e8 and tier_checkpoint_path.exists():
             _, tier_metadata = load_checkpoint(tier_checkpoint_path)
             tier_best_score = _checkpoint_score(tier_metadata)
@@ -961,7 +971,12 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
         save_checkpoint(candidate_path, generation_best["state"], generation_best["record"])
         save_checkpoint(latest_path, generation_best["state"], generation_best["record"])
 
-        should_promote = _should_try_promotion(generation_best["record"], tier_best_score, promotion_margin)
+        should_promote = _should_try_promotion(
+            generation_best["record"],
+            tier_best_score,
+            promotion_margin,
+            min_winrate=promotion_min_winrate,
+        )
         enough_time_for_confirmation = deadline_epoch - time.time() >= promotion_min_remaining_seconds
         can_bootstrap_without_confirmation = (
             bool(cfg.get("bootstrap_promote_without_confirmation", True))
@@ -989,8 +1004,15 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             generation_best["record"]["eval_phase"] = "confirmed"
 
             promoted_score = float(generation_best["record"]["score"])
-            if _should_try_promotion(generation_best["record"], tier_best_score, promotion_margin):
-                generation_best["record"]["promotion_reason"] = f"confirmed best composite score {promoted_score:.4f}"
+            if _should_try_promotion(
+                generation_best["record"],
+                tier_best_score,
+                promotion_margin,
+                min_winrate=promotion_min_winrate,
+            ):
+                generation_best["record"]["promotion_reason"] = (
+                    f"confirmed best score {promoted_score:.4f} with winrate {generation_best['record'].get('winrate', 0.0):.4f}"
+                )
                 tier_best_score, maybe_best_record = _promote_candidate(
                     generation_best["state"],
                     generation_best["record"],
@@ -1009,7 +1031,10 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 generation_best["record"]["checkpoint_promoted"] = False
                 generation_best["record"]["promotion_reason"] = (
                     f"promotion rejected after confirmation "
-                    f"score {generation_best['record']['score']:.4f} < required {tier_best_score + promotion_margin:.4f}"
+                    f"score={generation_best['record']['score']:.4f} "
+                    f"winrate={generation_best['record'].get('winrate', 0.0):.4f} "
+                    f"required_score={tier_best_score + promotion_margin:.4f} "
+                    f"required_winrate={promotion_min_winrate:.4f}"
                 )
                 fallback_base = best_path if best_path.exists() else latest_path
                 base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
@@ -1039,6 +1064,10 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 fallback_base = best_path if best_path.exists() else latest_path
                 base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
             else:
+                if float(generation_best["record"].get("winrate", 0.0)) < promotion_min_winrate:
+                    generation_best["record"]["promotion_reason"] = (
+                        f"promotion gated by low winrate {generation_best['record'].get('winrate', 0.0):.4f} < {promotion_min_winrate:.4f}"
+                    )
                 fallback_base = best_path if best_path.exists() else latest_path
                 base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
 

@@ -47,7 +47,7 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
     cfg["train_steps"] = max(1, int(duration_minutes * 10))
     cfg["worker_train_steps"] = max(24, int(cfg.get("worker_train_steps", 24)))
     cfg["eval_episodes"] = max(4, int(eval_episodes))
-    cfg["candidate_eval_episodes"] = max(8, min(cfg["eval_episodes"], int(cfg.get("candidate_eval_episodes", 8))))
+    cfg["candidate_eval_episodes"] = max(8, min(cfg["eval_episodes"], max(16, int(cfg.get("candidate_eval_episodes", 16)))))
     cfg["promotion_eval_episodes"] = max(16, cfg["eval_episodes"])
     cfg["promotion_min_remaining_minutes"] = max(8.0, float(cfg.get("promotion_min_remaining_minutes", 12.0)))
     cfg["min_generation_remaining_minutes"] = max(
@@ -65,11 +65,17 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
     cfg["notebook_pool_limit_max"] = 15
     cfg["train_notebook_opponents"] = 3
     cfg["train_stop_on_elimination"] = bool(cfg.get("train_stop_on_elimination", True))
-    cfg["game_engine"] = str(cfg.get("game_engine", "official_fast"))
+    cfg["game_engine"] = "official_fast"
     cfg["official_fast_c_accel"] = bool(cfg.get("official_fast_c_accel", True))
     cfg["max_actions_per_turn"] = 4
     cfg["value_loss_coef"] = float(cfg.get("value_loss_coef", 0.25))
     cfg["dense_reward_enabled"] = bool(cfg.get("dense_reward_enabled", True))
+    cfg["dense_planet_coef"] = 0.04
+    cfg["dense_production_coef"] = 0.03
+    cfg["dense_ship_share_coef"] = 0.12
+    cfg["dense_score_coef"] = 0.08
+    cfg["dense_survival_coef"] = 0.05
+    cfg["dense_reward_clip"] = 0.35
     cfg.setdefault("imitation_warmstart_steps", 8)
     cfg["opponent_curriculum_enabled"] = bool(cfg.get("opponent_curriculum_enabled", True))
     cfg.setdefault("opponent_curriculum_start_tier", 0)
