@@ -132,14 +132,15 @@ def test_guardian_enables_strict_focus_after_repeated_low_4p():
     eval_summary = {"mean": 0.52}
     benchmark = {
         "mean": 0.32,
-        "wr_4p": 0.27,
+        "wr_4p": 0.21,
         "n_2p": 0,
         "n_4p": 12,
         "backbone_turn_frac": 0.10,
         "active_front_avg": 2.0,
     }
-    _apply_guardian_adjustments(cfg, train, eval_summary, benchmark)
-    event = _apply_guardian_adjustments(cfg, train, eval_summary, benchmark)
+    event = {}
+    for _ in range(4):
+        event = _apply_guardian_adjustments(cfg, train, eval_summary, benchmark)
     assert event["strict_focus_fix"] == 1.0
     assert cfg.strict_single_target_4p
     assert cfg.disable_snipe_4p

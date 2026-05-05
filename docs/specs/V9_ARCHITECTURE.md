@@ -73,6 +73,37 @@ sur les runs guardian.
 
 ## 4. Tactiques 4p
 
+### Opening punch top1
+
+Patch du 2026-05-05, derive de `replays/top1-05-05`.
+
+Les replays top1 montrent que les vrais moves de conquete opening ne sont pas
+des micro-moves. Le joueur top1 envoie mediane ~20 ships avant t30 et ~23 ships
+avant t50, tout en visant majoritairement des neutres. V9 applique donc un
+plancher d'envoi sur les vraies captures, sans toucher aux probes/snipes/finishers.
+
+Parametres:
+
+```text
+opening_punch_turns = 55
+opening_min_capture_send_2p = 14
+opening_min_capture_send_4p = 16
+midgame_min_capture_send_4p = 24
+capture_garrison_margin = 0.22
+capture_target_ship_margin = 0.15
+midgame_capture_target_margin_4p = 0.35
+opening_close_neutral_dist_4p = 42.0
+opening_long_attack_risk_dist_4p = 55.0
+opening_source_commit_frac = 1.0
+```
+
+Effet attendu:
+
+- moins de captures fragiles a 4-8 ships;
+- meilleure conversion t50/t100;
+- moins de recaptures opportunistes en 4p;
+- conservation des petits coups utiles en probe, snipe et finisher.
+
 ### Backbone
 
 Plan: `v9_4p_backbone`.
@@ -367,6 +398,18 @@ Benchmark separe 4p pur:
 ```powershell
 python .\run_v9.py --game-engine official_fast --skip-training --benchmark-games 128 --benchmark-progress-every 1 --workers 8 --eval-max-steps 220 --benchmark-four-player-ratio 1.0 --four-player-ratio 1.0 --pool-limit 15
 ```
+
+Snapshots par generation:
+
+```text
+evaluations/<run>_snapshots/gen_0004_train.npz   # reprise trainer
+evaluations/<run>_snapshots/gen_0004_policy.npz  # poids exportables bot
+```
+
+Depuis le patch du 2026-05-05, `--snapshot-every 1` est actif par defaut. Cela
+evite de perdre une generation non promue par le guardian mais interessante pour
+analyse ou soumission experimentale. Mettre `--snapshot-every 0` desactive ces
+fichiers. Le dossier peut etre force avec `--snapshot-dir`.
 
 Validation:
 

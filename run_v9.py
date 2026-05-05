@@ -52,6 +52,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-simulation-rollouts", type=int, default=0)
     parser.add_argument("--train-opponent-samples", type=int, default=1)
     parser.add_argument("--candidate-diversity", type=float, default=1.15)
+    parser.add_argument("--opening-punch-turns", type=int, default=55)
+    parser.add_argument("--opening-min-capture-send-2p", type=int, default=14)
+    parser.add_argument("--opening-min-capture-send-4p", type=int, default=16)
+    parser.add_argument("--midgame-min-capture-send-4p", type=int, default=24)
+    parser.add_argument("--capture-garrison-margin", type=float, default=0.22)
+    parser.add_argument("--capture-target-ship-margin", type=float, default=0.15)
+    parser.add_argument("--midgame-capture-target-margin-4p", type=float, default=0.35)
+    parser.add_argument("--opening-close-neutral-dist-4p", type=float, default=42.0)
+    parser.add_argument("--opening-long-attack-risk-dist-4p", type=float, default=55.0)
+    parser.add_argument("--opening-source-commit-frac", type=float, default=1.0)
     parser.add_argument("--front-lock-turns", type=int, default=24)
     parser.add_argument("--target-active-fronts", type=float, default=2.0)
     parser.add_argument("--target-backbone-turn-frac", type=float, default=0.15)
@@ -69,6 +79,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--guardian-max-benchmark-fronts", type=float, default=2.70)
     parser.add_argument("--guardian-max-generalization-gap", type=float, default=0.18)
     parser.add_argument("--export-best-on-finish", type=int, default=1)
+    parser.add_argument("--snapshot-every", type=int, default=1, help="Save recoverable generation snapshots every N generations; 0 disables.")
+    parser.add_argument("--snapshot-dir", default=None, help="Directory for generation snapshots. Defaults next to --checkpoint.")
     parser.add_argument("--strict-single-target-4p", type=int, default=0)
     parser.add_argument("--disable-snipe-4p", type=int, default=0)
     parser.add_argument("--max-focus-targets-4p", type=int, default=2)
@@ -132,6 +144,16 @@ def main() -> None:
         train_opponent_samples=args.train_opponent_samples,
         candidate_diversity=args.candidate_diversity,
         exploration_rate=args.exploration_rate,
+        opening_punch_turns=args.opening_punch_turns,
+        opening_min_capture_send_2p=args.opening_min_capture_send_2p,
+        opening_min_capture_send_4p=args.opening_min_capture_send_4p,
+        midgame_min_capture_send_4p=args.midgame_min_capture_send_4p,
+        capture_garrison_margin=args.capture_garrison_margin,
+        capture_target_ship_margin=args.capture_target_ship_margin,
+        midgame_capture_target_margin_4p=args.midgame_capture_target_margin_4p,
+        opening_close_neutral_dist_4p=args.opening_close_neutral_dist_4p,
+        opening_long_attack_risk_dist_4p=args.opening_long_attack_risk_dist_4p,
+        opening_source_commit_frac=args.opening_source_commit_frac,
         front_lock_turns=args.front_lock_turns,
         target_active_fronts=args.target_active_fronts,
         target_backbone_turn_frac=args.target_backbone_turn_frac,
@@ -149,6 +171,8 @@ def main() -> None:
         guardian_max_benchmark_fronts=args.guardian_max_benchmark_fronts,
         guardian_max_generalization_gap=args.guardian_max_generalization_gap,
         export_best_on_finish=bool(args.export_best_on_finish),
+        snapshot_every=args.snapshot_every,
+        snapshot_dir=args.snapshot_dir,
         strict_single_target_4p=bool(args.strict_single_target_4p),
         disable_snipe_4p=bool(args.disable_snipe_4p),
         max_focus_targets_4p=args.max_focus_targets_4p,

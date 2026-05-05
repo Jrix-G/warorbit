@@ -55,7 +55,7 @@ class V9Weights:
         pw("target_prod_gain", 0.28)
         pw("target_ship_cost", -0.08)
         pw("distinct_target_frac", 0.10)
-        pw("overcommit_risk", -0.70)
+        pw("overcommit_risk", -0.55)
         pw("undercommit_risk", -0.35)
         pw("finisher_flag", 0.10)
         pw("denial_flag", 0.08)
@@ -214,6 +214,13 @@ class V9Policy:
                 # path to the t60/t100 planet threshold. Let ES tune around it,
                 # but make the candidate visible from the start.
                 metadata_bonus += 0.24 + 0.025 * min(13.0, gap)
+            if metadata.get("opening_punch", 0.0) and world.step < int(getattr(world, "_v9_params", V9Config()).opening_punch_turns):
+                # Top-1 replays commit 15-25 ships per real opening capture.
+                # This bonus offsets the generic overcommit penalty when the
+                # candidate is a robust close-neutral conversion plan.
+                metadata_bonus += 0.10 + 0.06 * float(plan_feat[PLAN_FEATURE_INDEX["neutral_focus"]])
+                if four_p > 0.5:
+                    metadata_bonus += 0.08
             if four_p > 0.5:
                 backbone = float(metadata.get("backbone", 0.0))
                 front_lock = float(metadata.get("front_lock", 0.0))
@@ -443,6 +450,16 @@ class V9Agent:
             strict_single_target_4p=bool(getattr(self.config, "strict_single_target_4p", False)),
             disable_snipe_4p=bool(getattr(self.config, "disable_snipe_4p", False)),
             max_focus_targets_4p=int(getattr(self.config, "max_focus_targets_4p", 2)),
+            opening_punch_turns=int(getattr(self.config, "opening_punch_turns", 55)),
+            opening_min_capture_send_2p=int(getattr(self.config, "opening_min_capture_send_2p", 14)),
+            opening_min_capture_send_4p=int(getattr(self.config, "opening_min_capture_send_4p", 16)),
+            midgame_min_capture_send_4p=int(getattr(self.config, "midgame_min_capture_send_4p", 24)),
+            capture_garrison_margin=float(getattr(self.config, "capture_garrison_margin", 0.22)),
+            capture_target_ship_margin=float(getattr(self.config, "capture_target_ship_margin", 0.15)),
+            midgame_capture_target_margin_4p=float(getattr(self.config, "midgame_capture_target_margin_4p", 0.35)),
+            opening_close_neutral_dist_4p=float(getattr(self.config, "opening_close_neutral_dist_4p", 42.0)),
+            opening_long_attack_risk_dist_4p=float(getattr(self.config, "opening_long_attack_risk_dist_4p", 55.0)),
+            opening_source_commit_frac=float(getattr(self.config, "opening_source_commit_frac", 1.0)),
         ))
         candidates = planner.generate(world, self.rng)
         if not candidates:

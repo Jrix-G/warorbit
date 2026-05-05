@@ -2,7 +2,7 @@
 
 This file is self-contained for Kaggle upload:
 - no imports from the local repo
-- V9 weights embedded from v9_guardian_8h_vps_policy.npz, exported from the promoted best checkpoint
+- V9 weights embedded from v9_kaggle_pool15_90m_best.npz, best saved checkpoint from May 5, 2026
 - V9-style state / plan features and policy scoring
 - compact candidate generation for multiple plan families
 """
@@ -118,6 +118,19 @@ PLAN_FEATURE_NAMES = (
 STATE_FEATURE_INDEX = {name: i for i, name in enumerate(STATE_FEATURE_NAMES)}
 PLAN_FEATURE_INDEX = {name: i for i, name in enumerate(PLAN_FEATURE_NAMES)}
 PLAN_TYPE_TO_INDEX = {name: i for i, name in enumerate(PLAN_TYPES)}
+
+OPENING_PUNCH_TURNS = 55
+OPENING_MIN_CAPTURE_SEND_2P = 14
+OPENING_MIN_CAPTURE_SEND_4P = 16
+MIDGAME_MIN_CAPTURE_SEND_4P = 24
+CAPTURE_GARRISON_MARGIN = 0.22
+CAPTURE_TARGET_SHIP_MARGIN = 0.15
+MIDGAME_CAPTURE_TARGET_MARGIN_4P = 0.35
+OPENING_CLOSE_NEUTRAL_DIST_4P = 42.0
+OPENING_LONG_ATTACK_RISK_DIST_4P = 55.0
+OPENING_SOURCE_COMMIT_FRAC = 1.0
+CAPTURE_PUNCH_FAMILIES = {"balanced", "aggressive_expansion", "resource_denial", "delayed_strike"}
+SMALL_MOVE_FAMILIES = {"probe", "opportunistic_snipe", "endgame_finisher"}
 
 
 @dataclass
@@ -701,6 +714,9 @@ def extract_plan_features(candidate: PlanCandidate, world: World) -> np.ndarray:
     target_prod = 0.0
     target_cost = 0.0
     targets = set()
+    close_neutral_focus = 0
+    opening_capture_mass = 0
+    long_opening_attack = 0
     weakest_enemy = world.weakest_enemy_id
     weak_focus = 0
     high_prod_focus = 0
@@ -723,9 +739,19 @@ def extract_plan_features(candidate: PlanCandidate, world: World) -> np.ndarray:
         elif target.owner == -1:
             expand += 1
             neutral_focus += 1
+            if float(eta) <= 11.0:
+                close_neutral_focus += 1
+            if world.is_opening and int(move[2]) >= (OPENING_MIN_CAPTURE_SEND_4P if world.is_four_player else OPENING_MIN_CAPTURE_SEND_2P):
+                opening_capture_mass += 1
+            if world.is_opening and world.is_four_player and float(eta) > 14.0 and float(target.production) < 5.0:
+                long_opening_attack += 1
         else:
             attack += 1
             enemy_focus += 1
+            if world.is_opening and int(move[2]) >= (OPENING_MIN_CAPTURE_SEND_4P if world.is_four_player else OPENING_MIN_CAPTURE_SEND_2P):
+                opening_capture_mass += 1
+            if world.is_opening and world.is_four_player and float(eta) > 14.0 and float(target.production) < 5.0:
+                long_opening_attack += 1
             if target.owner == weakest_enemy:
                 weak_focus += 1
             if float(target.production) >= 3.0:
@@ -733,7 +759,22 @@ def extract_plan_features(candidate: PlanCandidate, world: World) -> np.ndarray:
 
     own_planet_ships = sum(float(p.ships) for p in world.my_planets)
     garrison_after = max(0.0, own_planet_ships - total_send) / my_total
-    overcommit = max(0.0, total_send / my_total - (0.74 if world.is_late else 0.58))
+    n_moves = max(1, len(moves))
+    robust_opening_expansion = (
+        world.is_opening
+        and neutral_focus / n_moves >= 0.50
+        and opening_capture_mass / n_moves >= 0.45
+        and close_neutral_focus / max(1, neutral_focus) >= (0.30 if world.is_four_player else 0.20)
+    )
+    if world.is_late:
+        overcommit_threshold = 0.74
+    elif robust_opening_expansion:
+        overcommit_threshold = 0.76 if world.is_four_player else 0.72
+    else:
+        overcommit_threshold = 0.58
+    overcommit = max(0.0, total_send / my_total - overcommit_threshold)
+    if world.is_opening and world.is_four_player and long_opening_attack:
+        overcommit += 0.05 * min(3.0, float(long_opening_attack))
     undercommit = 0.0
     if world.is_late and world.enemy_planets:
         undercommit = max(0.0, 0.18 - total_send / my_total)
@@ -746,7 +787,6 @@ def extract_plan_features(candidate: PlanCandidate, world: World) -> np.ndarray:
                 fronts += 1
         active_front_ratio = fronts / max(1.0, len(world.my_planets))
 
-    n_moves = max(1, len(moves))
     ptype_idx = PLAN_TYPE_TO_INDEX.get(candidate.plan_type, 0)
     feat = np.array(
         [
@@ -785,79 +825,7 @@ def extract_plan_features(candidate: PlanCandidate, world: World) -> np.ndarray:
 
 
 EMBEDDED_V9_GUARDIAN_8H_VPS_BEST_POLICY_B64 = """
-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
-c29uLm5weVBLBQYAAAAABgAGAGEBAAC+EwAAAAA=
+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
 """
 
 
@@ -966,8 +934,12 @@ class V9Policy:
 
             safety = 0.0
             metadata_bonus = 0.0
+            metadata = candidate.metadata or {}
+            if metadata.get("opening_punch", 0.0) and world.step < OPENING_PUNCH_TURNS:
+                metadata_bonus += 0.10 + 0.06 * float(plan_feat[PLAN_FEATURE_INDEX["neutral_focus"]])
+                if four_p > 0.5:
+                    metadata_bonus += 0.08
             if four_p > 0.5:
-                metadata = candidate.metadata or {}
                 backbone = float(metadata.get("backbone", 0.0))
                 front_lock = float(metadata.get("front_lock", 0.0))
                 consolidation_threshold = float(metadata.get("consolidation_threshold", 0.0))
@@ -1120,6 +1092,8 @@ def _available_ships(world: World, planet: Planet, front_pressure: int) -> int:
     reserve = 0.42 if planet.id in world.threatened_candidates else 0.58
     if world.is_four_player and front_pressure > 0:
         reserve = min(reserve, 0.48)
+    if world.step < OPENING_PUNCH_TURNS and planet.id not in world.threatened_candidates and planet.id not in world.doomed_candidates:
+        reserve = min(reserve, 1.0 - OPENING_SOURCE_COMMIT_FRAC)
     reserve_ships = float(planet.ships) * reserve
     enemy_in = float(world.incoming_enemy.get(int(planet.id), 0.0))
     friendly_in = float(world.incoming_friendly.get(int(planet.id), 0.0))
@@ -1141,6 +1115,25 @@ def _capture_need(target: Planet, world: World, *, family: str) -> int:
     return int(math.ceil(float(target.ships) + pressure * float(target.production) + 2.0))
 
 
+def _capture_send_floor(world: World, target: Planet, family: str, needed: int) -> int:
+    if family in SMALL_MOVE_FAMILIES or family not in CAPTURE_PUNCH_FAMILIES or target.owner == world.player:
+        return 1
+    if world.step < OPENING_PUNCH_TURNS:
+        floor = OPENING_MIN_CAPTURE_SEND_4P if world.is_four_player else OPENING_MIN_CAPTURE_SEND_2P
+        garrison = int(math.ceil(
+            float(target.production) * CAPTURE_GARRISON_MARGIN
+            + float(target.ships) * CAPTURE_TARGET_SHIP_MARGIN
+        ))
+        return max(1, int(floor), int(needed) + max(0, garrison))
+    if world.is_four_player and world.step < 120 and not world.is_late and not world.is_very_late:
+        garrison = int(math.ceil(
+            float(target.production) * 2.0
+            + float(target.ships) * MIDGAME_CAPTURE_TARGET_MARGIN_4P
+        ))
+        return max(1, MIDGAME_MIN_CAPTURE_SEND_4P, int(needed) + max(0, garrison))
+    return 1
+
+
 def _add_move(moves: List[List], world: World, src: Planet, target: Planet, ships: int, *, bias: float = 0.0) -> bool:
     ships = int(ships)
     if ships <= 0:
@@ -1159,6 +1152,15 @@ def _add_move(moves: List[List], world: World, src: Planet, target: Planet, ship
 
 def _pick_targets(world: World, focus_enemy: Optional[int], *, family: str) -> List[Planet]:
     targets = list(world.neutral_planets) + list(world.enemy_planets)
+    if world.is_four_player and world.step < OPENING_PUNCH_TURNS and family in ("balanced", "aggressive_expansion"):
+        filtered = [
+            t for t in targets
+            if t.owner != -1
+            or min((_dist(src, t) for src in world.my_planets), default=999.0) <= OPENING_CLOSE_NEUTRAL_DIST_4P
+            or float(t.production) >= 5.0
+            or float(t.ships) / max(1.0, float(t.production)) <= 4.5
+        ]
+        targets = filtered or targets
     if family == "resource_denial":
         targets = sorted(targets, key=lambda t: (t.owner == world.player, -(t.production if t.owner != -1 else 0.0), float(t.ships)))
     elif family == "endgame_finisher":
@@ -1168,7 +1170,15 @@ def _pick_targets(world: World, focus_enemy: Optional[int], *, family: str) -> L
     elif family == "probe":
         targets = sorted(targets, key=lambda t: (-float(t.production), float(t.ships)))
     else:
-        targets = sorted(targets, key=lambda t: (-_planet_value(world.my_planets[0], t, focus_enemy, world), -float(t.production), float(t.ships)))
+        targets = sorted(
+            targets,
+            key=lambda t: (
+                world.is_four_player and world.step < OPENING_PUNCH_TURNS and t.owner == -1 and min((_dist(src, t) for src in world.my_planets), default=999.0) > OPENING_CLOSE_NEUTRAL_DIST_4P,
+                -_planet_value(world.my_planets[0], t, focus_enemy, world),
+                -float(t.production),
+                float(t.ships),
+            ),
+        )
     return targets
 
 
@@ -1190,7 +1200,8 @@ def _single_source_attack(world: World, focus_enemy: Optional[int], *, family: s
                 needed = int(needed * 1.15)
             if family != "probe" and left < needed:
                 continue
-            send = min(left, max(4, int(needed * min_send_scale)))
+            floor = _capture_send_floor(world, target, family, needed)
+            send = min(left, max(4, floor, int(math.ceil(needed * min_send_scale))))
             if send <= 0:
                 continue
             if _add_move(moves, world, src, target, send):
@@ -1308,6 +1319,7 @@ def _build_candidates(world: World, focus_enemy: Optional[int]) -> List[PlanCand
     staging = _staging_moves(world, focus_enemy, front_pressure)
     trap = _staging_moves(world, focus_enemy, front_pressure) + _single_source_attack(world, focus_enemy, family="multi_step_trap", max_moves=1, min_send_scale=0.98)
     reserve = _reinforce_threats(world, focus_enemy)
+    opening_punch_meta = {"opening_punch": 1.0} if world.step < OPENING_PUNCH_TURNS else {}
 
     candidates = [
         PlanCandidate(
@@ -1315,14 +1327,14 @@ def _build_candidates(world: World, focus_enemy: Optional[int]) -> List[PlanCand
             balanced[:12],
             "balanced",
             0.05,
-            {"active_fronts": float(front_count), "focus_enemy_id": float(focus_enemy or -1), "front_anchor_id": float(anchor_id or -1)},
+            {"active_fronts": float(front_count), "focus_enemy_id": float(focus_enemy or -1), "front_anchor_id": float(anchor_id or -1), **opening_punch_meta},
         ),
         PlanCandidate(
             "aggressive_expansion",
             aggressive[:12],
             "aggressive_expansion",
             0.12,
-            {"active_fronts": float(front_count), "focus_enemy_id": float(focus_enemy or -1), "front_anchor_id": float(anchor_id or -1)},
+            {"active_fronts": float(front_count), "focus_enemy_id": float(focus_enemy or -1), "front_anchor_id": float(anchor_id or -1), **opening_punch_meta},
         ),
         PlanCandidate(
             "delayed_strike",

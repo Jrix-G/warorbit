@@ -52,6 +52,47 @@ def _load_train_checkpoint(path: str) -> Tuple[V9Weights, float, int]:
     return weights, best_score, generation
 
 
+def _generation_snapshot_paths(config: V9Config, generation: int) -> tuple[Path, Path]:
+    if config.snapshot_dir:
+        snapshot_dir = Path(config.snapshot_dir)
+    else:
+        checkpoint = Path(config.checkpoint)
+        stem = checkpoint.stem
+        for suffix in ("_latest", "_checkpoint", "_policy"):
+            if stem.endswith(suffix):
+                stem = stem[: -len(suffix)]
+                break
+        snapshot_dir = checkpoint.parent / f"{stem}_snapshots"
+    name = f"gen_{generation:04d}"
+    return snapshot_dir / f"{name}_train.npz", snapshot_dir / f"{name}_policy.npz"
+
+
+def _save_generation_snapshot(config: V9Config, weights: V9Weights, *, best_score: float,
+                              generation: int, meta: dict) -> tuple[str, str] | None:
+    every = int(getattr(config, "snapshot_every", 0) or 0)
+    if every <= 0 or generation % every != 0:
+        return None
+    train_path, policy_path = _generation_snapshot_paths(config, generation)
+    _save_train_checkpoint(
+        str(train_path),
+        weights,
+        best_score=best_score,
+        generation=generation,
+        meta=meta,
+    )
+    save_checkpoint(
+        str(policy_path),
+        weights,
+        meta={
+            "generation": generation,
+            "score": best_score,
+            "snapshot": True,
+            **meta,
+        },
+    )
+    return str(train_path), str(policy_path)
+
+
 def _load_opponents(config: V9Config):
     opponents = list(config.training_opponents)
     try:
@@ -360,7 +401,8 @@ class V9Trainer:
             f"games_per_eval={self.config.games_per_eval} eval_games={self.config.eval_games} "
             f"train_opponents={len(opponents)} eval_opponents={len(eval_opponents)} "
             f"benchmark_opponents={len(benchmark_opponents)} workers={self.config.workers} "
-            f"game_engine={self.config.game_engine} train_only={int(self.config.train_only)}",
+            f"game_engine={self.config.game_engine} train_only={int(self.config.train_only)} "
+            f"snapshot_every={int(getattr(self.config, 'snapshot_every', 0) or 0)}",
             flush=True,
         )
         if str(getattr(self.config, "game_engine", "official_fast")).lower() in ("official_fast", "kaggle_fast"):
@@ -387,6 +429,8 @@ class V9Trainer:
                 if str(getattr(self.config, "game_engine", "official_fast")).lower() in ("official_fast", "kaggle_fast")
                 else False,
                 "train_only": self.config.train_only,
+                "snapshot_every": int(getattr(self.config, "snapshot_every", 0) or 0),
+                "snapshot_dir": self.config.snapshot_dir,
                 "train_opponents": opponents,
                 "eval_opponents": eval_opponents,
                 "benchmark_opponents": benchmark_opponents,
@@ -615,6 +659,16 @@ class V9Trainer:
                     "guardian": guardian_event,
                     "stop_reason": "running",
                 }
+                snapshot_paths = _save_generation_snapshot(
+                    self.config,
+                    self.weights,
+                    best_score=self.best_score,
+                    generation=self.generation,
+                    meta={"config": self.config.to_dict(), "latest": latest_summary},
+                )
+                if snapshot_paths is not None:
+                    latest_summary["snapshot_checkpoint"] = snapshot_paths[0]
+                    latest_summary["snapshot_policy"] = snapshot_paths[1]
                 line = (
                     f"gen={self.generation:04d} "
                     f"train={train_summary['mean']:.3f} (2p {train_summary['wr_2p']:.3f}/{train_summary['n_2p']} "

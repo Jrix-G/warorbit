@@ -1,0 +1,14 @@
+[0505/232141.096:WARNING:components\leveldb_proto\internal\leveldb_database.cc:124] Unable to open C:\Users\Capitaine\Documents\GitHub\warorbit\replay_observer\output\kaggle_profile\Default\shared_proto_db\metadata: IO error: C:\Users\Capitaine\Documents\GitHub\warorbit\replay_observer\output\kaggle_profile\Default\shared_proto_db\metadata/MANIFEST-000001: Unable to create sequential file (ChromeMethodBFE: 7::NewSequentialFile::1)
+[0505/232141.101:WARNING:components\leveldb_proto\internal\leveldb_database.cc:124] Unable to open C:\Users\Capitaine\Documents\GitHub\warorbit\replay_observer\output\kaggle_profile\Default\shared_proto_db\metadata: IO error: C:\Users\Capitaine\Documents\GitHub\warorbit\replay_observer\output\kaggle_profile\Default\shared_proto_db\metadata/MANIFEST-000001: Unable to create sequential file (ChromeMethodBFE: 7::NewSequentialFile::1)
+[0505/232141.106:WARNING:components\leveldb_proto\internal\leveldb_database.cc:124] Unable to open C:\Users\Capitaine\Documents\GitHub\warorbit\replay_observer\output\kaggle_profile\Default\shared_proto_db\metadata: IO error: C:\Users\Capitaine\Documents\GitHub\warorbit\replay_observer\output\kaggle_profile\Default\shared_proto_db\metadata/MANIFEST-000001: Unable to create sequential file (ChromeMethodBFE: 7::NewSequentialFile::1)
+[0505/232141.110:WARNING:components\leveldb_proto\internal\leveldb_database.cc:124] Unable to open C:\Users\Capitaine\Documents\GitHub\warorbit\replay_observer\output\kaggle_profile\Default\shared_proto_db\metadata: IO error: C:\Users\Capitaine\Documents\GitHub\warorbit\replay_observer\output\kaggle_profile\Default\shared_proto_db\metadata/MANIFEST-000001: Unable to create sequential file (ChromeMethodBFE: 7::NewSequentialFile::1)
+[0505/232141.834:INFO:CONSOLE:1] " _                       _       
+| |    Welcome to       | |      
+| | __ ___   __ _  __ _ | | ___  
+| |/ /|__ \ / _` |/ _` || |/ _ \ 
+|   < / _  | (_| | (_| || |  __/ 
+|_|\_\\__,_|\__, |\__, ||_|\___| 
+             __/ | __/ |         
+            |___/ |___/          
+", source: https://www.kaggle.com/static/assets/app.js?v=fe3b6f743b479ca1 (1)
+[0505/232141.864:INFO:CONSOLE:256] "No `HydrateFallback` element provided to render during initial hydration", source: https://www.kaggle.com/static/assets/vendor.js?v=16e57cdf2074cbfa (256)

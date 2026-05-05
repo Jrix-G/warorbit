@@ -8,11 +8,13 @@ LATEST="evaluations/${RUN_NAME}_latest.npz"
 BEST="evaluations/${RUN_NAME}_best.npz"
 POLICY="evaluations/${RUN_NAME}_policy.npz"
 LOG="evaluations/${RUN_NAME}_train.jsonl"
+SNAPSHOTS="evaluations/${RUN_NAME}_snapshots"
 
 mkdir -p evaluations
 
 # Force a true fresh start for this run namespace.
 rm -f "$LATEST" "$BEST" "$POLICY" "$LOG"
+rm -rf "$SNAPSHOTS"
 
 echo "Fresh V9 run"
 echo "Run: $RUN_NAME"
@@ -20,6 +22,7 @@ echo "Latest: $LATEST"
 echo "Best: $BEST"
 echo "Policy: $POLICY"
 echo "Log: $LOG"
+echo "Snapshots: $SNAPSHOTS"
 
 python3 run_v9.py \
   --game-engine official_fast \
@@ -45,6 +48,16 @@ python3 run_v9.py \
   --train-simulation-rollouts 0 \
   --train-opponent-samples 1 \
   --pool-limit 15 \
+  --opening-punch-turns 55 \
+  --opening-min-capture-send-2p 14 \
+  --opening-min-capture-send-4p 16 \
+  --midgame-min-capture-send-4p 24 \
+  --capture-garrison-margin 0.22 \
+  --capture-target-ship-margin 0.15 \
+  --midgame-capture-target-margin-4p 0.35 \
+  --opening-close-neutral-dist-4p 42.0 \
+  --opening-long-attack-risk-dist-4p 55.0 \
+  --opening-source-commit-frac 1.0 \
   --guardian-enabled 1 \
   --guardian-min-benchmark-4p 0.42 \
   --guardian-min-benchmark-backbone 0.08 \
@@ -53,6 +66,8 @@ python3 run_v9.py \
   --min-benchmark-score 0.35 \
   --max-generalization-gap 0.18 \
   --reward-noise 0.008 \
+  --snapshot-every 1 \
+  --snapshot-dir "$SNAPSHOTS" \
   --checkpoint "$LATEST" \
   --best-checkpoint "$BEST" \
   --export-checkpoint "$POLICY" \

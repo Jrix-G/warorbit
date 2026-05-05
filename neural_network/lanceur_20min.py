@@ -21,7 +21,7 @@ def main() -> None:
         pass
 
     duration_minutes = float(os.environ.get("WARORBIT_SMOKE_MINUTES", "20.0"))
-    eval_episodes = int(os.environ.get("WARORBIT_SMOKE_EVAL_EPISODES", "32"))
+    eval_episodes = max(32, int(os.environ.get("WARORBIT_SMOKE_EVAL_EPISODES", "32")))
     eval_slices = int(os.environ.get("WARORBIT_SMOKE_EVAL_SLICES", "20"))
 
     print(f"Launching {duration_minutes:g}-minute 4P smoke test...", flush=True)
@@ -36,6 +36,7 @@ def main() -> None:
     cfg["game_engine"] = str(cfg.get("game_engine", "official_fast"))
     cfg["official_fast_c_accel"] = bool(cfg.get("official_fast_c_accel", True))
     cfg["max_actions_per_turn"] = 4
+    cfg["min_expand_attack_ships"] = max(6, int(cfg.get("min_expand_attack_ships", 6)))
     cfg["temperature_start"] = float(cfg.get("temperature_start", 1.2))
     cfg["temperature_end"] = float(cfg.get("temperature_end", 0.35))
     cfg["log_dir"] = str((ROOT / "logs").resolve())
@@ -45,8 +46,8 @@ def main() -> None:
     cfg["latest_checkpoint"] = str((ROOT / "checkpoints" / "latest.npz").resolve())
     cfg["export_path"] = str((ROOT / "checkpoints" / "export.npz").resolve())
     cfg["resume_checkpoint"] = cfg.get("best_checkpoint")
-    cfg["send_ratios"] = [0.25, 0.5, 0.75]
-    cfg["policy_prior_strength"] = 0.8
+    cfg["send_ratios"] = [0.5, 0.7, 0.9]
+    cfg["policy_prior_strength"] = max(1.2, float(cfg.get("policy_prior_strength", 1.2)))
 
     ensure_dir(cfg["checkpoint_dir"])
     ensure_dir(cfg["log_dir"])

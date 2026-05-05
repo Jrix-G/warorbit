@@ -5,6 +5,7 @@ from neural_network.scripts.run_90min_6agent_training import _prepare_config as 
 from neural_network.src.model import ModelConfig, NeuralNetworkModel, count_parameters
 from neural_network.src.population_4p_training import (
     _composite_score,
+    _fallback_base_checkpoint,
     _load_curriculum_state,
     _maybe_advance_curriculum,
     _next_base_checkpoint,
@@ -14,7 +15,7 @@ from neural_network.src.population_4p_training import (
     _training_base_checkpoint,
     DEFAULT_CURRICULUM_TIERS,
 )
-from neural_network.src.notebook_4p_training import _episode_reward
+from neural_network.src.notebook_4p_training import _combine_terminal_dense_reward, _episode_reward
 from neural_network.src.trajectory import safe_plan_shot
 
 
@@ -39,8 +40,14 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     assert out["train_notebook_opponents"] == 3
     assert out["worker_train_steps"] >= 24
     assert out["max_actions_per_turn"] == 4
+    assert out["min_expand_attack_ships"] >= 6
+    assert out["send_ratios"] == [0.5, 0.7, 0.9]
+    assert out["policy_prior_strength"] >= 1.2
+    assert out["imitation_warmstart_steps"] >= 256
     assert out["dense_reward_enabled"] is True
     assert out["game_engine"] == "official_fast"
+    assert out["eval_episodes"] >= 32
+    assert out["candidate_eval_episodes"] >= 32
     assert out["candidate_eval_episodes"] <= out["eval_episodes"]
     assert out["opponent_curriculum_enabled"] is True
     assert out["resume_from_tier_best"] is True
@@ -57,9 +64,9 @@ def test_population_config_resumes_from_best_and_confirms_promotions():
     }
     out = _prepare_population_config(cfg, 200.0, 6, 8)
     assert out["resume_checkpoint"] == out["best_checkpoint"]
-    assert out["eval_episodes"] == 8
-    assert out["promotion_eval_episodes"] == 16
-    assert out["candidate_eval_episodes"] == 8
+    assert out["eval_episodes"] == 32
+    assert out["promotion_eval_episodes"] == 64
+    assert out["candidate_eval_episodes"] == 32
     assert out["promotion_margin"] == 0.02
     assert out["promotion_min_remaining_minutes"] == 12.0
 
@@ -75,6 +82,12 @@ def test_rank_reward_prioritizes_wins_over_second_place():
     assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 1) == 0.0
     assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 2) == -0.5
     assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 3) == -1.0
+
+
+def test_dense_reward_cannot_make_second_place_positive():
+    assert _combine_terminal_dense_reward(0.0, 0.35) == 0.0
+    assert abs(_combine_terminal_dense_reward(-0.5, 0.35) - -0.15) < 1e-9
+    assert _combine_terminal_dense_reward(1.0, 0.35) == 1.35
 
 
 def test_population_uses_tier_checkpoint_when_available(tmp_path):
@@ -98,6 +111,13 @@ def test_population_uses_tier_checkpoint_when_available(tmp_path):
 def test_population_tier_checkpoint_path_sanitizes_custom_tier(tmp_path):
     path = _tier_best_checkpoint_path({"tier_checkpoint_dir": str(tmp_path)}, Path("unused"), "mixed 700/notebook")
     assert path == tmp_path / "mixed_700_notebook.npz"
+
+
+def test_no_resume_fallback_ignores_stale_best_checkpoint():
+    best = Path(__file__)
+    latest = Path("latest.npz")
+    assert _fallback_base_checkpoint(False, best, latest) == latest
+    assert _fallback_base_checkpoint(True, best, latest) == best
 
 
 def test_population_composite_score_penalizes_rank_and_noop():

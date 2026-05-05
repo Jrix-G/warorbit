@@ -137,6 +137,9 @@ def extract_plan_features(candidate: PlanCandidate, world) -> np.ndarray:
     target_prod = 0.0
     target_cost = 0.0
     targets = set()
+    close_neutral_focus = 0
+    opening_capture_mass = 0
+    long_opening_attack = 0
     weakest_enemy = world.weakest_enemy_id
     weak_focus = 0
     high_prod_focus = 0
@@ -159,9 +162,19 @@ def extract_plan_features(candidate: PlanCandidate, world) -> np.ndarray:
         elif target.owner == -1:
             expand += 1
             neutral_focus += 1
+            if float(eta) <= 11.0:
+                close_neutral_focus += 1
+            if world.is_opening and int(move[2]) >= (16 if world.is_four_player else 14):
+                opening_capture_mass += 1
+            if world.is_opening and world.is_four_player and float(eta) > 14.0 and float(target.production) < 5.0:
+                long_opening_attack += 1
         else:
             attack += 1
             enemy_focus += 1
+            if world.is_opening and int(move[2]) >= (16 if world.is_four_player else 14):
+                opening_capture_mass += 1
+            if world.is_opening and world.is_four_player and float(eta) > 14.0 and float(target.production) < 5.0:
+                long_opening_attack += 1
             if target.owner == weakest_enemy:
                 weak_focus += 1
             if float(target.production) >= 3.0:
@@ -169,7 +182,22 @@ def extract_plan_features(candidate: PlanCandidate, world) -> np.ndarray:
 
     own_planet_ships = sum(float(p.ships) for p in world.my_planets)
     garrison_after = max(0.0, own_planet_ships - total_send) / my_total
-    overcommit = max(0.0, total_send / my_total - (0.74 if world.is_late else 0.58))
+    n_moves = max(1, len(moves))
+    robust_opening_expansion = (
+        world.is_opening
+        and neutral_focus / n_moves >= 0.50
+        and opening_capture_mass / n_moves >= 0.45
+        and close_neutral_focus / max(1, neutral_focus) >= (0.30 if world.is_four_player else 0.20)
+    )
+    if world.is_late:
+        overcommit_threshold = 0.74
+    elif robust_opening_expansion:
+        overcommit_threshold = 0.76 if world.is_four_player else 0.72
+    else:
+        overcommit_threshold = 0.58
+    overcommit = max(0.0, total_send / my_total - overcommit_threshold)
+    if world.is_opening and world.is_four_player and long_opening_attack:
+        overcommit += 0.05 * min(3.0, float(long_opening_attack))
     undercommit = 0.0
     if world.is_late and world.enemy_planets:
         undercommit = max(0.0, 0.18 - total_send / my_total)
@@ -182,7 +210,6 @@ def extract_plan_features(candidate: PlanCandidate, world) -> np.ndarray:
                 fronts += 1
         active_front_ratio = fronts / max(1.0, len(world.my_planets))
 
-    n_moves = max(1, len(moves))
     ptype_idx = PLAN_TYPE_TO_INDEX.get(candidate.plan_type, 0)
     feat = np.array([
         min(2.0, len(moves) / 14.0),

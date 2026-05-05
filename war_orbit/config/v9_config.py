@@ -25,6 +25,16 @@ class V9Config:
     finisher_bias: float = 1.0
     min_source_ships: int = 8
     max_moves_per_plan: int = 12
+    opening_punch_turns: int = 55
+    opening_min_capture_send_2p: int = 14
+    opening_min_capture_send_4p: int = 16
+    midgame_min_capture_send_4p: int = 24
+    capture_garrison_margin: float = 0.22
+    capture_target_ship_margin: float = 0.15
+    midgame_capture_target_margin_4p: float = 0.35
+    opening_close_neutral_dist_4p: float = 42.0
+    opening_long_attack_risk_dist_4p: float = 55.0
+    opening_source_commit_frac: float = 1.0
     front_lock_turns: int = 24
     target_active_fronts: float = 2.0
     target_backbone_turn_frac: float = 0.15
@@ -70,6 +80,8 @@ class V9Config:
     guardian_max_benchmark_fronts: float = 2.70
     guardian_max_generalization_gap: float = 0.18
     export_best_on_finish: bool = True
+    snapshot_every: int = 1
+    snapshot_dir: Optional[str] = None
     strict_single_target_4p: bool = False
     disable_snipe_4p: bool = False
     max_focus_targets_4p: int = 2
@@ -144,6 +156,16 @@ class V9Config:
             "finisher_bias",
             "min_source_ships",
             "max_moves_per_plan",
+            "opening_punch_turns",
+            "opening_min_capture_send_2p",
+            "opening_min_capture_send_4p",
+            "midgame_min_capture_send_4p",
+            "capture_garrison_margin",
+            "capture_target_ship_margin",
+            "midgame_capture_target_margin_4p",
+            "opening_close_neutral_dist_4p",
+            "opening_long_attack_risk_dist_4p",
+            "opening_source_commit_frac",
             "front_lock_turns",
             "target_active_fronts",
             "target_backbone_turn_frac",

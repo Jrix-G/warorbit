@@ -44,34 +44,44 @@ def _candidate_prior(candidate: ActionCandidate, game: Dict[str, Any]) -> float:
     production = float(tgt.get("production", 0.0))
     sent_ratio = float(candidate.amount) / max(1.0, src_ships)
     safety_margin = float(candidate.amount) - tgt_ships
+    useful_mass = min(25.0, float(candidate.amount)) / 25.0
 
     prior = -0.025 * distance
     prior += 0.20 * min(10.0, production)
-    prior += 0.40 * sent_ratio
+    prior += 0.35 * sent_ratio
+    prior += 0.35 * useful_mass
     prior += 0.015 * max(-100.0, min(100.0, safety_margin))
     if candidate.mission == "expand":
         prior += 0.75
         if safety_margin >= 1.0:
             prior += 0.75
+        else:
+            prior -= min(1.25, 0.18 * abs(safety_margin - 1.0))
     elif candidate.mission == "attack":
         prior += 0.25
         if safety_margin >= 3.0:
             prior += 0.80
         else:
-            prior -= 0.80
+            prior -= 0.80 + min(1.25, 0.16 * abs(safety_margin - 3.0))
     elif candidate.mission == "support":
         prior -= 0.15
+    if candidate.mission in {"expand", "attack"} and candidate.amount < 4:
+        prior -= 0.60
     if src_ships - candidate.amount < max(2.0, src_ships * 0.20):
         prior -= 0.65
     return float(max(-3.0, min(3.0, prior)))
 
 
-def build_action_candidates(game: Dict[str, Any], send_ratios: Sequence[float] | None = None) -> List[ActionCandidate]:
+def build_action_candidates(
+    game: Dict[str, Any],
+    send_ratios: Sequence[float] | None = None,
+    min_expand_attack_ships: int = 1,
+) -> List[ActionCandidate]:
     planets = game.get("planets", [])
     my_id = game.get("my_id", 0)
     candidates: List[ActionCandidate] = [ActionCandidate(-1, -1, 0, "do_nothing", np.zeros(16, dtype=np.float32))]
     my_planets = [p for p in planets if p["owner"] == my_id and float(p.get("ships", 0.0)) >= 2.0]
-    ratios = tuple(float(r) for r in (send_ratios or (0.25, 0.5, 0.75)) if 0.0 < float(r) < 1.0)
+    ratios = tuple(float(r) for r in (send_ratios or (0.5, 0.7, 0.9)) if 0.0 < float(r) < 1.0)
     seen: set[tuple[int, int, int]] = set()
     for src in my_planets:
         for tgt in planets:
@@ -89,6 +99,8 @@ def build_action_candidates(game: Dict[str, Any], send_ratios: Sequence[float] |
                 mission = "attack"
             for ratio in ratios:
                 amount = max(1, min(int(float(src.get("ships", 0.0)) * ratio), int(float(src.get("ships", 0.0))) - 1))
+                if mission in {"expand", "attack"} and amount < int(min_expand_attack_ships):
+                    continue
                 key = (int(src["id"]), int(tgt["id"]), int(amount))
                 if key in seen:
                     continue
@@ -144,9 +156,14 @@ def choose_action(
     explore: bool = False,
     return_entropy: bool = False,
     send_ratios: Sequence[float] | None = None,
+    min_expand_attack_ships: int = 1,
     prior_strength: float = 0.0,
 ) -> Tuple[ActionCandidate, torch.Tensor] | Tuple[ActionCandidate, torch.Tensor, torch.Tensor]:
-    candidates = build_action_candidates(game, send_ratios=send_ratios)
+    candidates = build_action_candidates(
+        game,
+        send_ratios=send_ratios,
+        min_expand_attack_ships=min_expand_attack_ships,
+    )
     return choose_action_from_candidates(
         outputs,
         game,

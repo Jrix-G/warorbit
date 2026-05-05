@@ -20,9 +20,11 @@ from .notebook_4p_training import (
     _agent_for_name,
     _build_agents,
     _candidate_move,
+    _combine_terminal_dense_reward,
     _copy_planning_game,
     _episode_reward,
     _infer_input_dim,
+    _min_expand_attack_ships,
     _reserve_planned_ships,
     _send_ratios,
     _train_episode,
@@ -191,6 +193,12 @@ def _next_base_checkpoint(
     return fallback
 
 
+def _fallback_base_checkpoint(resume: bool, best_path: Path, latest_path: Path) -> Path:
+    if resume and best_path.exists():
+        return best_path
+    return latest_path
+
+
 def _clip01(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
 
@@ -312,12 +320,17 @@ def _train_imitation_observation(
     if not teacher_moves:
         return {"loss": 0.0, "targets": 0.0}
     ratios = _send_ratios(config)
+    min_expand_attack_ships = _min_expand_attack_ships(config)
     planning_game = _copy_planning_game(obs_to_game_dict(obs))
     losses: List[torch.Tensor] = []
     max_actions = max(1, int(config.get("max_actions_per_turn", 4)))
     for teacher_move in list(teacher_moves)[:max_actions]:
         encoded = encode_game_state(planning_game, config)
-        candidates = build_action_candidates(planning_game, send_ratios=ratios)
+        candidates = build_action_candidates(
+            planning_game,
+            send_ratios=ratios,
+            min_expand_attack_ships=min_expand_attack_ships,
+        )
         target_idx = _teacher_action_index(candidates, planning_game, teacher_move)
         if target_idx is None:
             continue
@@ -632,7 +645,7 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
         )
         terminal_reward = _episode_reward(result, our_index)
         dense_reward = _strategic_dense_reward(result, our_index, config) if bool(config.get("dense_reward_enabled", True)) else 0.0
-        reward = terminal_reward + dense_reward
+        reward = _combine_terminal_dense_reward(terminal_reward, dense_reward)
         action_metrics = _action_summary(action_records)
         scores = result.get("scores", [])
         ordered = sorted(((float(score), idx) for idx, score in enumerate(scores)), reverse=True)
@@ -1036,7 +1049,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                     f"required_score={tier_best_score + promotion_margin:.4f} "
                     f"required_winrate={promotion_min_winrate:.4f}"
                 )
-                fallback_base = best_path if best_path.exists() else latest_path
+                fallback_base = _fallback_base_checkpoint(resume, best_path, latest_path)
                 base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
         else:
             if can_bootstrap_without_confirmation:
@@ -1061,14 +1074,14 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 base_checkpoint = tier_checkpoint_path
             elif should_promote:
                 generation_best["record"]["promotion_reason"] = "promotion skipped: not enough time for confirmation eval"
-                fallback_base = best_path if best_path.exists() else latest_path
+                fallback_base = _fallback_base_checkpoint(resume, best_path, latest_path)
                 base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
             else:
                 if float(generation_best["record"].get("winrate", 0.0)) < promotion_min_winrate:
                     generation_best["record"]["promotion_reason"] = (
                         f"promotion gated by low winrate {generation_best['record'].get('winrate', 0.0):.4f} < {promotion_min_winrate:.4f}"
                     )
-                fallback_base = best_path if best_path.exists() else latest_path
+                fallback_base = _fallback_base_checkpoint(resume, best_path, latest_path)
                 base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
 
         curriculum_state["total_generations"] = generation
@@ -1087,7 +1100,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 if resume and bool(cfg.get("resume_from_tier_best", True)) and next_tier_checkpoint.exists():
                     base_checkpoint = next_tier_checkpoint
                 else:
-                    fallback_base = best_path if best_path.exists() else latest_path
+                    fallback_base = _fallback_base_checkpoint(resume, best_path, latest_path)
                     base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
         curriculum_state["total_generations"] = generation + 1
         generation_best["record"]["curriculum_advanced"] = advanced

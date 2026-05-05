@@ -23,6 +23,16 @@ class PlanningParameters:
     strict_single_target_4p: bool = False
     disable_snipe_4p: bool = False
     max_focus_targets_4p: int = 2
+    opening_punch_turns: int = 55
+    opening_min_capture_send_2p: int = 14
+    opening_min_capture_send_4p: int = 16
+    midgame_min_capture_send_4p: int = 24
+    capture_garrison_margin: float = 0.22
+    capture_target_ship_margin: float = 0.15
+    midgame_capture_target_margin_4p: float = 0.35
+    opening_close_neutral_dist_4p: float = 42.0
+    opening_long_attack_risk_dist_4p: float = 55.0
+    opening_source_commit_frac: float = 1.0
 
 
 class MoveBuilder:
@@ -40,6 +50,7 @@ class MoveBuilder:
         self.reserve_scale = float(reserve_scale)
         self.allow_reserve = bool(allow_reserve)
         self.max_moves = int(max_moves)
+        self.params = getattr(world, "_v9_params", PlanningParameters())
         self.moves: List[List] = []
         self.spent: Dict[int, int] = defaultdict(int)
         self.commitments: Dict[int, List[Tuple[int, int, int]]] = defaultdict(list)
@@ -61,6 +72,13 @@ class MoveBuilder:
             if src_id in self.world.threatened_candidates:
                 base = min(base, max(0, int(src.ships * 0.35)))
             budget = int(base * self.reserve_scale)
+            if (
+                self.world.step < int(self.params.opening_punch_turns)
+                and src_id not in self.world.threatened_candidates
+                and src_id not in self.world.doomed_candidates
+            ):
+                punch_budget = int(src.ships * float(self.params.opening_source_commit_frac))
+                budget = max(budget, punch_budget)
         return max(0, min(int(src.ships), budget) - self.spent[int(src_id)])
 
     def add_move(self, src_id: int, angle: float, ships: int, *, attack_budget: bool = True) -> int:
@@ -143,6 +161,64 @@ def _active_front_count(world, focus_enemy_id: Optional[int] = None) -> int:
     return count
 
 
+CAPTURE_PUNCH_FAMILIES = {
+    "balanced",
+    "aggressive_expansion",
+    "resource_denial",
+    "delayed_strike",
+}
+
+SMALL_MOVE_FAMILIES = {
+    "probe",
+    "opportunistic_snipe",
+    "endgame_finisher",
+}
+
+
+def _nearest_distance(world, target) -> float:
+    return min((_dist(src, target) for src in world.my_planets), default=999.0)
+
+
+def _capture_send_floor(world, target, family: str, turns: int, needed: int) -> Tuple[int, int]:
+    params = getattr(world, "_v9_params", PlanningParameters())
+    if family in SMALL_MOVE_FAMILIES or family not in CAPTURE_PUNCH_FAMILIES:
+        return 1, 0
+    if target.owner == world.player:
+        return 1, 0
+
+    opening = world.step < int(params.opening_punch_turns)
+    if opening:
+        floor = int(params.opening_min_capture_send_4p if world.is_four_player else params.opening_min_capture_send_2p)
+        garrison = int(math.ceil(
+            float(target.production) * max(1, turns) * float(params.capture_garrison_margin)
+            + float(target.ships) * float(params.capture_target_ship_margin)
+        ))
+        return max(1, floor), max(0, garrison)
+
+    if world.is_four_player and world.step < 120 and not world.is_late and not world.is_very_late:
+        floor = int(params.midgame_min_capture_send_4p)
+        garrison = int(math.ceil(
+            float(target.production) * 2.0
+            + float(target.ships) * float(params.midgame_capture_target_margin_4p)
+        ))
+        return max(1, floor), max(0, garrison)
+    return 1, 0
+
+
+def _opening_neutral_targets(world, targets: Iterable[object]) -> List[object]:
+    params = getattr(world, "_v9_params", PlanningParameters())
+    if not (world.is_four_player and world.step < int(params.opening_punch_turns)):
+        return list(targets)
+    close_limit = float(params.opening_close_neutral_dist_4p)
+    filtered = [
+        t for t in targets
+        if _nearest_distance(world, t) <= close_limit
+        or float(t.production) >= 5.0
+        or float(t.ships) / max(1.0, float(t.production)) <= 4.5
+    ]
+    return filtered or list(targets)
+
+
 def _candidate_metadata(world, focus_enemy_id: Optional[int], anchor, **extra: float) -> Dict[str, float]:
     meta: Dict[str, float] = {
         "active_fronts": float(_active_front_count(world, focus_enemy_id)),
@@ -210,7 +286,8 @@ def _shot_option(
     needed = builder.world.ships_needed_to_capture(target.id, turns, builder.commitments)
     if needed <= 0:
         return None
-    send = int(math.ceil(max(float(min_send), needed * aggression)))
+    floor, garrison = _capture_send_floor(builder.world, target, family, turns, int(needed))
+    send = int(math.ceil(max(float(min_send), float(floor), needed * aggression, needed + garrison)))
     send = min(left, send)
     if send < needed and left < needed:
         return None
@@ -219,11 +296,21 @@ def _shot_option(
         return None
     turns = int(max(1, math.ceil(final_aim[1])))
     needed = builder.world.ships_needed_to_capture(target.id, turns, builder.commitments)
-    send = min(left, int(math.ceil(max(float(min_send), needed * aggression))))
+    floor, garrison = _capture_send_floor(builder.world, target, family, turns, int(needed))
+    send = min(left, int(math.ceil(max(float(min_send), float(floor), needed * aggression, needed + garrison))))
     if send < needed:
         return None
     score = _target_score(target, turns, needed, builder.world, family)
-    score /= 1.0 + 0.012 * _dist(src, target)
+    distance = _dist(src, target)
+    score /= 1.0 + 0.012 * distance
+    params = getattr(builder.world, "_v9_params", PlanningParameters())
+    if builder.world.is_four_player and builder.world.step < int(params.opening_punch_turns):
+        if target.owner == -1 and distance <= float(params.opening_close_neutral_dist_4p):
+            score *= 1.10
+        elif distance > float(params.opening_long_attack_risk_dist_4p) and float(target.production) < 5.0:
+            score *= 0.72
+    if family in CAPTURE_PUNCH_FAMILIES and send >= max(int(floor), int(needed)):
+        score *= 1.06
     return {
         "score": score,
         "src": src,
@@ -436,6 +523,7 @@ class V9Planner:
         self.params = params or PlanningParameters()
 
     def generate(self, world, rng: Optional[random.Random] = None) -> List[PlanCandidate]:
+        setattr(world, "_v9_params", self.params)
         candidates: List[PlanCandidate] = []
         p = self.params
         families: List[Callable[[object], Optional[PlanCandidate]]] = [
@@ -516,10 +604,11 @@ class V9Planner:
             return None
         b = MoveBuilder(world, reserve_scale=0.88, max_moves=min(self.params.max_moves_per_plan, 9))
         targets = sorted(
-            world.neutral_planets,
+            _opening_neutral_targets(world, world.neutral_planets),
             key=lambda t: (
+                world.is_four_player and _nearest_distance(world, t) > float(self.params.opening_close_neutral_dist_4p),
+                float(t.ships) / max(1.0, float(t.production)),
                 min((_dist(src, t) for src in world.my_planets), default=999.0),
-                float(t.ships),
                 -float(t.production),
             ),
         )
@@ -532,7 +621,10 @@ class V9Planner:
                 family="aggressive_expansion",
                 aggression=1.00,
                 max_sources=1,
-                min_send=max(3, self.params.min_source_ships - 4),
+                min_send=max(
+                    self.params.opening_min_capture_send_4p if world.is_four_player else self.params.opening_min_capture_send_2p,
+                    self.params.min_source_ships,
+                ),
             )
         if not b.moves:
             return None
@@ -543,7 +635,11 @@ class V9Planner:
             b.moves,
             "aggressive_expansion",
             base_score=score,
-            metadata={"kovi_opening_conversion": 1.0, "conversion_threshold_gap": float(threshold_gap)},
+            metadata={
+                "kovi_opening_conversion": 1.0,
+                "opening_punch": 1.0,
+                "conversion_threshold_gap": float(threshold_gap),
+            },
         )
 
     def _aggressive_expansion(self, world) -> Optional[PlanCandidate]:
@@ -551,8 +647,9 @@ class V9Planner:
             return None
         b = MoveBuilder(world, reserve_scale=0.92, max_moves=self.params.max_moves_per_plan)
         targets = sorted(
-            world.neutral_planets,
+            _opening_neutral_targets(world, world.neutral_planets),
             key=lambda t: (
+                world.is_four_player and _nearest_distance(world, t) > float(self.params.opening_close_neutral_dist_4p),
                 -float(t.production) / max(1.0, float(t.ships)),
                 min((_dist(src, t) for src in world.my_planets), default=999.0),
             ),
@@ -566,23 +663,51 @@ class V9Planner:
                 family="aggressive_expansion",
                 aggression=1.02,
                 max_sources=2,
-                min_send=max(3, self.params.min_source_ships - 2),
+                min_send=max(
+                    self.params.min_source_ships,
+                    self.params.opening_min_capture_send_4p if world.is_four_player and world.step < self.params.opening_punch_turns else 0,
+                    self.params.opening_min_capture_send_2p if (not world.is_four_player and world.step < self.params.opening_punch_turns) else 0,
+                ),
             )
         if not b.moves:
             return None
-        return PlanCandidate("v9_aggressive_expansion", b.moves, "aggressive_expansion", base_score=score)
+        return PlanCandidate(
+            "v9_aggressive_expansion",
+            b.moves,
+            "aggressive_expansion",
+            base_score=score,
+            metadata={"opening_punch": 1.0} if world.step < self.params.opening_punch_turns else {},
+        )
 
     def _wide_expansion(self, world) -> Optional[PlanCandidate]:
         if not world.neutral_planets:
             return None
         b = MoveBuilder(world, reserve_scale=0.82, max_moves=self.params.max_moves_per_plan)
-        targets = sorted(world.neutral_planets, key=lambda t: (float(t.ships), -float(t.production)))
+        targets = sorted(
+            _opening_neutral_targets(world, world.neutral_planets),
+            key=lambda t: (
+                world.is_four_player and _nearest_distance(world, t) > float(self.params.opening_close_neutral_dist_4p),
+                float(t.ships),
+                -float(t.production),
+            ),
+        )
         score = 0.0
         for target in targets[:8]:
-            score += _commit_target(b, target, family="aggressive_expansion", aggression=1.0, max_sources=1, min_send=4)
+            min_send = max(
+                self.params.min_source_ships,
+                self.params.opening_min_capture_send_4p if world.is_four_player and world.step < self.params.opening_punch_turns else 0,
+                self.params.opening_min_capture_send_2p if (not world.is_four_player and world.step < self.params.opening_punch_turns) else 0,
+            )
+            score += _commit_target(b, target, family="aggressive_expansion", aggression=1.0, max_sources=1, min_send=min_send)
         if not b.moves:
             return None
-        return PlanCandidate("v9_wide_expansion", b.moves, "aggressive_expansion", base_score=score * 0.92)
+        return PlanCandidate(
+            "v9_wide_expansion",
+            b.moves,
+            "aggressive_expansion",
+            base_score=score * 0.92,
+            metadata={"opening_punch": 1.0} if world.step < self.params.opening_punch_turns else {},
+        )
 
     def _four_player_backbone(self, world) -> Optional[PlanCandidate]:
         if not world.is_four_player or len(world.my_planets) < 2:

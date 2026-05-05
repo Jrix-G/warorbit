@@ -16,7 +16,7 @@ from neural_network.src.notebook_4p_training import run_notebook_4p_training
 def _prepare_config(cfg: dict, duration_minutes: float, eval_episodes: int) -> dict:
     cfg = dict(cfg)
     cfg["train_steps"] = max(1, int(duration_minutes * 10))
-    cfg["eval_episodes"] = max(1, int(eval_episodes))
+    cfg["eval_episodes"] = max(32, int(eval_episodes))
     cfg["benchmark_games"] = max(1, int(eval_episodes))
     cfg["curriculum_enabled"] = True
     cfg["curriculum_early_4p_ratio"] = 1.0
@@ -28,11 +28,12 @@ def _prepare_config(cfg: dict, duration_minutes: float, eval_episodes: int) -> d
     cfg["train_notebook_opponents"] = 3
     cfg["hidden_dim"] = max(320, int(cfg.get("hidden_dim", 320)))
     cfg["max_actions_per_turn"] = 4
+    cfg["min_expand_attack_ships"] = max(6, int(cfg.get("min_expand_attack_ships", 6)))
     cfg["eval_every"] = max(1, int(cfg["train_steps"] // 10))
     cfg.setdefault("temperature_start", 1.2)
     cfg.setdefault("temperature_end", 0.35)
-    cfg.setdefault("send_ratios", [0.25, 0.5, 0.75])
-    cfg.setdefault("policy_prior_strength", 0.8)
+    cfg["send_ratios"] = [0.5, 0.7, 0.9]
+    cfg["policy_prior_strength"] = max(1.2, float(cfg.get("policy_prior_strength", 1.2)))
     cfg.setdefault("value_loss_coef", 0.25)
     cfg.setdefault("promotion_margin", 0.05)
     cfg.setdefault("promotion_min_eval_std", 0.20)

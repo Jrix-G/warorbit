@@ -239,9 +239,20 @@ def _reserve_planned_ships(game: Dict[str, Any], src_id: int, ships: int) -> Non
 
 
 def _send_ratios(config: Dict[str, Any]) -> Tuple[float, ...]:
-    values = config.get("send_ratios", [0.25, 0.5, 0.75])
+    values = config.get("send_ratios", [0.5, 0.7, 0.9])
     ratios = tuple(float(v) for v in values if 0.0 < float(v) < 1.0)
-    return ratios or (0.25, 0.5, 0.75)
+    return ratios or (0.5, 0.7, 0.9)
+
+
+def _min_expand_attack_ships(config: Dict[str, Any]) -> int:
+    return max(1, int(config.get("min_expand_attack_ships", 6)))
+
+
+def _combine_terminal_dense_reward(terminal_reward: float, dense_reward: float) -> float:
+    total = float(terminal_reward) + float(dense_reward)
+    if float(terminal_reward) <= 0.0 and total > 0.0:
+        return 0.0
+    return total
 
 
 def _official_fast_runner():
@@ -362,12 +373,17 @@ def _make_our_agent(
     def agent(obs, _config=None):
         game = obs_to_game_dict(obs)
         ratios = _send_ratios(config)
+        min_expand_attack_ships = _min_expand_attack_ships(config)
         max_actions = max(1, int(config.get("max_actions_per_turn", 4)))
         planning_game = _copy_planning_game(game)
         moves: list[list[int | float]] = []
         for _ in range(max_actions):
             encoded = encode_game_state(planning_game, config)
-            candidates = build_action_candidates(planning_game, send_ratios=ratios)
+            candidates = build_action_candidates(
+                planning_game,
+                send_ratios=ratios,
+                min_expand_attack_ships=min_expand_attack_ships,
+            )
             candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
             outputs = model(
                 torch.tensor(encoded.features, dtype=torch.float32),
@@ -380,7 +396,7 @@ def _make_our_agent(
                 temperature=temperature,
                 explore=explore,
                 return_entropy=True,
-                prior_strength=float(config.get("policy_prior_strength", 0.8)),
+                prior_strength=float(config.get("policy_prior_strength", 1.2)),
             )
             log_probs.append(log_prob)
             action = reconstruct_action(cand, planning_game)
@@ -640,7 +656,7 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
             )
         else:
             dense = 0.0
-        reward = _episode_reward(result, our_index) + dense
+        reward = _combine_terminal_dense_reward(_episode_reward(result, our_index), dense)
         action_summary = _action_summary(action_records)
         baseline_rate = max(0.0, min(1.0, float(config.get("baseline_momentum", 0.05))))
         baseline = (1.0 - baseline_rate) * baseline + baseline_rate * reward
