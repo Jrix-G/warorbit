@@ -154,7 +154,26 @@ def reward_from_result(result: dict, our_index: int) -> float:
         margin = math.tanh((ours - other) / max(120.0, abs(ours) + abs(other)))
     else:
         margin = 0.0
-    return max(0.0, min(1.0, base + 0.06 * margin))
+    p60 = float(result.get("planets_t60", result.get("max_planets", 0.0)) or 0.0)
+    p100 = float(result.get("planets_t100", result.get("max_planets", 0.0)) or 0.0)
+    max_planets = float(result.get("max_planets", 0.0) or 0.0)
+    # Kovi replay fingerprint: crossing ~13 planets by t60-t100 is the
+    # strongest observed predictor of later wins. Keep this dense shaping
+    # small enough that final win/loss still dominates selection.
+    conversion = 0.045 * math.tanh((p60 - 8.0) / 4.0)
+    conversion += 0.060 * math.tanh((p100 - 13.0) / 5.0)
+    conversion += 0.035 * math.tanh((max_planets - 13.0) / 7.0)
+    return max(0.0, min(1.0, base + 0.06 * margin + conversion))
+
+
+def _simgame_player_planets(game: SimGame, player: int) -> int:
+    if len(game.state.planets) == 0:
+        return 0
+    return int(sum(1 for owner in game.state.planets[:, P_OWNER] if int(owner) == int(player)))
+
+
+def _obs_player_planets(obs, player: int) -> int:
+    return int(sum(1 for planet in list(_obs_get(obs, "planets", []) or []) if int(planet[1]) == int(player)))
 
 
 def _perturb_game_state(game: SimGame, intensity: float, seed: int) -> None:
@@ -178,6 +197,10 @@ def _run_game_with_deadline(game: SimGame, agents: Sequence[Callable], max_steps
         game.state.max_steps = int(max_steps)
 
     started = time.perf_counter()
+    tracked_player = int(getattr(game, "_tracked_player", 0))
+    max_planets = _simgame_player_planets(game, tracked_player)
+    planets_t60 = None
+    planets_t100 = None
     while not game.is_terminal():
         if deadline is not None and time.time() >= deadline:
             raise DeadlineExceeded("global training deadline reached")
@@ -192,6 +215,12 @@ def _run_game_with_deadline(game: SimGame, agents: Sequence[Callable], max_steps
                 move = agent(obs)
             actions[player] = move if isinstance(move, list) else []
         game.step(actions)
+        owned = _simgame_player_planets(game, tracked_player)
+        max_planets = max(max_planets, owned)
+        if planets_t60 is None and game.state.step >= 60:
+            planets_t60 = owned
+        if planets_t100 is None and game.state.step >= 100:
+            planets_t100 = owned
 
     elapsed = time.perf_counter() - started
     return {
@@ -200,6 +229,160 @@ def _run_game_with_deadline(game: SimGame, agents: Sequence[Callable], max_steps
         "steps": int(game.state.step),
         "seconds": elapsed,
         "steps_per_second": game.state.step / max(elapsed, 1e-9),
+        "max_planets": int(max_planets),
+        "planets_t60": int(planets_t60 if planets_t60 is not None else max_planets),
+        "planets_t100": int(planets_t100 if planets_t100 is not None else max_planets),
+    }
+
+
+def _obs_get(obs, key: str, default=None):
+    return obs.get(key, default) if hasattr(obs, "get") else getattr(obs, key, default)
+
+
+def _kaggle_scores(obs, n_players: int) -> List[int]:
+    scores = [0 for _ in range(n_players)]
+    for planet in list(_obs_get(obs, "planets", []) or []):
+        owner = int(planet[1])
+        if 0 <= owner < n_players:
+            scores[owner] += int(planet[5])
+    for fleet in list(_obs_get(obs, "fleets", []) or []):
+        owner = int(fleet[1])
+        if 0 <= owner < n_players:
+            scores[owner] += int(fleet[6])
+    return scores
+
+
+def _winner_from_scores(scores: Sequence[int]) -> int:
+    best = max(scores) if scores else 0
+    winners = [i for i, score in enumerate(scores) if int(score) == int(best) and int(best) > 0]
+    return winners[0] if len(winners) == 1 else -1
+
+
+def _run_kaggle_game_with_deadline(
+    agents: Sequence[Callable],
+    n_players: int,
+    max_steps: int,
+    seed: int,
+    tracked_player: int,
+    deadline: float | None,
+) -> dict:
+    """Run a match inside kaggle_environments' official Orbit Wars engine."""
+    from kaggle_environments import make
+
+    random.seed(int(seed))
+    env = make("orbit_wars", debug=False)
+    env.reset(int(n_players))
+    started = time.perf_counter()
+    init_actions = [[] for _ in range(n_players)]
+    env.step(init_actions)
+    if 0 <= tracked_player < int(n_players):
+        tracked_player = int(tracked_player)
+    else:
+        tracked_player = 0
+    first_obs = env.steps[-1][tracked_player].observation
+    max_planets = _obs_player_planets(first_obs, tracked_player)
+    planets_t60 = None
+    planets_t100 = None
+
+    while not env.done:
+        if deadline is not None and time.time() >= deadline:
+            raise DeadlineExceeded("global training deadline reached")
+        current = env.steps[-1]
+        step = int(_obs_get(current[0].observation, "step", 0) or 0)
+        if step >= int(max_steps):
+            break
+        actions = []
+        for player, agent in enumerate(agents):
+            if deadline is not None and time.time() >= deadline:
+                raise DeadlineExceeded("global training deadline reached")
+            obs = current[player].observation
+            try:
+                move = agent(obs, env.configuration)
+            except TypeError:
+                move = agent(obs)
+            actions.append(move if isinstance(move, list) else [])
+        env.step(actions)
+        obs = env.steps[-1][tracked_player].observation
+        owned = _obs_player_planets(obs, tracked_player)
+        max_planets = max(max_planets, owned)
+        step_after = int(_obs_get(obs, "step", 0) or 0)
+        if planets_t60 is None and step_after >= 60:
+            planets_t60 = owned
+        if planets_t100 is None and step_after >= 100:
+            planets_t100 = owned
+
+    elapsed = time.perf_counter() - started
+    final_obs = env.steps[-1][0].observation
+    steps = int(_obs_get(final_obs, "step", 0) or 0)
+    scores = _kaggle_scores(final_obs, n_players)
+    return {
+        "winner": _winner_from_scores(scores),
+        "scores": scores,
+        "steps": steps,
+        "seconds": elapsed,
+        "steps_per_second": steps / max(elapsed, 1e-9),
+        "max_planets": int(max_planets),
+        "planets_t60": int(planets_t60 if planets_t60 is not None else max_planets),
+        "planets_t100": int(planets_t100 if planets_t100 is not None else max_planets),
+    }
+
+
+def _run_kaggle_fast_game_with_deadline(
+    agents: Sequence[Callable],
+    n_players: int,
+    max_steps: int,
+    seed: int,
+    tracked_player: int,
+    deadline: float | None,
+) -> dict:
+    """Run the official Orbit Wars interpreter without Kaggle wrapper overhead."""
+    from local_simulator.official_fast import OfficialFastGame
+
+    game = OfficialFastGame(int(n_players), seed=int(seed), episode_steps=int(max_steps))
+    started = time.perf_counter()
+    tracked_player = int(tracked_player) if 0 <= int(tracked_player) < int(n_players) else 0
+    max_planets = _obs_player_planets(game.observation(tracked_player), tracked_player)
+    planets_t60 = None
+    planets_t100 = None
+
+    while not game.done:
+        if deadline is not None and time.time() >= deadline:
+            raise DeadlineExceeded("global training deadline reached")
+        current_step = int(game.observation(0).get("step", 0) or 0)
+        if current_step >= int(max_steps):
+            break
+        actions = []
+        for player, agent in enumerate(agents):
+            if deadline is not None and time.time() >= deadline:
+                raise DeadlineExceeded("global training deadline reached")
+            obs = game.observation(player)
+            try:
+                move = agent(obs, game.configuration)
+            except TypeError:
+                move = agent(obs)
+            actions.append(move if isinstance(move, list) else [])
+        game.step(actions)
+        obs = game.observation(tracked_player)
+        owned = _obs_player_planets(obs, tracked_player)
+        max_planets = max(max_planets, owned)
+        step_after = int(game.observation(0).get("step", 0) or 0)
+        if planets_t60 is None and step_after >= 60:
+            planets_t60 = owned
+        if planets_t100 is None and step_after >= 100:
+            planets_t100 = owned
+
+    elapsed = time.perf_counter() - started
+    steps = int(game.observation(0).get("step", 0) or 0)
+    scores = game.scores()
+    return {
+        "winner": _winner_from_scores(scores),
+        "scores": scores,
+        "steps": steps,
+        "seconds": elapsed,
+        "steps_per_second": steps / max(elapsed, 1e-9),
+        "max_planets": int(max_planets),
+        "planets_t60": int(planets_t60 if planets_t60 is not None else max_planets),
+        "planets_t100": int(planets_t100 if planets_t100 is not None else max_planets),
     }
 
 
@@ -210,13 +393,21 @@ def play_match_spec(weights: V9Weights, config: V9Config, spec: MatchSpec, deadl
     for slot in range(spec.n_players):
         if slot == spec.our_index:
             our_agent = V9Agent(config, weights)
+            setattr(our_agent, "_tracked_player", int(spec.our_index))
             agents.append(our_agent)
         else:
             agents.append(opponent_agent(next(opp_iter), config, current_weights=weights))
-    game = SimGame.random_game(seed=spec.seed, n_players=spec.n_players, max_steps=spec.max_steps)
-    if spec.phase == "train":
-        _perturb_game_state(game, float(getattr(config, "train_state_perturbation", 0.0)), spec.seed)
-    result = _run_game_with_deadline(game, agents, spec.max_steps, deadline)
+    game_engine = str(getattr(config, "game_engine", "simgame")).lower()
+    if game_engine == "kaggle":
+        result = _run_kaggle_game_with_deadline(agents, spec.n_players, spec.max_steps, spec.seed, int(spec.our_index), deadline)
+    elif game_engine in ("kaggle_fast", "official_fast"):
+        result = _run_kaggle_fast_game_with_deadline(agents, spec.n_players, spec.max_steps, spec.seed, int(spec.our_index), deadline)
+    else:
+        game = SimGame.random_game(seed=spec.seed, n_players=spec.n_players, max_steps=spec.max_steps)
+        setattr(game, "_tracked_player", int(spec.our_index))
+        if spec.phase == "train":
+            _perturb_game_state(game, float(getattr(config, "train_state_perturbation", 0.0)), spec.seed)
+        result = _run_game_with_deadline(game, agents, spec.max_steps, deadline)
     result["reward"] = reward_from_result(result, spec.our_index)
     result["mode"] = "4p" if spec.n_players >= 4 else "2p"
     result["our_index"] = spec.our_index
@@ -282,6 +473,9 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
     rewards = [float(r.get("reward", 0.0)) for r in results]
     r2 = [float(r.get("reward", 0.0)) for r in results if r.get("mode") == "2p"]
     r4 = [float(r.get("reward", 0.0)) for r in results if r.get("mode") == "4p"]
+    max_planets = [float(r.get("max_planets", 0.0) or 0.0) for r in results]
+    planets_t60 = [float(r.get("planets_t60", 0.0) or 0.0) for r in results]
+    planets_t100 = [float(r.get("planets_t100", 0.0) or 0.0) for r in results]
     plan_counts: Dict[str, int] = {}
     stat_totals: Dict[str, float] = {}
     total_plans = 0
@@ -310,6 +504,11 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
         "wr_4p": sum(r4) / max(1, len(r4)) if r4 else 0.0,
         "n_2p": len(r2),
         "n_4p": len(r4),
+        "avg_max_planets": sum(max_planets) / max(1, len(max_planets)),
+        "avg_planets_t60": sum(planets_t60) / max(1, len(planets_t60)),
+        "avg_planets_t100": sum(planets_t100) / max(1, len(planets_t100)),
+        "conversion_t60_rate": sum(1.0 for v in planets_t60 if v >= 8.0) / max(1, len(planets_t60)),
+        "conversion_t100_rate": sum(1.0 for v in planets_t100 if v >= 13.0) / max(1, len(planets_t100)),
         "plan_entropy": entropy,
         "dominant_plan_frac": dominant,
         "transfer_move_frac": float(stat_totals.get("transfer_moves", 0.0)) / total_moves,

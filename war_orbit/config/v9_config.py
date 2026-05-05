@@ -57,6 +57,7 @@ class V9Config:
     eval_every: int = 1
     benchmark_every: int = 1
     workers: int = 1
+    game_engine: str = "simgame"
     train_only: bool = False
     benchmark_games: int = 128
     min_promotion_benchmark_games: int = 128

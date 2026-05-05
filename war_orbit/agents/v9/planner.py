@@ -439,6 +439,7 @@ class V9Planner:
         candidates: List[PlanCandidate] = []
         p = self.params
         families: List[Callable[[object], Optional[PlanCandidate]]] = [
+            self._kovi_opening_conversion,
             self._balanced,
             self._aggressive_expansion,
             self._four_player_backbone,
@@ -503,6 +504,47 @@ class V9Planner:
             if len(b.moves) >= self.params.max_moves_per_plan // 2:
                 break
         return PlanCandidate("v9_balanced", b.moves, "balanced", base_score=base)
+
+    def _kovi_opening_conversion(self, world) -> Optional[PlanCandidate]:
+        """Replay-derived opening: convert nearby neutrals broadly.
+
+        Kovi/top-1 replays show opening targets are mostly neutral and nearly
+        uniform across production values. The goal is crossing the planet-count
+        threshold quickly, not mono-focusing one enemy before the economy exists.
+        """
+        if not world.is_opening or not world.neutral_planets or len(world.my_planets) >= 13:
+            return None
+        b = MoveBuilder(world, reserve_scale=0.88, max_moves=min(self.params.max_moves_per_plan, 9))
+        targets = sorted(
+            world.neutral_planets,
+            key=lambda t: (
+                min((_dist(src, t) for src in world.my_planets), default=999.0),
+                float(t.ships),
+                -float(t.production),
+            ),
+        )
+        score = 0.0
+        target_limit = 9 if world.is_four_player else 7
+        for target in targets[:target_limit]:
+            score += _commit_target(
+                b,
+                target,
+                family="aggressive_expansion",
+                aggression=1.00,
+                max_sources=1,
+                min_send=max(3, self.params.min_source_ships - 4),
+            )
+        if not b.moves:
+            return None
+        threshold_gap = max(0, 13 - len(world.my_planets))
+        score += 18.0 + 1.8 * threshold_gap + 0.8 * len(b.moves)
+        return PlanCandidate(
+            "v9_kovi_opening_conversion",
+            b.moves,
+            "aggressive_expansion",
+            base_score=score,
+            metadata={"kovi_opening_conversion": 1.0, "conversion_threshold_gap": float(threshold_gap)},
+        )
 
     def _aggressive_expansion(self, world) -> Optional[PlanCandidate]:
         if not world.neutral_planets:
@@ -670,6 +712,8 @@ class V9Planner:
         )
 
     def _multi_step_trap(self, world) -> Optional[PlanCandidate]:
+        if world.is_opening and world.neutral_planets and len(world.my_planets) < 8:
+            return None
         if not world.enemy_planets and not world.threatened_candidates:
             return None
         b = MoveBuilder(world, reserve_scale=0.86, max_moves=self.params.max_moves_per_plan)
@@ -696,6 +740,8 @@ class V9Planner:
         return PlanCandidate("v9_multi_step_trap", b.moves, "multi_step_trap", base_score=score)
 
     def _resource_denial(self, world) -> Optional[PlanCandidate]:
+        if world.is_opening and world.neutral_planets and len(world.my_planets) < 8:
+            return None
         if not world.enemy_planets:
             return None
         b = MoveBuilder(world, reserve_scale=1.0, max_moves=self.params.max_moves_per_plan)
@@ -885,6 +931,8 @@ class V9Planner:
         )
 
     def _opportunistic_snipe(self, world) -> Optional[PlanCandidate]:
+        if world.is_opening and world.neutral_planets and len(world.my_planets) < 8:
+            return None
         if self.params.disable_snipe_4p and world.is_four_player and not world.is_late and not world.is_very_late:
             return None
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
@@ -931,6 +979,8 @@ class V9Planner:
         )
 
     def _probe(self, world) -> Optional[PlanCandidate]:
+        if world.is_opening and world.neutral_planets and len(world.my_planets) < 8:
+            return None
         if not world.enemy_planets:
             return None
         b = MoveBuilder(world, reserve_scale=0.62, max_moves=min(6, self.params.max_moves_per_plan))

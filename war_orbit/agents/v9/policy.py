@@ -207,8 +207,14 @@ class V9Policy:
 
             safety = 0.0
             metadata_bonus = 0.0
+            metadata = candidate.metadata or {}
+            if metadata.get("kovi_opening_conversion", 0.0) and world.is_opening:
+                gap = max(0.0, float(metadata.get("conversion_threshold_gap", max(0, 13 - len(world.my_planets)))))
+                # Top-1 replay analysis: early broad neutral conversion is the
+                # path to the t60/t100 planet threshold. Let ES tune around it,
+                # but make the candidate visible from the start.
+                metadata_bonus += 0.24 + 0.025 * min(13.0, gap)
             if four_p > 0.5:
-                metadata = candidate.metadata or {}
                 backbone = float(metadata.get("backbone", 0.0))
                 front_lock = float(metadata.get("front_lock", 0.0))
                 consolidation_threshold = float(metadata.get("consolidation_threshold", 0.0))

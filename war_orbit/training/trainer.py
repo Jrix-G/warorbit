@@ -344,7 +344,7 @@ class V9Trainer:
             f"games_per_eval={self.config.games_per_eval} eval_games={self.config.eval_games} "
             f"train_opponents={len(opponents)} eval_opponents={len(eval_opponents)} "
             f"benchmark_opponents={len(benchmark_opponents)} workers={self.config.workers} "
-            f"train_only={int(self.config.train_only)}",
+            f"game_engine={self.config.game_engine} train_only={int(self.config.train_only)}",
             flush=True,
         )
         print(
@@ -364,6 +364,7 @@ class V9Trainer:
                 "games_per_eval": self.config.games_per_eval,
                 "eval_games": self.config.eval_games,
                 "workers": self.config.workers,
+                "game_engine": self.config.game_engine,
                 "train_only": self.config.train_only,
                 "train_opponents": opponents,
                 "eval_opponents": eval_opponents,
@@ -570,6 +571,9 @@ class V9Trainer:
                     "train_active_front_avg": float(train_summary.get("active_front_avg", 0.0)),
                     "train_focused_front_avg": float(train_summary.get("focused_front_avg", train_summary.get("active_front_avg", 0.0))),
                     "train_global_front_avg": float(train_summary.get("global_front_avg", train_summary.get("active_front_avg", 0.0))),
+                    "train_avg_planets_t60": float(train_summary.get("avg_planets_t60", 0.0)),
+                    "train_avg_planets_t100": float(train_summary.get("avg_planets_t100", 0.0)),
+                    "train_conversion_t100_rate": float(train_summary.get("conversion_t100_rate", 0.0)),
                     "train_front_pressure_adjustment": float(_front_pressure_adjustment(train_summary, self.config)),
                     "eval_transfer_move_frac": float(eval_summary.get("transfer_move_frac", 0.0)),
                     "eval_backbone_turn_frac": float(eval_summary.get("backbone_turn_frac", 0.0)),
@@ -581,6 +585,9 @@ class V9Trainer:
                     "benchmark_front_lock_turn_frac": float(benchmark_summary.get("front_lock_turn_frac", 0.0)),
                     "benchmark_focused_front_avg": float(benchmark_summary.get("focused_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
                     "benchmark_global_front_avg": float(benchmark_summary.get("global_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
+                    "benchmark_avg_planets_t60": float(benchmark_summary.get("avg_planets_t60", 0.0)),
+                    "benchmark_avg_planets_t100": float(benchmark_summary.get("avg_planets_t100", 0.0)),
+                    "benchmark_conversion_t100_rate": float(benchmark_summary.get("conversion_t100_rate", 0.0)),
                     "train_4p_diag": _four_p_diag(train_summary),
                     "eval_4p_diag": _four_p_diag(eval_summary),
                     "benchmark_4p_diag": _four_p_diag(benchmark_summary),
@@ -598,6 +605,7 @@ class V9Trainer:
                     f"best={self.best_score:.3f} grad={grad_norm:.2f} promo={int(promoted)} "
                     f"block={','.join(promotion_blockers) or '-'} "
                     f"explore={state.exploration_rate:.2f} div={state.candidate_diversity:.2f} "
+                    f"conv={train_summary.get('avg_planets_t60', 0.0):.1f}/{train_summary.get('avg_planets_t100', 0.0):.1f} "
                     f"{_format_four_p_diag(train_summary)} "
                     f"front_adj={_front_pressure_adjustment(train_summary, self.config):+.3f} "
                     f"elapsed_min={elapsed:.1f}"

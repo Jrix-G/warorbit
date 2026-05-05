@@ -149,15 +149,21 @@ def build_cross_play_specs(
     four_player_ratio: float,
     phase: str,
 ) -> List[MatchSpec]:
-    """Deterministic held-out schedule with rotated player slots."""
+    """Deterministic held-out schedule with rotated player slots.
+
+    The requested 4p ratio is respected across the whole schedule. The old
+    implementation front-loaded one 2p game per opponent, which distorted
+    mixed benchmarks when the pool was large.
+    """
 
     pool = _available_opponents(opponents)
     if not pool:
         pool = ["heldout_random", "heldout_greedy"]
     specs: List[MatchSpec] = []
     rng = random.Random(seed + seed_offset)
+    total_games = max(0, int(games))
     if float(four_player_ratio) >= 0.999 and len(pool) >= 3:
-        for i in range(max(0, int(games))):
+        for i in range(total_games):
             anchor = pool[i % len(pool)]
             others = [name for name in pool if name != anchor] or [anchor]
             specs.append(MatchSpec(
@@ -168,32 +174,14 @@ def build_cross_play_specs(
                 phase=phase,
             ))
         return specs
-    for i, opponent in enumerate(pool):
-        if len(specs) >= int(games):
-            break
-        specs.append(MatchSpec(
-            opponent_names=[opponent],
-            our_index=i % 2,
-            seed=seed * 100003 + seed_offset * 997 + len(specs),
-            max_steps=int(max_steps),
-            phase=phase,
-        ))
-    if len(pool) >= 3:
-        for i, anchor in enumerate(pool):
-            if len(specs) >= int(games):
-                break
-            others = [name for name in pool if name != anchor] or [anchor]
-            specs.append(MatchSpec(
-                opponent_names=[anchor, others[i % len(others)], others[(i + 1) % len(others)]],
-                our_index=(i + 1) % 4,
-                seed=seed * 100003 + seed_offset * 997 + len(specs),
-                max_steps=int(max_steps),
-                phase=phase,
-            ))
-    for i in range(max(1, int(games))):
-        if len(specs) >= int(games):
-            break
-        use_4p = len(pool) >= 3 and rng.random() < float(four_player_ratio)
+
+    ratio = max(0.0, min(1.0, float(four_player_ratio)))
+    target_4p = int(round(total_games * ratio)) if len(pool) >= 3 else 0
+    target_2p = max(0, total_games - target_4p)
+    modes = ["4p"] * target_4p + ["2p"] * target_2p
+    rng.shuffle(modes)
+    for i, mode in enumerate(modes):
+        use_4p = mode == "4p"
         if use_4p:
             anchor = pool[i % len(pool)]
             others = [name for name in pool if name != anchor] or [anchor]
