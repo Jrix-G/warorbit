@@ -31,7 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-every", type=int, default=1)
     parser.add_argument("--benchmark-every", type=int, default=1)
     parser.add_argument("--workers", type=int, default=1)
-    parser.add_argument("--game-engine", choices=("simgame", "kaggle"), default="simgame")
+    parser.add_argument("--game-engine", choices=("kaggle", "official_fast", "kaggle_fast"), default="official_fast")
     parser.add_argument("--train-only", action="store_true", help="Skip in-loop eval/benchmark and optimize for training volume.")
     parser.add_argument("--benchmark-games", type=int, default=128)
     parser.add_argument("--min-promotion-benchmark-games", type=int, default=128)

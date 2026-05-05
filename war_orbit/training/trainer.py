@@ -15,7 +15,7 @@ from ..agents.v9.policy import V9Weights, save_checkpoint
 from ..config.v9_config import V9Config
 from ..optimization.tuning import apply_adaptation
 from .curriculum import CurriculumScheduler, build_cross_play_specs, build_role_pools
-from .self_play import DeadlineExceeded, evaluate_weights, summarise_results
+from .self_play import DeadlineExceeded, evaluate_weights, official_fast_c_accel_enabled, summarise_results
 
 
 V9_4P_LOG_TARGETS = {
@@ -363,6 +363,8 @@ class V9Trainer:
             f"game_engine={self.config.game_engine} train_only={int(self.config.train_only)}",
             flush=True,
         )
+        if str(getattr(self.config, "game_engine", "official_fast")).lower() in ("official_fast", "kaggle_fast"):
+            print(f"V9 official_fast c_accel_enabled={int(official_fast_c_accel_enabled())}", flush=True)
         print(
             "V9 4p diag targets "
             f"xfer>={V9_4P_LOG_TARGETS['xfer']:.2f} "
@@ -381,6 +383,9 @@ class V9Trainer:
                 "eval_games": self.config.eval_games,
                 "workers": self.config.workers,
                 "game_engine": self.config.game_engine,
+                "official_fast_c_accel_enabled": official_fast_c_accel_enabled()
+                if str(getattr(self.config, "game_engine", "official_fast")).lower() in ("official_fast", "kaggle_fast")
+                else False,
                 "train_only": self.config.train_only,
                 "train_opponents": opponents,
                 "eval_opponents": eval_opponents,

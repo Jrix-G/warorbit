@@ -7,8 +7,6 @@ import random
 import time
 from typing import Callable, Dict, Iterable, List, Sequence
 
-from SimGame import P_OWNER, P_PROD, P_SHIPS, P_X, P_Y, SimGame
-
 from ..agents.v9.policy import V9Agent, V9Weights, load_checkpoint
 from ..config.v9_config import V9Config
 from .curriculum import MatchSpec
@@ -16,6 +14,16 @@ from .curriculum import MatchSpec
 
 class DeadlineExceeded(RuntimeError):
     """Raised when the global training deadline is reached."""
+
+
+def official_fast_c_accel_enabled() -> bool:
+    """Return whether the local official-fast runner can enable its C patch."""
+    try:
+        from local_simulator.official_fast import OfficialFastGame
+
+        return bool(OfficialFastGame(2, seed=0, episode_steps=2, use_c_accel=True).c_accel_enabled)
+    except Exception:
+        return False
 
 
 def _safe_agent(fn: Callable):
@@ -166,73 +174,8 @@ def reward_from_result(result: dict, our_index: int) -> float:
     return max(0.0, min(1.0, base + 0.06 * margin + conversion))
 
 
-def _simgame_player_planets(game: SimGame, player: int) -> int:
-    if len(game.state.planets) == 0:
-        return 0
-    return int(sum(1 for owner in game.state.planets[:, P_OWNER] if int(owner) == int(player)))
-
-
 def _obs_player_planets(obs, player: int) -> int:
     return int(sum(1 for planet in list(_obs_get(obs, "planets", []) or []) if int(planet[1]) == int(player)))
-
-
-def _perturb_game_state(game: SimGame, intensity: float, seed: int) -> None:
-    if intensity <= 0.0 or len(game.state.planets) == 0:
-        return
-    rng = random.Random(seed)
-    planets = game.state.planets
-    for i in range(len(planets)):
-        owner = int(planets[i, P_OWNER])
-        if owner < 0:
-            planets[i, P_SHIPS] = max(1.0, float(planets[i, P_SHIPS]) * rng.uniform(1.0 - intensity, 1.0 + intensity))
-            planets[i, P_PROD] = max(1.0, round(float(planets[i, P_PROD]) * rng.uniform(1.0 - intensity * 0.5, 1.0 + intensity * 0.5)))
-        if rng.random() < 0.35:
-            planets[i, P_X] = min(98.0, max(2.0, float(planets[i, P_X]) + rng.uniform(-intensity, intensity) * 3.0))
-            planets[i, P_Y] = min(98.0, max(2.0, float(planets[i, P_Y]) + rng.uniform(-intensity, intensity) * 3.0))
-    game.state.initial_planets = planets.copy()
-
-
-def _run_game_with_deadline(game: SimGame, agents: Sequence[Callable], max_steps: int, deadline: float | None) -> dict:
-    if max_steps is not None:
-        game.state.max_steps = int(max_steps)
-
-    started = time.perf_counter()
-    tracked_player = int(getattr(game, "_tracked_player", 0))
-    max_planets = _simgame_player_planets(game, tracked_player)
-    planets_t60 = None
-    planets_t100 = None
-    while not game.is_terminal():
-        if deadline is not None and time.time() >= deadline:
-            raise DeadlineExceeded("global training deadline reached")
-        actions = {}
-        for player, agent in enumerate(agents):
-            if deadline is not None and time.time() >= deadline:
-                raise DeadlineExceeded("global training deadline reached")
-            obs = game.observation(player)
-            try:
-                move = agent(obs, None)
-            except TypeError:
-                move = agent(obs)
-            actions[player] = move if isinstance(move, list) else []
-        game.step(actions)
-        owned = _simgame_player_planets(game, tracked_player)
-        max_planets = max(max_planets, owned)
-        if planets_t60 is None and game.state.step >= 60:
-            planets_t60 = owned
-        if planets_t100 is None and game.state.step >= 100:
-            planets_t100 = owned
-
-    elapsed = time.perf_counter() - started
-    return {
-        "winner": game.winner(),
-        "scores": game.scores(),
-        "steps": int(game.state.step),
-        "seconds": elapsed,
-        "steps_per_second": game.state.step / max(elapsed, 1e-9),
-        "max_planets": int(max_planets),
-        "planets_t60": int(planets_t60 if planets_t60 is not None else max_planets),
-        "planets_t100": int(planets_t100 if planets_t100 is not None else max_planets),
-    }
 
 
 def _obs_get(obs, key: str, default=None):
@@ -380,6 +323,7 @@ def _run_kaggle_fast_game_with_deadline(
         "steps": steps,
         "seconds": elapsed,
         "steps_per_second": steps / max(elapsed, 1e-9),
+        "c_accel_enabled": bool(getattr(game, "c_accel_enabled", False)),
         "max_planets": int(max_planets),
         "planets_t60": int(planets_t60 if planets_t60 is not None else max_planets),
         "planets_t100": int(planets_t100 if planets_t100 is not None else max_planets),
@@ -397,17 +341,13 @@ def play_match_spec(weights: V9Weights, config: V9Config, spec: MatchSpec, deadl
             agents.append(our_agent)
         else:
             agents.append(opponent_agent(next(opp_iter), config, current_weights=weights))
-    game_engine = str(getattr(config, "game_engine", "simgame")).lower()
+    game_engine = str(getattr(config, "game_engine", "official_fast")).lower()
     if game_engine == "kaggle":
         result = _run_kaggle_game_with_deadline(agents, spec.n_players, spec.max_steps, spec.seed, int(spec.our_index), deadline)
     elif game_engine in ("kaggle_fast", "official_fast"):
         result = _run_kaggle_fast_game_with_deadline(agents, spec.n_players, spec.max_steps, spec.seed, int(spec.our_index), deadline)
     else:
-        game = SimGame.random_game(seed=spec.seed, n_players=spec.n_players, max_steps=spec.max_steps)
-        setattr(game, "_tracked_player", int(spec.our_index))
-        if spec.phase == "train":
-            _perturb_game_state(game, float(getattr(config, "train_state_perturbation", 0.0)), spec.seed)
-        result = _run_game_with_deadline(game, agents, spec.max_steps, deadline)
+        raise ValueError(f"Unsupported V9 game_engine={game_engine!r}; use 'official_fast' or 'kaggle'.")
     result["reward"] = reward_from_result(result, spec.our_index)
     result["mode"] = "4p" if spec.n_players >= 4 else "2p"
     result["our_index"] = spec.our_index

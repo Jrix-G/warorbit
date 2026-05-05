@@ -281,6 +281,75 @@ le bot est encore vulnerable aux adversaires non-focus.
 
 ## 7. Commandes
 
+### Moteur officiel local accelere
+
+`run_v9.py` utilise maintenant `official_fast` par defaut et accepte seulement
+les moteurs officiels locaux ou le wrapper officiel:
+
+```text
+official_fast
+kaggle_fast
+kaggle
+```
+
+Le moteur non officiel historique n'est plus expose par le CLI V9 et n'a plus de
+fallback dans `war_orbit/training/self_play.py`. Une ancienne config qui demande
+un moteur inconnu echoue explicitement au lieu de lancer un entrainement invalide.
+
+Backend recommande:
+
+```bash
+--game-engine official_fast
+```
+
+Alias equivalent:
+
+```bash
+--game-engine kaggle_fast
+```
+
+Ce chemin utilise `local_simulator.official_fast.OfficialFastGame`, qui execute le
+vrai `orbit_wars.py` telecharge depuis `github/kaggle-environments`, mais sans
+le wrapper lourd `kaggle_environments.make(...).run(...)`. Si le module C local
+est disponible, il patche aussi `generate_comet_paths`.
+
+Au demarrage d'un training avec ce moteur, le trainer logge:
+
+```text
+V9 official_fast c_accel_enabled=1
+```
+
+Interpretation:
+
+- `official_fast` est le backend a utiliser pour se rapprocher du moteur Kaggle
+  en local sans payer tout l'overhead du wrapper;
+- le C accelerator est optionnel et partiel: il accelere surtout la generation
+  des cometes, pas toute la policy V9;
+- sur agents simples, le gain peut depasser `3x`;
+- avec le vrai V9, le gain observe peut etre plus faible si le temps dominant
+  est dans l'evaluation de la policy.
+
+Fichiers responsables:
+
+- `run_v9.py`: expose `official_fast`, `kaggle_fast`, `kaggle`;
+- `war_orbit/config/v9_config.py`: default `game_engine="official_fast"`;
+- `war_orbit/training/self_play.py`: dispatch vers `OfficialFastGame`;
+- `local_simulator/official_fast.py`: runner officiel local optimise;
+- `local_simulator/c_accel/`: acceleration optionnelle de `generate_comet_paths`.
+
+Smoke 10 min:
+
+```bash
+python3 run_v9.py --game-engine official_fast --minutes 10 --hard-timeout-minutes 10 --workers 4 --pairs 4 --games-per-eval 3 --eval-games 8 --benchmark-games 12 --min-promotion-benchmark-games 12 --benchmark-progress-every 2 --eval-every 1 --benchmark-every 1 --max-steps 120 --eval-max-steps 220 --four-player-ratio 1.0 --eval-four-player-ratio 1.0 --benchmark-four-player-ratio 1.0 --four-p-signal-boost 1.4 --train-search-width 3 --train-simulation-depth 0 --train-simulation-rollouts 0 --train-opponent-samples 1 --guardian-enabled 1 --guardian-min-benchmark-4p 0.42 --guardian-min-benchmark-backbone 0.08 --guardian-max-benchmark-fronts 2.70 --guardian-max-generalization-gap 0.18 --min-benchmark-score 0.35 --max-generalization-gap 0.18 --reward-noise 0.008 --pool-limit 15 --checkpoint evaluations/v9_10min_latest.npz --best-checkpoint evaluations/v9_10min_best.npz --export-checkpoint evaluations/v9_10min_policy.npz --log-jsonl evaluations/v9_10min_train.jsonl --no-resume
+```
+
+Au demarrage, verifier:
+
+```text
+game_engine=official_fast
+V9 official_fast c_accel_enabled=1
+```
+
 Run guardian 4p local:
 
 ```powershell
@@ -290,13 +359,13 @@ Run guardian 4p local:
 Equivalent Python:
 
 ```powershell
-python .\run_v9.py --minutes 480 --hard-timeout-minutes 480 --workers 8 --pairs 8 --games-per-eval 3 --eval-games 12 --benchmark-games 24 --min-promotion-benchmark-games 24 --benchmark-progress-every 4 --eval-every 1 --benchmark-every 1 --max-steps 120 --eval-max-steps 220 --four-player-ratio 1.0 --eval-four-player-ratio 1.0 --benchmark-four-player-ratio 1.0 --four-p-signal-boost 1.4 --train-search-width 3 --train-simulation-depth 0 --train-simulation-rollouts 0 --train-opponent-samples 1 --front-lock-turns 22 --target-active-fronts 2.0 --target-backbone-turn-frac 0.15 --front-penalty-weight 0.055 --front-penalty-cap 0.12 --front-ok-bonus 0.070 --front-partial-bonus 0.035 --backbone-penalty-weight 0.120 --backbone-bonus-weight 0.100 --front-pressure-plan-bias 0.16 --front-pressure-attack-penalty 0.14 --guardian-enabled 1 --guardian-min-benchmark-4p 0.42 --guardian-min-benchmark-backbone 0.08 --guardian-max-benchmark-fronts 2.70 --guardian-max-generalization-gap 0.18 --export-best-on-finish 1 --min-benchmark-score 0.35 --max-generalization-gap 0.18 --exploration-rate 0.08 --reward-noise 0.008 --pool-limit 15
+python .\run_v9.py --minutes 480 --hard-timeout-minutes 480 --workers 8 --pairs 8 --games-per-eval 3 --eval-games 12 --benchmark-games 24 --min-promotion-benchmark-games 24 --benchmark-progress-every 4 --eval-every 1 --benchmark-every 1 --game-engine official_fast --max-steps 120 --eval-max-steps 220 --four-player-ratio 1.0 --eval-four-player-ratio 1.0 --benchmark-four-player-ratio 1.0 --four-p-signal-boost 1.4 --train-search-width 3 --train-simulation-depth 0 --train-simulation-rollouts 0 --train-opponent-samples 1 --front-lock-turns 22 --target-active-fronts 2.0 --target-backbone-turn-frac 0.15 --front-penalty-weight 0.055 --front-penalty-cap 0.12 --front-ok-bonus 0.070 --front-partial-bonus 0.035 --backbone-penalty-weight 0.120 --backbone-bonus-weight 0.100 --front-pressure-plan-bias 0.16 --front-pressure-attack-penalty 0.14 --guardian-enabled 1 --guardian-min-benchmark-4p 0.42 --guardian-min-benchmark-backbone 0.08 --guardian-max-benchmark-fronts 2.70 --guardian-max-generalization-gap 0.18 --export-best-on-finish 1 --min-benchmark-score 0.35 --max-generalization-gap 0.18 --exploration-rate 0.08 --reward-noise 0.008 --pool-limit 15
 ```
 
 Benchmark separe 4p pur:
 
 ```powershell
-python .\run_v9.py --skip-training --benchmark-games 128 --benchmark-progress-every 1 --workers 8 --eval-max-steps 220 --benchmark-four-player-ratio 1.0 --four-player-ratio 1.0 --pool-limit 15
+python .\run_v9.py --game-engine official_fast --skip-training --benchmark-games 128 --benchmark-progress-every 1 --workers 8 --eval-max-steps 220 --benchmark-four-player-ratio 1.0 --four-player-ratio 1.0 --pool-limit 15
 ```
 
 Validation:

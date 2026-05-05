@@ -15,6 +15,9 @@ if str(KAGGLE_ENV_ROOT) not in sys.path:
 from kaggle_environments import make
 
 from local_simulator.official_fast import OfficialFastGame, deterministic_expand_agent, noop_agent
+from war_orbit.agents.v9.policy import V9Agent, V9Weights
+from war_orbit.config.v9_config import V9Config
+from war_orbit.training.self_play import local_random_agent
 
 
 def bench_kaggle(agents, games: int, episode_steps: int) -> tuple[float, int]:
@@ -67,15 +70,24 @@ def main() -> None:
     parser.add_argument("--episode-steps", type=int, default=500)
     parser.add_argument(
         "--agent-set",
-        choices=["noop", "expand"],
+        choices=["noop", "expand", "v9"],
         default="noop",
     )
     args = parser.parse_args()
 
     if args.agent_set == "noop":
         agents = [noop_agent, noop_agent]
-    else:
+    elif args.agent_set == "expand":
         agents = [deterministic_expand_agent, deterministic_expand_agent]
+    else:
+        config = V9Config(
+            search_width=3,
+            simulation_depth=0,
+            simulation_rollouts=0,
+            opponent_samples=1,
+            game_engine="official_fast",
+        )
+        agents = [V9Agent(config, V9Weights.defaults()), local_random_agent]
 
     kaggle_seconds, kaggle_steps = bench_kaggle(agents, args.games, args.episode_steps)
     fast_seconds, fast_steps = bench_fast(agents, args.games, args.episode_steps)
