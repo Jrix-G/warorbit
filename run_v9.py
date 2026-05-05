@@ -75,6 +75,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--exploration-rate", type=float, default=0.08)
     parser.add_argument("--confidence-l2", type=float, default=0.0025)
     parser.add_argument("--reward-noise", type=float, default=0.015)
+    parser.add_argument("--four-p-signal-boost", type=float, default=1.4)
     parser.add_argument("--train-state-perturbation", type=float, default=0.035)
     parser.add_argument("--no-resume", action="store_true")
     parser.add_argument("--skip-training", action="store_true")
@@ -103,6 +104,7 @@ def main() -> None:
         l2=args.l2,
         confidence_l2=args.confidence_l2,
         reward_noise=args.reward_noise,
+        four_p_signal_boost=args.four_p_signal_boost,
         train_state_perturbation=args.train_state_perturbation,
         eval_every=args.eval_every,
         benchmark_every=args.benchmark_every,

@@ -12,6 +12,7 @@ from __future__ import annotations
 import sys
 import time
 from dataclasses import dataclass
+from importlib import util as importlib_util
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Callable, Iterable, Sequence
@@ -22,8 +23,33 @@ KAGGLE_ENV_ROOT = ROOT / "github" / "kaggle-environments"
 if str(KAGGLE_ENV_ROOT) not in sys.path:
     sys.path.insert(0, str(KAGGLE_ENV_ROOT))
 
-from kaggle_environments.envs.orbit_wars import orbit_wars  # noqa: E402
-from kaggle_environments.utils import Struct, structify  # noqa: E402
+try:
+    from kaggle_environments.envs.orbit_wars import orbit_wars  # noqa: E402
+    from kaggle_environments.utils import Struct, structify  # noqa: E402
+except ModuleNotFoundError:
+    orbit_wars_path = KAGGLE_ENV_ROOT / "kaggle_environments" / "envs" / "orbit_wars" / "orbit_wars.py"
+    spec = importlib_util.spec_from_file_location("orbit_wars_official_fast", orbit_wars_path)
+    if spec is None or spec.loader is None:
+        raise
+    orbit_wars = importlib_util.module_from_spec(spec)
+    spec.loader.exec_module(orbit_wars)
+
+    class Struct(dict):
+        def __init__(self, **entries: Any) -> None:
+            entries = {k: v for k, v in entries.items() if k != "items"}
+            dict.__init__(self, entries)
+            self.__dict__.update(entries)
+
+        def __setattr__(self, attr: str, value: Any) -> None:
+            self.__dict__[attr] = value
+            self[attr] = value
+
+    def structify(o: Any) -> Any:
+        if isinstance(o, list):
+            return [structify(item) for item in o]
+        if isinstance(o, dict):
+            return Struct(**{key: structify(value) for key, value in o.items()})
+        return o
 
 
 @dataclass
@@ -168,7 +194,7 @@ class OfficialFastGame:
         for fleet in obs.get("fleets", []) or []:
             owner = int(fleet[1])
             if 0 <= owner < self.n_players:
-                scores[owner] += int(fleet[6])
+                scores[owner] += int(fleet[4])
         return scores
 
     def winner(self) -> int:
@@ -221,13 +247,25 @@ def run_fast_game(
     seed: int | None = None,
     max_steps: int = 500,
     tracked_player: int = 0,
+    stop_player: int | None = None,
+    overage_time: float = 60.0,
     use_c_accel: bool = True,
 ) -> dict[str, Any]:
     """Convenience wrapper used by training code."""
 
     n = int(n_players if n_players is not None else len(agents))
-    game = OfficialFastGame(n, seed=seed, episode_steps=max_steps, use_c_accel=use_c_accel)
+    game = OfficialFastGame(
+        n,
+        seed=seed,
+        episode_steps=max_steps,
+        remaining_overage_time=overage_time,
+        use_c_accel=use_c_accel,
+    )
     started = time.perf_counter()
+    stop_player = None if stop_player is None else int(stop_player)
+    tracked_player = int(tracked_player)
+    initial_player = stop_player if stop_player is not None else tracked_player
+    initial_state = game.observation(initial_player)
     max_planets = _owned_planets(game.observation(tracked_player), tracked_player)
     planets_t60 = None
     planets_t100 = None
@@ -243,6 +281,8 @@ def run_fast_game(
                 move = agent(obs)
             actions.append(move if isinstance(move, list) else [])
         game.step(actions)
+        if stop_player is not None and not _player_alive(game.observation(stop_player), stop_player):
+            break
         tracked_obs = game.observation(tracked_player)
         owned = _owned_planets(tracked_obs, tracked_player)
         max_planets = max(max_planets, owned)
@@ -256,6 +296,8 @@ def run_fast_game(
     result["max_planets"] = int(max_planets)
     result["planets_t60"] = int(planets_t60 if planets_t60 is not None else max_planets)
     result["planets_t100"] = int(planets_t100 if planets_t100 is not None else max_planets)
+    result["initial_state"] = initial_state
+    result["final_state"] = game.observation(initial_player)
     return result
 
 
@@ -288,6 +330,12 @@ def comparable_state(state: Sequence[Any]) -> list[dict[str, Any]]:
 
 def _owned_planets(obs: Any, player: int) -> int:
     return sum(1 for planet in obs.get("planets", []) or [] if int(planet[1]) == int(player))
+
+
+def _player_alive(obs: Any, player: int) -> bool:
+    return any(int(planet[1]) == int(player) for planet in obs.get("planets", []) or []) or any(
+        int(fleet[1]) == int(player) for fleet in obs.get("fleets", []) or []
+    )
 
 
 def noop_agent(obs: Any, config: Any = None) -> list:

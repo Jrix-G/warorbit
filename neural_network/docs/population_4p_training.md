@@ -23,6 +23,9 @@ L'objectif n'est pas de garder le dernier modèle produit, mais de faire converg
 6. relancer une génération depuis ce nouveau best checkpoint.
 
 Cette approche évite de dégrader le modèle en remplaçant le best par un candidat plus récent mais moins bon.
+Si aucun best n'existe encore et que le run se termine avant la confirmation,
+le meilleur candidat de l'évaluation rapide est promu comme bootstrap afin de
+ne pas rester bloqué avec un score sentinelle `-1000000000`.
 
 ## Curriculum automatique
 
@@ -87,7 +90,10 @@ Le runner force les paramètres importants suivants :
 - `notebook_pool_limit = 15`
 - `train_notebook_opponents = 3`
 - `max_actions_per_turn = 4`
+- `game_engine = official_fast`
+- `official_fast_c_accel = true`
 - `worker_train_steps >= 24`
+- `bootstrap_promote_without_confirmation = true`
 - warm-start imitation court depuis les adversaires du tier courant
 - reward dense stratégique activé pendant le RL populationnel
 - `four_player_ratio = 1.0`

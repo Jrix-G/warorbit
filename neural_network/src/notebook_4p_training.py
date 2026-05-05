@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import random
+import sys
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Sequence, Tuple
@@ -243,6 +244,17 @@ def _send_ratios(config: Dict[str, Any]) -> Tuple[float, ...]:
     return ratios or (0.25, 0.5, 0.75)
 
 
+def _official_fast_runner():
+    try:
+        from local_simulator.official_fast import run_fast_game
+    except ModuleNotFoundError:
+        root = Path(__file__).resolve().parents[2]
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from local_simulator.official_fast import run_fast_game
+    return run_fast_game
+
+
 def run_match(
     agents,
     seed: int | None = None,
@@ -251,11 +263,25 @@ def run_match(
     max_steps: int = 100,
     overage_time: float = 60.0,
     stop_player: int | None = None,
+    game_engine: str = "simgame",
+    use_c_accel: bool = True,
 ) -> Dict[str, Any]:
     """Run a local SimGame match and stop early if `stop_player` is eliminated."""
     players = int(n_players or len(agents))
     if len(agents) != players:
         raise ValueError(f"agent count ({len(agents)}) must match n_players ({players})")
+    if str(game_engine).lower() in {"official_fast", "local_fast", "kaggle_fast"}:
+        tracked_player = stop_player if stop_player is not None else 0
+        return _official_fast_runner()(
+            agents,
+            n_players=players,
+            seed=seed,
+            max_steps=max_steps,
+            tracked_player=int(tracked_player),
+            stop_player=stop_player,
+            overage_time=overage_time,
+            use_c_accel=use_c_accel,
+        )
 
     game = SimGame.random_game(
         seed=seed,
@@ -299,7 +325,9 @@ def _run_match_compat(
     n_players: int,
     max_steps: int,
     stop_player: int | None,
+    config: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
+    config = config or {}
     try:
         return run_match(
             agents,
@@ -307,6 +335,8 @@ def _run_match_compat(
             n_players=n_players,
             max_steps=max_steps,
             stop_player=stop_player,
+            game_engine=str(config.get("game_engine", config.get("match_runner", "simgame"))),
+            use_c_accel=bool(config.get("official_fast_c_accel", True)),
         )
     except TypeError as exc:
         if "stop_player" not in str(exc):
@@ -316,6 +346,8 @@ def _run_match_compat(
             seed=seed,
             n_players=n_players,
             max_steps=max_steps,
+            game_engine=str(config.get("game_engine", config.get("match_runner", "simgame"))),
+            use_c_accel=bool(config.get("official_fast_c_accel", True)),
         )
 
 
@@ -481,6 +513,7 @@ def _eval_match(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, ou
         n_players=4,
         max_steps=int(config.get("max_turns", 100)),
         stop_player=our_index,
+        config=config,
     )
     reward = _episode_reward(result, our_index)
     scores = result.get("scores", [])
@@ -586,6 +619,7 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
             n_players=4,
             max_steps=int(config.get("max_turns", 100)),
             stop_player=our_index,
+            config=config,
         )
         # Dense curriculum reward (annealed, actif uniquement en début d'entraînement)
         # On utilise l'état final du match comme approximation de next_state terminal

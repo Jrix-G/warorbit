@@ -128,14 +128,77 @@ Plan: `v9_staged_finisher`.
 Quand l'ennemi focus est affaibli, le plan passe plus vite de staging a capture:
 moins de transferts supplementaires, plus de sources de front, plus d'agression.
 
-## 5. Guardian strict focus
+## 5. Signal ES 4p et guardian
+
+### Signal ES 4p
+
+Le trainer V9 utilise OpenAI-ES avec perturbations positives/negatives:
+
+```text
+grad = mean((rank(score_pos) - rank(score_neg)) * epsilon) / sigma
+```
+
+Les parties 4p sont lentes et peu nombreuses par perturbation. Avec
+`games_per_eval=2` et `four_player_ratio=0.80`, chaque candidat voit souvent
+seulement une ou deux parties 4p. Le signal brut est donc tres bruite.
+
+Pour eviter que le 4p reste noye dans la moyenne globale, `_regularized_train_score`
+amplifie maintenant la composante 4p quand le winrate 4p est faible:
+
+```text
+if n_4p > 0 and wr_4p < 0.35:
+    score ~= weighted_mean(wr_2p, four_p_signal_boost * wr_4p)
+```
+
+Puis un bonus 4p specifique est ajoute quand l'echantillon contient au moins deux
+parties 4p:
+
+```text
+wr_4p_bonus = four_p_signal_boost * max(0, wr_4p - 0.25) * (n_4p / max(n_4p, 8))
+```
+
+Effet attendu:
+
+- sous `0.35` de WR 4p, une petite amelioration 4p pese plus dans le ranking ES;
+- le seuil random 4p `0.25` sert de base pour recompenser le vrai progres;
+- le facteur `n_4p / max(n_4p, 8)` limite les faux positifs quand il n'y a que
+  deux ou trois parties;
+- si `n_4p == 0`, aucun bonus n'est applique et le score reste valide.
+
+Le multiplicateur est configurable:
+
+```bash
+--four-p-signal-boost 1.4
+```
+
+Valeur par defaut: `1.4`.
+
+### Guardian strict focus
 
 Le guardian ajuste les poids et les flags quand le benchmark ne suit pas.
 
 Si `benchmark_4p < guardian_min_benchmark_4p`, il augmente la pression 4p sans
 reduire un run deja configure a `four_player_ratio=1.0`.
 
-Si `benchmark_4p < 0.30` pendant au moins deux generations, il active:
+L'ajustement n'est plus fixe. Il depend du deficit au seuil:
+
+```text
+deficit = max(0, guardian_min_benchmark_4p - benchmark_4p)
+step = 0.02 + 0.15 * deficit
+four_player_ratio += step          # cap 1.0
+benchmark_four_player_ratio += step # cap 1.0
+candidate_diversity += 2 * step     # cap 1.90
+```
+
+Exemple avec `guardian_min_benchmark_4p=0.42`:
+
+- `benchmark_4p=0.36` donne `step=0.029`;
+- `benchmark_4p=0.28` donne `step=0.041`;
+- `benchmark_4p=0.20` donne `step=0.053`.
+
+Le fix strict-focus est volontairement plus tardif. Si `benchmark_4p < 0.30`
+pendant au moins quatre generations et que le benchmark courant est sous `0.22`,
+il active:
 
 ```text
 strict_single_target_4p = True
@@ -148,6 +211,10 @@ Effet:
 - `resource_denial` ne disperse plus sur plusieurs cibles;
 - `opportunistic_snipe` est coupe en midgame 4p;
 - la policy penalise plus fortement les attaques hors focus.
+
+Raison: entre `0.25` et `0.35`, le plateau peut etre du bruit statistique. Activer
+le strict-focus apres seulement deux generations pouvait sur-contraindre le 4p
+et empecher les strategies utiles de coalition, opportunisme et punition du leader.
 
 Ces flags sont exposables depuis `run_v9.py`:
 
@@ -205,6 +272,7 @@ promotion_blockers
 guardian.strict_single_target_4p
 guardian.disable_snipe_4p
 guardian.max_focus_targets_4p
+guardian.four_p_step
 ```
 
 `focused_front_avg` mesure les fronts contre le focus. `global_front_avg` mesure
@@ -222,7 +290,7 @@ Run guardian 4p local:
 Equivalent Python:
 
 ```powershell
-python .\run_v9.py --minutes 480 --hard-timeout-minutes 480 --workers 8 --pairs 8 --games-per-eval 3 --eval-games 12 --benchmark-games 24 --min-promotion-benchmark-games 24 --benchmark-progress-every 4 --eval-every 1 --benchmark-every 1 --max-steps 120 --eval-max-steps 220 --four-player-ratio 1.0 --eval-four-player-ratio 1.0 --benchmark-four-player-ratio 1.0 --train-search-width 3 --train-simulation-depth 0 --train-simulation-rollouts 0 --train-opponent-samples 1 --front-lock-turns 22 --target-active-fronts 2.0 --target-backbone-turn-frac 0.15 --front-penalty-weight 0.055 --front-penalty-cap 0.12 --front-ok-bonus 0.070 --front-partial-bonus 0.035 --backbone-penalty-weight 0.120 --backbone-bonus-weight 0.100 --front-pressure-plan-bias 0.16 --front-pressure-attack-penalty 0.14 --guardian-enabled 1 --guardian-min-benchmark-4p 0.42 --guardian-min-benchmark-backbone 0.08 --guardian-max-benchmark-fronts 2.70 --guardian-max-generalization-gap 0.18 --export-best-on-finish 1 --min-benchmark-score 0.35 --max-generalization-gap 0.18 --exploration-rate 0.08 --reward-noise 0.008 --pool-limit 15
+python .\run_v9.py --minutes 480 --hard-timeout-minutes 480 --workers 8 --pairs 8 --games-per-eval 3 --eval-games 12 --benchmark-games 24 --min-promotion-benchmark-games 24 --benchmark-progress-every 4 --eval-every 1 --benchmark-every 1 --max-steps 120 --eval-max-steps 220 --four-player-ratio 1.0 --eval-four-player-ratio 1.0 --benchmark-four-player-ratio 1.0 --four-p-signal-boost 1.4 --train-search-width 3 --train-simulation-depth 0 --train-simulation-rollouts 0 --train-opponent-samples 1 --front-lock-turns 22 --target-active-fronts 2.0 --target-backbone-turn-frac 0.15 --front-penalty-weight 0.055 --front-penalty-cap 0.12 --front-ok-bonus 0.070 --front-partial-bonus 0.035 --backbone-penalty-weight 0.120 --backbone-bonus-weight 0.100 --front-pressure-plan-bias 0.16 --front-pressure-attack-penalty 0.14 --guardian-enabled 1 --guardian-min-benchmark-4p 0.42 --guardian-min-benchmark-backbone 0.08 --guardian-max-benchmark-fronts 2.70 --guardian-max-generalization-gap 0.18 --export-best-on-finish 1 --min-benchmark-score 0.35 --max-generalization-gap 0.18 --exploration-rate 0.08 --reward-noise 0.008 --pool-limit 15
 ```
 
 Benchmark separe 4p pur:

@@ -395,6 +395,28 @@ def _should_try_promotion(record: Dict[str, Any], best_score: float, margin: flo
     return _composite_score(record) >= best_score + margin
 
 
+def _promote_candidate(
+    state: Dict[str, Any],
+    record: Dict[str, Any],
+    *,
+    promoted_score: float,
+    tier_name: str,
+    tier_checkpoint_path: Path,
+    best_path: Path,
+    global_best_score: float,
+    curriculum_state: Dict[str, Any],
+) -> tuple[float, Dict[str, Any]]:
+    curriculum_state.setdefault("tier_best_scores", {})[tier_name] = promoted_score
+    record["checkpoint_promoted"] = True
+    record["tier_best_checkpoint"] = str(tier_checkpoint_path)
+    save_checkpoint(tier_checkpoint_path, state, record)
+    best_record: Dict[str, Any] = {}
+    if promoted_score > global_best_score:
+        best_record = dict(record)
+        save_checkpoint(best_path, state, record)
+    return promoted_score, best_record
+
+
 def _curriculum_tiers(config: Dict[str, Any]) -> List[Dict[str, Any]]:
     raw = config.get("opponent_curriculum_tiers")
     if isinstance(raw, list) and raw:
@@ -590,7 +612,15 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
         episode_seed = seed + local_step * 9973
         agents, log_probs, action_records, opp_names = _build_agents(model, config, episode_seed, our_index, temperature, pool)
         stop_player = our_index if bool(config.get("train_stop_on_elimination", True)) else None
-        result = run_match(agents, seed=episode_seed, n_players=4, max_steps=int(config.get("max_turns", 100)), stop_player=stop_player)
+        result = run_match(
+            agents,
+            seed=episode_seed,
+            n_players=4,
+            max_steps=int(config.get("max_turns", 100)),
+            stop_player=stop_player,
+            game_engine=str(config.get("game_engine", config.get("match_runner", "simgame"))),
+            use_c_accel=bool(config.get("official_fast_c_accel", True)),
+        )
         terminal_reward = _episode_reward(result, our_index)
         dense_reward = _strategic_dense_reward(result, our_index, config) if bool(config.get("dense_reward_enabled", True)) else 0.0
         reward = terminal_reward + dense_reward
@@ -933,6 +963,12 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
 
         should_promote = _should_try_promotion(generation_best["record"], tier_best_score, promotion_margin)
         enough_time_for_confirmation = deadline_epoch - time.time() >= promotion_min_remaining_seconds
+        can_bootstrap_without_confirmation = (
+            bool(cfg.get("bootstrap_promote_without_confirmation", True))
+            and should_promote
+            and not enough_time_for_confirmation
+            and tier_best_score < -1e8
+        )
         if should_promote and enough_time_for_confirmation:
             preliminary_record = dict(generation_best["record"])
             confirmed_stats = _evaluate_candidate(
@@ -954,16 +990,20 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
 
             promoted_score = float(generation_best["record"]["score"])
             if _should_try_promotion(generation_best["record"], tier_best_score, promotion_margin):
-                tier_best_score = promoted_score
-                curriculum_state.setdefault("tier_best_scores", {})[tier_name] = tier_best_score
-                generation_best["record"]["checkpoint_promoted"] = True
-                generation_best["record"]["promotion_reason"] = f"confirmed best composite score {tier_best_score:.4f}"
-                generation_best["record"]["tier_best_checkpoint"] = str(tier_checkpoint_path)
-                save_checkpoint(tier_checkpoint_path, generation_best["state"], generation_best["record"])
-                if promoted_score > global_best_score:
+                generation_best["record"]["promotion_reason"] = f"confirmed best composite score {promoted_score:.4f}"
+                tier_best_score, maybe_best_record = _promote_candidate(
+                    generation_best["state"],
+                    generation_best["record"],
+                    promoted_score=promoted_score,
+                    tier_name=tier_name,
+                    tier_checkpoint_path=tier_checkpoint_path,
+                    best_path=best_path,
+                    global_best_score=global_best_score,
+                    curriculum_state=curriculum_state,
+                )
+                if maybe_best_record:
                     global_best_score = promoted_score
-                    best_record = dict(generation_best["record"])
-                    save_checkpoint(best_path, generation_best["state"], generation_best["record"])
+                    best_record = maybe_best_record
                 base_checkpoint = tier_checkpoint_path
             else:
                 generation_best["record"]["checkpoint_promoted"] = False
@@ -974,10 +1014,33 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 fallback_base = best_path if best_path.exists() else latest_path
                 base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
         else:
-            if should_promote:
+            if can_bootstrap_without_confirmation:
+                promoted_score = float(generation_best["record"]["score"])
+                generation_best["record"]["eval_phase"] = "fast_bootstrap"
+                generation_best["record"]["promotion_reason"] = (
+                    "bootstrap best from fast eval: no previous tier best and not enough time for confirmation eval"
+                )
+                tier_best_score, maybe_best_record = _promote_candidate(
+                    generation_best["state"],
+                    generation_best["record"],
+                    promoted_score=promoted_score,
+                    tier_name=tier_name,
+                    tier_checkpoint_path=tier_checkpoint_path,
+                    best_path=best_path,
+                    global_best_score=global_best_score,
+                    curriculum_state=curriculum_state,
+                )
+                if maybe_best_record:
+                    global_best_score = promoted_score
+                    best_record = maybe_best_record
+                base_checkpoint = tier_checkpoint_path
+            elif should_promote:
                 generation_best["record"]["promotion_reason"] = "promotion skipped: not enough time for confirmation eval"
-            fallback_base = best_path if best_path.exists() else latest_path
-            base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
+                fallback_base = best_path if best_path.exists() else latest_path
+                base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
+            else:
+                fallback_base = best_path if best_path.exists() else latest_path
+                base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
 
         curriculum_state["total_generations"] = generation
         curriculum_state["tier_generation"] = int(curriculum_state.get("tier_generation", 0)) + 1

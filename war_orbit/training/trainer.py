@@ -70,6 +70,19 @@ def _load_opponents(config: V9Config):
 def _regularized_train_score(summary: Dict[str, float], flat: np.ndarray, defaults: np.ndarray,
                              config: V9Config, rng: np.random.Generator) -> float:
     score = float(summary["mean"])
+    n_2p = int(summary.get("n_2p", 0))
+    n_4p = int(summary.get("n_4p", 0))
+    wr_4p = float(summary.get("wr_4p", 0.0))
+    four_p_boost = float(getattr(config, "four_p_signal_boost", 1.4))
+    if n_4p > 0 and wr_4p < 0.35:
+        total_games = max(1, n_2p + n_4p)
+        score = (
+            float(summary.get("wr_2p", 0.0)) * n_2p
+            + wr_4p * n_4p * four_p_boost
+        ) / total_games
+    if n_4p >= 2:
+        sample_weight = n_4p / max(n_4p, 8)
+        score += four_p_boost * max(0.0, wr_4p - 0.25) * sample_weight
     confidence = float(np.linalg.norm(flat - defaults) / max(1.0, np.sqrt(flat.size)))
     low_entropy = max(0.0, 0.45 - float(summary.get("plan_entropy", 0.0)))
     repeated = max(0.0, float(summary.get("dominant_plan_frac", 1.0)) - 0.72)
@@ -218,16 +231,19 @@ def _apply_guardian_adjustments(config: V9Config, train_summary: Dict[str, float
         changed = True
 
     if bench_4p < float(config.guardian_min_benchmark_4p):
-        config.four_player_ratio = min(1.0, max(float(config.four_player_ratio), float(config.four_player_ratio) + 0.02))
-        config.benchmark_four_player_ratio = min(1.0, max(float(config.benchmark_four_player_ratio), float(config.benchmark_four_player_ratio) + 0.02))
-        config.candidate_diversity = min(1.75, float(config.candidate_diversity) + 0.04)
+        deficit = max(0.0, float(config.guardian_min_benchmark_4p) - bench_4p)
+        step = 0.02 + 0.15 * deficit
+        config.four_player_ratio = min(1.0, float(config.four_player_ratio) + step)
+        config.benchmark_four_player_ratio = min(1.0, float(config.benchmark_four_player_ratio) + step)
+        config.candidate_diversity = min(1.90, float(config.candidate_diversity) + 2.0 * step)
         event["four_p_fix"] = 1.0
+        event["four_p_step"] = float(step)
         changed = True
 
     low_4p_streak = int(getattr(config, "_guardian_low_4p_streak", 0))
     low_4p_streak = low_4p_streak + 1 if bench_4p < 0.30 else 0
     setattr(config, "_guardian_low_4p_streak", low_4p_streak)
-    if low_4p_streak >= 2:
+    if low_4p_streak >= 4 and bench_4p < 0.22:
         config.strict_single_target_4p = True
         config.disable_snipe_4p = True
         config.max_focus_targets_4p = 1

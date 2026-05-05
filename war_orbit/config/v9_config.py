@@ -53,6 +53,7 @@ class V9Config:
     l2: float = 0.0004
     confidence_l2: float = 0.0025
     reward_noise: float = 0.015
+    four_p_signal_boost: float = 1.4
     train_state_perturbation: float = 0.035
     eval_every: int = 1
     benchmark_every: int = 1

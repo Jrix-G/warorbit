@@ -58,6 +58,8 @@ def _prepare_config(cfg: dict, workers: int, eval_episodes: int) -> dict:
     cfg["notebook_pool_limit_max"] = 15
     cfg["train_notebook_opponents"] = 3
     cfg["train_stop_on_elimination"] = bool(cfg.get("train_stop_on_elimination", True))
+    cfg["game_engine"] = str(cfg.get("game_engine", "official_fast"))
+    cfg["official_fast_c_accel"] = bool(cfg.get("official_fast_c_accel", True))
     cfg["max_actions_per_turn"] = 4
     cfg["dense_reward_enabled"] = bool(cfg.get("dense_reward_enabled", True))
     cfg.setdefault("imitation_warmstart_steps", 4)
@@ -71,6 +73,7 @@ def _prepare_config(cfg: dict, workers: int, eval_episodes: int) -> dict:
     cfg.setdefault("send_ratios", [0.25, 0.5, 0.75])
     cfg.setdefault("policy_prior_strength", 0.8)
     cfg["promotion_margin"] = float(cfg.get("promotion_margin", 0.0))
+    cfg["bootstrap_promote_without_confirmation"] = bool(cfg.get("bootstrap_promote_without_confirmation", True))
     for key in ("checkpoint_dir", "log_dir", "candidate_checkpoint", "best_checkpoint", "latest_checkpoint", "tier_checkpoint_dir", "export_path", "opponent_curriculum_state"):
         if key in cfg:
             cfg[key] = _resolve_path(str(cfg[key]))
