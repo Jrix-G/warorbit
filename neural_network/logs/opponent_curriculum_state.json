@@ -2,17 +2,138 @@
   "best_record": {},
   "best_score": -1000000000.0,
   "history": [],
-  "last_record": {},
+  "last_record": {
+    "avg_episode_length": 97.5,
+    "avg_score": 21.0625,
+    "base_checkpoint": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\neural_network\\checkpoints\\best.npz",
+    "candidate_eval_episodes": 16,
+    "checkpoint_promoted": false,
+    "composite_score": 0.09945765270354189,
+    "curriculum_advanced": false,
+    "curriculum_reason": "hold score=0.099/0.460 winrate=0.062/0.500 rank=3.31/2.45 noop=0.20/0.65",
+    "curriculum_tier": "basic_300",
+    "curriculum_tier_label": "300 Elo: random/greedy/starter",
+    "eval_action_count": 304.875,
+    "eval_avg_ships_sent": 2.066573859740603,
+    "eval_by_opponent": {
+      "greedy": {
+        "games": 16,
+        "rank_mean": 3.3125,
+        "winrate": 0.0625
+      },
+      "random": {
+        "games": 16,
+        "rank_mean": 3.3125,
+        "winrate": 0.0625
+      },
+      "starter": {
+        "games": 16,
+        "rank_mean": 3.3125,
+        "winrate": 0.0625
+      }
+    },
+    "eval_do_nothing_rate": 0.20328712822865366,
+    "eval_mean": -0.625,
+    "eval_phase": "fast",
+    "eval_std": 0.5448623679425842,
+    "evaluated_tier": "basic_300",
+    "generation": 1,
+    "global_best_before": -1000000000.0,
+    "imitation_loss": 3.7226144075393677,
+    "imitation_targets": 6.0,
+    "imitation_updates": 6.0,
+    "next_curriculum_tier": "basic_300",
+    "parameter_count": 1847362,
+    "pool": [
+      "random",
+      "greedy",
+      "starter"
+    ],
+    "pool_names": [
+      "random",
+      "greedy",
+      "starter"
+    ],
+    "pool_size": 3,
+    "promotion_reason": "promotion gated by low winrate 0.0625 < 0.2500",
+    "rank_mean": 3.3125,
+    "score": 0.09945765270354189,
+    "seeds": [
+      51042,
+      51043,
+      51044,
+      51045,
+      51046,
+      51047,
+      51048,
+      51049,
+      51050,
+      51051,
+      51052,
+      51053,
+      51054,
+      51055,
+      51056,
+      51057
+    ],
+    "tier_best_before": -1000000000.0,
+    "tier_best_checkpoint": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\neural_network\\checkpoints\\tiers\\basic_300.npz",
+    "tier_checkpoint_loaded": false,
+    "tier_generation": 1,
+    "train_action_count": 263.625,
+    "train_avg_ships_sent": 1.6987458945366305,
+    "train_dense_reward_mean": 0.08357657462833216,
+    "train_do_nothing_rate": 0.3506570302367337,
+    "train_rank_mean": 3.4166666666666665,
+    "train_reward_mean": -0.6247567587050012,
+    "train_winrate": 0.0,
+    "winrate": 0.0625,
+    "winrate_by_position": {
+      "p0": 0.0,
+      "p1": 0.0,
+      "p2": 0.25,
+      "p3": 0.0
+    },
+    "worker_id": 0,
+    "worker_last_record": {
+      "action_count": 199,
+      "avg_ships_sent": 1.5346534653465347,
+      "baseline": -0.41377219991022335,
+      "dense_reward": -0.05942527866359962,
+      "do_nothing_rate": 0.49246231155778897,
+      "entropy_coef": 0.04292642140468227,
+      "episode_length": 99,
+      "grad_norm": 3.55698823928833,
+      "local_step": 23,
+      "loss": -0.3139760494232178,
+      "opponents": [
+        "greedy",
+        "random",
+        "starter"
+      ],
+      "our_index": 3,
+      "policy_entropy": 1.8873059749603271,
+      "policy_loss": -0.2696969211101532,
+      "rank": 3,
+      "real_action_count": 101,
+      "reward": -0.5594252786635996,
+      "temperature": 1.0085284280936455,
+      "terminal_reward": -0.5,
+      "value_loss": 0.14694467186927795,
+      "winner": 2,
+      "worker_id": 0
+    }
+  },
   "pool": [
     "random",
     "greedy",
     "starter"
   ],
   "tier_best_checkpoint": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\neural_network\\checkpoints\\tiers\\basic_300.npz",
-  "tier_generation": 0,
+  "tier_generation": 2,
   "tier_index": 0,
   "tier_label": "300 Elo: random/greedy/starter",
   "tier_name": "basic_300",
-  "total_generations": 0,
-  "updated_at": 1778001291.873159
+  "total_generations": 2,
+  "updated_at": 1778002587.394259
 }

@@ -36,9 +36,9 @@ python3 run_v9.py \
   --benchmark-every 1 \
   --max-steps 160 \
   --eval-max-steps 220 \
-  --four-player-ratio 1.0 \
-  --eval-four-player-ratio 1.0 \
-  --benchmark-four-player-ratio 1.0 \
+  --four-player-ratio 0.80 \
+  --eval-four-player-ratio 0.80 \
+  --benchmark-four-player-ratio 0.80 \
   --four-p-signal-boost 1.4 \
   --train-search-width 3 \
   --train-simulation-depth 0 \
