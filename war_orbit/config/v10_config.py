@@ -109,9 +109,6 @@ class V10Config:
     # Opponents and persistence.
     opponent_pool_limit: int = 15
     training_opponents: List[str] = field(default_factory=lambda: [
-        "random",
-        "noisy_greedy",
-        "starter",
         "distance",
         "sun_dodge",
         "structured",

@@ -448,6 +448,11 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
     total_moves = max(1.0, float(stat_totals.get("total_moves", 0.0)))
     total_turns = max(1.0, float(stat_totals.get("turns", 0.0)))
     four_p_turns = max(1.0, float(stat_totals.get("four_p_turns", 0.0)))
+    plan_type_frac = {
+        key.split(":", 1)[1]: float(value) / total_turns
+        for key, value in stat_totals.items()
+        if key.startswith("plan_type:")
+    }
     return {
         "mean": sum(rewards) / max(1, len(rewards)),
         "wr_2p": sum(r2) / max(1, len(r2)) if r2 else 0.0,
@@ -463,6 +468,7 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
         "avg_steps_4p": sum(steps_4p) / max(1, len(steps_4p)) if steps_4p else 0.0,
         "long_game_frac": sum(1.0 for s in steps_all if s >= 180.0) / max(1, len(steps_all)),
         "long_game_frac_4p": sum(1.0 for s in steps_4p if s >= 180.0) / max(1, len(steps_4p)) if steps_4p else 0.0,
+        "plan_type_frac": plan_type_frac,
         "plan_entropy": entropy,
         "dominant_plan_frac": dominant,
         "transfer_move_frac": float(stat_totals.get("transfer_moves", 0.0)) / total_moves,

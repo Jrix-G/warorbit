@@ -588,6 +588,8 @@ class V9Agent:
             stats["focused_active_front_sum"] = stats.get("focused_active_front_sum", 0.0) + focused_fronts
             stats["global_active_front_sum"] = stats.get("global_active_front_sum", 0.0) + global_fronts
         metadata = candidate.metadata or {}
+        plan_type_key = f"plan_type:{candidate.plan_type}"
+        stats[plan_type_key] = stats.get(plan_type_key, 0.0) + 1.0
         if metadata.get("backbone", 0.0):
             stats["backbone_turns"] = stats.get("backbone_turns", 0.0) + 1.0
         if metadata.get("staged_finisher", 0.0):
