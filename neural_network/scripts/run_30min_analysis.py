@@ -16,7 +16,7 @@ from neural_network.src.trainer import run_training
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="neural_network/configs/default_config.json")
+    parser.add_argument("--config", default="configs/default_config.json")
     parser.add_argument("--duration-minutes", type=float, default=30.0)
     args = parser.parse_args()
     cfg = load_json(args.config)

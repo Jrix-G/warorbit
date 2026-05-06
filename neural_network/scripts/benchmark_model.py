@@ -20,9 +20,9 @@ from neural_network.src.storage import load_checkpoint
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="neural_network/configs/default_config.json")
+    parser.add_argument("--config", default="configs/default_config.json")
     parser.add_argument("--episodes", type=int, default=20)
-    parser.add_argument("--checkpoint", default="neural_network/checkpoints/latest.npz")
+    parser.add_argument("--checkpoint", default="checkpoints/latest.npz")
     parser.add_argument("--symmetric", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
