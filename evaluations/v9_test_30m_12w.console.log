@@ -1,0 +1,52 @@
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+Starting V9 fresh dim=399
+V9 train start minutes=30.00 pairs=4 hard_timeout=30.00 games_per_eval=2 eval_games=8 train_opponents=9 eval_opponents=6 benchmark_opponents=4 workers=12 game_engine=official_fast train_only=0 snapshot_every=1
+V9 official_fast c_accel_enabled=1
+V9 4p diag targets xfer>=0.30 bb>=0.15 lock>=0.90 fronts<=2.7
+V9 worker pool started workers=12
+gen=0001 train_pair_start
+gen=0001 pair=1/4
+gen=0001 pair=2/4
+gen=0001 pair=3/4
+gen=0001 pair=4/4
+gen=0001 eval_start
+gen=0001 benchmark_start games=16
+gen=0001 benchmark progress=4/16 mean=0.750 2p=1.000/3 4p=0.000/1 last=4p:176.1s elapsed_min=3.1 eta_min=9.3
+gen=0001 benchmark progress=8/16 mean=0.500 2p=1.000/3 4p=0.200/5 last=4p:260.6s elapsed_min=4.3 eta_min=4.3
+gen=0001 benchmark progress=12/16 mean=0.417 2p=1.000/3 4p=0.222/9 last=4p:336.1s elapsed_min=5.6 eta_min=1.9
+gen=0001 benchmark progress=16/16 mean=0.323 2p=1.000/3 4p=0.167/13 last=4p:274.0s elapsed_min=7.3 eta_min=0.0
+gen=0001 guardian bench4p=0.167 bb=0.18 fronts=3.3 gap=-0.073
+gen=0001 train=0.750 (2p 1.000/4 4p 0.667/12) eval=0.250 (2p 0.500 4p 0.167) bench=0.323 (2p 1.000/3 4p 0.167/13) sel=0.242 gap=-0.073 best=-1.000 grad=19.27 promo=0 block=benchmark_low,bench4p_low,fronts_high explore=0.07 div=1.16 conv=11.4/20.2 4pdiag=WARN xfer=0.53/0.30+ bb=0.15/0.15+ lock=0.92/0.90+ fronts=2.8/2.7- front_adj=+0.019 elapsed_min=13.7
+gen=0002 train_pair_start
+gen=0002 pair=1/4
+gen=0002 pair=2/4
+gen=0002 pair=3/4
+gen=0002 pair=4/4
+gen=0002 eval_start
+gen=0002 benchmark_start games=16
+gen=0002 benchmark progress=4/16 mean=1.000 2p=1.000/2 4p=1.000/2 last=4p:185.9s elapsed_min=3.1 eta_min=9.3
+gen=0002 benchmark progress=8/16 mean=0.500 2p=1.000/2 4p=0.333/6 last=4p:254.5s elapsed_min=4.2 eta_min=4.2
+gen=0002 benchmark progress=12/16 mean=0.417 2p=1.000/2 4p=0.300/10 last=4p:384.1s elapsed_min=6.4 eta_min=2.1
+gen=0002 benchmark progress=16/16 mean=0.438 2p=1.000/2 4p=0.357/14 last=4p:298.3s elapsed_min=7.8 eta_min=0.0
+gen=0002 guardian bench4p=0.357 bb=0.18 fronts=4.3 gap=-0.188
+gen=0002 train=0.876 (2p 1.000/4 4p 0.835/12) eval=0.250 (2p 0.500 4p 0.167) bench=0.438 (2p 1.000/2 4p 0.357/14) sel=0.197 gap=-0.188 best=-1.000 grad=23.36 promo=0 block=bench4p_low,fronts_high explore=0.07 div=1.26 conv=9.4/20.3 4pdiag=WARN xfer=0.53/0.30+ bb=0.14/0.15+ lock=0.97/0.90+ fronts=1.8/2.7- front_adj=+0.016 elapsed_min=27.7
+gen=0003 train_pair_start
+gen=0003 pair=1/4
+gen=0003 pair=2/4
+gen=0003 pair=3/4
+gen=0003 pair=4/4
+gen=0003 eval_start
+V9 timeout reached after 30.00 minutes; saving latest checkpoint
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+Saved latest=evaluations/v9_test_30m_12w_latest.npz best=evaluations/v9_test_30m_12w_best.npz bot_checkpoint=evaluations/v9_test_30m_12w_policy.npz export_source=latest stop_reason=timeout
