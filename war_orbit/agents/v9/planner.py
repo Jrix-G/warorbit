@@ -22,7 +22,7 @@ class PlanningParameters:
     front_anchor_id: Optional[int] = None
     strict_single_target_4p: bool = False
     disable_snipe_4p: bool = False
-    max_focus_targets_4p: int = 2
+    max_focus_targets_4p: int = 3
     opening_punch_turns: int = 55
     opening_min_capture_send_2p: int = 14
     opening_min_capture_send_4p: int = 16
@@ -33,6 +33,9 @@ class PlanningParameters:
     opening_close_neutral_dist_4p: float = 42.0
     opening_long_attack_risk_dist_4p: float = 55.0
     opening_source_commit_frac: float = 1.0
+    four_p_front_budget: float = 2.7
+    opening_close_neutral_bonus_4p: float = 0.10
+    opening_low_prod_bonus_4p: float = 0.08
 
 
 class MoveBuilder:
@@ -213,7 +216,6 @@ def _opening_neutral_targets(world, targets: Iterable[object]) -> List[object]:
     filtered = [
         t for t in targets
         if _nearest_distance(world, t) <= close_limit
-        or float(t.production) >= 5.0
         or float(t.ships) / max(1.0, float(t.production)) <= 4.5
     ]
     return filtered or list(targets)
@@ -232,6 +234,7 @@ def _candidate_metadata(world, focus_enemy_id: Optional[int], anchor, **extra: f
 
 
 def _target_score(target, turns: int, needed: int, world, family: str) -> float:
+    params = getattr(world, "_v9_params", PlanningParameters())
     prod = float(target.production)
     ships = float(target.ships)
     time_tax = 1.0 + 0.055 * max(1, int(turns))
@@ -241,7 +244,19 @@ def _target_score(target, turns: int, needed: int, world, family: str) -> float:
         owner_bonus = 11.0
     elif target.owner != world.player:
         owner_bonus = 18.0
-    score = owner_bonus + 20.0 * prod - 0.25 * ships
+    prod_weight = 20.0
+    ship_weight = 0.25
+    if world.is_opening and world.is_four_player and target.owner == -1:
+        prod_weight = 15.0
+        ship_weight = 0.20
+        close_limit = max(1.0, float(params.opening_close_neutral_dist_4p))
+        closeness = max(0.0, 1.0 - _nearest_distance(world, target) / close_limit)
+        score = owner_bonus + prod_weight * prod - ship_weight * ships
+        score += float(params.opening_close_neutral_bonus_4p) * (0.70 + 0.30 * closeness)
+        if prod <= 2.0:
+            score += float(params.opening_low_prod_bonus_4p) * (2.2 - prod)
+    else:
+        score = owner_bonus + prod_weight * prod - ship_weight * ships
     if family == "aggressive_expansion":
         score += 20.0 if target.owner == -1 else -7.0
         score += max(0.0, 18.0 - ships)
@@ -749,7 +764,8 @@ class V9Planner:
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
         anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
         active_fronts = _active_front_count(world, focus)
-        front_pressure = max(0, active_fronts - 2)
+        front_budget = float(self.params.four_p_front_budget)
+        front_pressure = max(0.0, active_fronts - front_budget)
         under_threshold = len(world.my_planets) < 15 and world.step < 140
         if active_fronts <= 1 and not world.threatened_candidates and not world.doomed_candidates and not under_threshold:
             return None
@@ -757,11 +773,11 @@ class V9Planner:
         score = _commit_reinforcements(b, force=True)
         score += _stage_to_front(
             b,
-            ratio=min(0.66, 0.48 + 0.06 * front_pressure),
+            ratio=min(0.72, 0.48 + 0.06 * front_pressure),
             min_send=max(5, self.params.min_source_ships - 2),
             focus_enemy_id=focus,
             preferred_anchor_id=self.params.front_anchor_id,
-            max_transfers=min(8, 6 + front_pressure),
+            max_transfers=min(9, 6 + int(math.ceil(front_pressure))),
         )
         if not b.moves:
             return None
@@ -785,7 +801,7 @@ class V9Planner:
             return None
         b = MoveBuilder(world, reserve_scale=1.05, max_moves=self.params.max_moves_per_plan)
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
-        high_front_pressure = world.is_four_player and _active_front_count(world, focus) > 2
+        high_front_pressure = world.is_four_player and _active_front_count(world, focus) > float(self.params.four_p_front_budget)
         score = _stage_to_front(
             b,
             ratio=0.64 if high_front_pressure else 0.58,
@@ -871,7 +887,7 @@ class V9Planner:
             return None
         b = MoveBuilder(world, reserve_scale=1.0, max_moves=self.params.max_moves_per_plan)
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
-        high_front_pressure = world.is_four_player and _active_front_count(world, focus) > 2
+        high_front_pressure = world.is_four_player and _active_front_count(world, focus) > float(self.params.four_p_front_budget)
         anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
         targets = sorted(
             world.enemy_planets,

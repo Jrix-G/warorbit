@@ -36,7 +36,8 @@ class V9Config:
     opening_long_attack_risk_dist_4p: float = 55.0
     opening_source_commit_frac: float = 1.0
     front_lock_turns: int = 24
-    target_active_fronts: float = 2.0
+    target_active_fronts: float = 2.7
+    four_p_front_budget: float = 2.7
     target_backbone_turn_frac: float = 0.15
     front_penalty_weight: float = 0.055
     front_penalty_cap: float = 0.12
@@ -46,6 +47,8 @@ class V9Config:
     backbone_bonus_weight: float = 0.060
     front_pressure_plan_bias: float = 0.12
     front_pressure_attack_penalty: float = 0.12
+    opening_close_neutral_bonus_4p: float = 0.10
+    opening_low_prod_bonus_4p: float = 0.08
     seed: int = 9009
 
     # Training schedule.
@@ -84,7 +87,7 @@ class V9Config:
     snapshot_dir: Optional[str] = None
     strict_single_target_4p: bool = False
     disable_snipe_4p: bool = False
-    max_focus_targets_4p: int = 2
+    max_focus_targets_4p: int = 3
     stagnation_window: int = 4
     min_improvement: float = 0.015
     min_benchmark_score: float = 0.15
@@ -168,6 +171,7 @@ class V9Config:
             "opening_source_commit_frac",
             "front_lock_turns",
             "target_active_fronts",
+            "four_p_front_budget",
             "target_backbone_turn_frac",
             "front_penalty_weight",
             "front_penalty_cap",
@@ -177,6 +181,8 @@ class V9Config:
             "backbone_bonus_weight",
             "front_pressure_plan_bias",
             "front_pressure_attack_penalty",
+            "opening_close_neutral_bonus_4p",
+            "opening_low_prod_bonus_4p",
             "guardian_enabled",
             "guardian_min_benchmark_4p",
             "guardian_min_benchmark_backbone",

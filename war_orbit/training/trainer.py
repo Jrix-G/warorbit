@@ -22,7 +22,7 @@ V9_4P_LOG_TARGETS = {
     "xfer": 0.30,
     "bb": 0.15,
     "lock": 0.90,
-    "fronts": 2.00,
+    "fronts": 2.70,
 }
 
 

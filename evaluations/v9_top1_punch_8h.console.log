@@ -1,0 +1,457 @@
+Fresh V9 run
+Run: v9_top1_punch_8h
+Latest: evaluations/v9_top1_punch_8h_latest.npz
+Best: evaluations/v9_top1_punch_8h_best.npz
+Policy: evaluations/v9_top1_punch_8h_policy.npz
+Log: evaluations/v9_top1_punch_8h_train.jsonl
+Snapshots: evaluations/v9_top1_punch_8h_snapshots
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+Starting V9 fresh dim=399
+V9 train start minutes=480.00 pairs=4 hard_timeout=480.00 games_per_eval=2 eval_games=16 train_opponents=9 eval_opponents=6 benchmark_opponents=4 workers=8 game_engine=official_fast train_only=0 snapshot_every=1
+V9 official_fast c_accel_enabled=1
+V9 4p diag targets xfer>=0.30 bb>=0.15 lock>=0.90 fronts<=2.0
+V9 worker pool started workers=8
+gen=0001 train_pair_start
+gen=0001 pair=1/4
+gen=0001 pair=2/4
+gen=0001 pair=3/4
+gen=0001 pair=4/4
+gen=0001 eval_start
+gen=0001 benchmark_start games=32
+gen=0001 benchmark progress=2/32 mean=0.500 2p=1.000/1 4p=0.000/1 last=4p:174.3s elapsed_min=2.9 eta_min=43.6
+gen=0001 benchmark progress=4/32 mean=0.500 2p=1.000/2 4p=0.000/2 last=4p:216.9s elapsed_min=3.6 eta_min=25.3
+gen=0001 benchmark progress=6/32 mean=0.500 2p=1.000/3 4p=0.000/3 last=4p:243.4s elapsed_min=4.3 eta_min=18.6
+gen=0001 benchmark progress=8/32 mean=0.500 2p=1.000/3 4p=0.200/5 last=4p:209.4s elapsed_min=7.1 eta_min=21.3
+gen=0001 benchmark progress=10/32 mean=0.500 2p=1.000/4 4p=0.167/6 last=2p:33.7s elapsed_min=7.7 eta_min=16.9
+gen=0001 benchmark progress=12/32 mean=0.583 2p=1.000/4 4p=0.375/8 last=4p:545.9s elapsed_min=9.1 eta_min=15.2
+gen=0001 benchmark progress=14/32 mean=0.500 2p=1.000/4 4p=0.300/10 last=4p:402.3s elapsed_min=9.6 eta_min=12.4
+gen=0001 benchmark progress=16/32 mean=0.503 2p=1.000/5 4p=0.278/11 last=4p:446.4s elapsed_min=11.7 eta_min=11.7
+gen=0001 benchmark progress=18/32 mean=0.447 2p=1.000/5 4p=0.235/13 last=4p:315.3s elapsed_min=12.4 eta_min=9.6
+gen=0001 benchmark progress=20/32 mean=0.453 2p=1.000/6 4p=0.218/14 last=4p:288.7s elapsed_min=14.2 eta_min=8.5
+gen=0001 benchmark progress=22/32 mean=0.412 2p=1.000/6 4p=0.191/16 last=4p:199.4s elapsed_min=15.2 eta_min=6.9
+gen=0001 benchmark progress=24/32 mean=0.461 2p=1.000/6 4p=0.281/18 last=4p:366.3s elapsed_min=16.2 eta_min=5.4
+gen=0001 benchmark progress=26/32 mean=0.464 2p=1.000/6 4p=0.303/20 last=4p:298.6s elapsed_min=17.4 eta_min=4.0
+gen=0001 benchmark progress=28/32 mean=0.430 2p=1.000/6 4p=0.275/22 last=4p:333.8s elapsed_min=18.2 eta_min=2.6
+gen=0001 benchmark progress=30/32 mean=0.402 2p=1.000/6 4p=0.252/24 last=4p:256.8s elapsed_min=20.5 eta_min=1.4
+gen=0001 benchmark progress=32/32 mean=0.377 2p=1.000/6 4p=0.233/26 last=4p:382.0s elapsed_min=21.6 eta_min=0.0
+gen=0001 guardian bench4p=0.233 bb=0.19 fronts=3.8 gap=0.127
+gen=0001 train=0.750 (2p 1.000/4 4p 0.667/12) eval=0.504 (2p 0.667 4p 0.467) bench=0.377 (2p 1.000/6 4p 0.233/26) sel=0.320 gap=0.127 best=-1.000 grad=19.27 promo=0 block=bench4p_low,fronts_high explore=0.07 div=1.16 conv=11.6/20.5 4pdiag=WARN xfer=0.51/0.30+ bb=0.12/0.15+ lock=0.90/0.90+ fronts=2.5/2.0- front_adj=-0.022 elapsed_min=30.4
+gen=0002 train_pair_start
+gen=0002 pair=1/4
+gen=0002 pair=2/4
+gen=0002 pair=3/4
+gen=0002 pair=4/4
+gen=0002 eval_start
+gen=0002 benchmark_start games=32
+gen=0002 benchmark progress=2/32 mean=0.500 2p=1.000/1 4p=0.000/1 last=4p:188.2s elapsed_min=3.1 eta_min=47.1
+gen=0002 benchmark progress=4/32 mean=0.500 2p=1.000/2 4p=0.000/2 last=4p:280.6s elapsed_min=4.7 eta_min=32.7
+gen=0002 benchmark progress=6/32 mean=0.333 2p=1.000/2 4p=0.000/4 last=4p:285.5s elapsed_min=5.0 eta_min=21.9
+gen=0002 benchmark progress=8/32 mean=0.375 2p=1.000/2 4p=0.167/6 last=4p:430.9s elapsed_min=7.2 eta_min=21.5
+gen=0002 benchmark progress=10/32 mean=0.400 2p=1.000/3 4p=0.143/7 last=4p:229.5s elapsed_min=8.5 eta_min=18.7
+gen=0002 benchmark progress=12/32 mean=0.500 2p=1.000/3 4p=0.333/9 last=4p:547.4s elapsed_min=9.1 eta_min=15.2
+gen=0002 benchmark progress=14/32 mean=0.500 2p=1.000/4 4p=0.300/10 last=2p:59.9s elapsed_min=10.1 eta_min=13.0
+gen=0002 benchmark progress=16/32 mean=0.441 2p=1.000/4 4p=0.255/12 last=4p:443.2s elapsed_min=12.4 eta_min=12.4
+gen=0002 benchmark progress=18/32 mean=0.392 2p=1.000/4 4p=0.219/14 last=4p:313.8s elapsed_min=13.0 eta_min=10.1
+gen=0002 benchmark progress=20/32 mean=0.403 2p=1.000/5 4p=0.204/15 last=4p:268.8s elapsed_min=14.5 eta_min=8.7
+gen=0002 benchmark progress=22/32 mean=0.366 2p=1.000/5 4p=0.180/17 last=4p:180.4s elapsed_min=15.9 eta_min=7.2
+gen=0002 benchmark progress=24/32 mean=0.380 2p=1.000/5 4p=0.217/19 last=4p:370.4s elapsed_min=16.5 eta_min=5.5
+gen=0002 benchmark progress=26/32 mean=0.351 2p=1.000/5 4p=0.196/21 last=4p:173.2s elapsed_min=18.2 eta_min=4.2
+gen=0002 benchmark progress=28/32 mean=0.362 2p=1.000/5 4p=0.223/23 last=4p:264.5s elapsed_min=18.9 eta_min=2.7
+gen=0002 benchmark progress=30/32 mean=0.337 2p=1.000/5 4p=0.205/25 last=4p:246.7s elapsed_min=20.6 eta_min=1.4
+gen=0002 benchmark progress=32/32 mean=0.317 2p=1.000/5 4p=0.190/27 last=4p:398.2s elapsed_min=22.6 eta_min=0.0
+gen=0002 guardian bench4p=0.190 bb=0.19 fronts=3.9 gap=0.117
+gen=0002 train=0.875 (2p 1.000/4 4p 0.833/12) eval=0.433 (2p 0.976 4p 0.308) bench=0.317 (2p 1.000/5 4p 0.190/27) sel=0.239 gap=0.117 best=-1.000 grad=41.69 promo=0 block=benchmark_low,bench4p_low,fronts_high explore=0.07 div=1.26 conv=9.3/19.9 4pdiag=WARN xfer=0.55/0.30+ bb=0.13/0.15+ lock=0.96/0.90+ fronts=1.8/2.0- front_adj=+0.015 elapsed_min=61.1
+gen=0003 train_pair_start
+gen=0003 pair=1/4
+gen=0003 pair=2/4
+gen=0003 pair=3/4
+gen=0003 pair=4/4
+gen=0003 eval_start
+gen=0003 benchmark_start games=32
+gen=0003 benchmark progress=2/32 mean=0.500 2p=1.000/1 4p=0.000/1 last=2p:128.4s elapsed_min=2.1 eta_min=32.1
+gen=0003 benchmark progress=4/32 mean=0.250 2p=1.000/1 4p=0.000/3 last=4p:168.2s elapsed_min=2.8 eta_min=19.6
+gen=0003 benchmark progress=6/32 mean=0.333 2p=1.000/1 4p=0.200/5 last=4p:140.4s elapsed_min=4.7 eta_min=20.2
+gen=0003 benchmark progress=8/32 mean=0.250 2p=1.000/1 4p=0.143/7 last=4p:209.7s elapsed_min=5.6 eta_min=16.9
+gen=0003 benchmark progress=10/32 mean=0.300 2p=1.000/2 4p=0.125/8 last=2p:29.7s elapsed_min=6.1 eta_min=13.4
+gen=0003 benchmark progress=12/32 mean=0.259 2p=1.000/2 4p=0.111/10 last=4p:454.5s elapsed_min=7.6 eta_min=12.6
+gen=0003 benchmark progress=14/32 mean=0.293 2p=1.000/2 4p=0.175/12 last=4p:359.5s elapsed_min=8.1 eta_min=10.5
+gen=0003 benchmark progress=16/32 mean=0.257 2p=1.000/2 4p=0.150/14 last=4p:306.2s elapsed_min=10.5 eta_min=10.5
+gen=0003 benchmark progress=18/32 mean=0.284 2p=1.000/2 4p=0.194/16 last=4p:216.8s elapsed_min=11.4 eta_min=8.9
+gen=0003 benchmark progress=20/32 mean=0.305 2p=1.000/3 4p=0.183/17 last=4p:277.3s elapsed_min=12.2 eta_min=7.3
+gen=0003 benchmark progress=22/32 mean=0.278 2p=1.000/3 4p=0.163/19 last=4p:93.5s elapsed_min=12.9 eta_min=5.8
+gen=0003 benchmark progress=24/32 mean=0.254 2p=1.000/3 4p=0.148/21 last=4p:370.7s elapsed_min=14.3 eta_min=4.8
+gen=0003 benchmark progress=26/32 mean=0.235 2p=1.000/3 4p=0.135/23 last=4p:155.4s elapsed_min=14.8 eta_min=3.4
+gen=0003 benchmark progress=28/32 mean=0.289 2p=1.000/3 4p=0.204/25 last=4p:299.8s elapsed_min=15.1 eta_min=2.2
+gen=0003 benchmark progress=30/32 mean=0.304 2p=1.000/3 4p=0.226/27 last=4p:271.4s elapsed_min=17.4 eta_min=1.2
+gen=0003 benchmark progress=32/32 mean=0.285 2p=1.000/3 4p=0.211/29 last=4p:301.6s elapsed_min=18.0 eta_min=0.0
+gen=0003 guardian bench4p=0.211 bb=0.20 fronts=3.7 gap=0.156
+gen=0003 train=1.000 (2p 1.000/4 4p 1.000/12) eval=0.440 (2p 0.975 4p 0.317) bench=0.285 (2p 1.000/3 4p 0.211/29) sel=0.214 gap=0.156 best=-1.000 grad=22.56 promo=0 block=benchmark_low,bench4p_low,fronts_high explore=0.07 div=1.36 conv=10.6/22.6 4pdiag=WARN xfer=0.71/0.30+ bb=0.14/0.15+ lock=0.95/0.90+ fronts=2.8/2.0- front_adj=-0.057 elapsed_min=87.1
+gen=0004 train_pair_start
+gen=0004 pair=1/4
+gen=0004 pair=2/4
+gen=0004 pair=3/4
+gen=0004 pair=4/4
+gen=0004 eval_start
+gen=0004 benchmark_start games=32
+gen=0004 benchmark progress=2/32 mean=0.499 2p=0.000/0 4p=0.499/2 last=4p:137.5s elapsed_min=2.3 eta_min=34.4
+gen=0004 benchmark progress=4/32 mean=0.249 2p=0.000/0 4p=0.249/4 last=4p:232.7s elapsed_min=3.9 eta_min=27.2
+gen=0004 benchmark progress=6/32 mean=0.166 2p=0.000/0 4p=0.166/6 last=4p:206.2s elapsed_min=5.3 eta_min=23.1
+gen=0004 benchmark progress=8/32 mean=0.250 2p=0.000/0 4p=0.250/8 last=4p:369.3s elapsed_min=6.2 eta_min=18.5
+gen=0004 benchmark progress=10/32 mean=0.200 2p=0.000/0 4p=0.200/10 last=4p:187.1s elapsed_min=7.6 eta_min=16.7
+gen=0004 benchmark progress=12/32 mean=0.258 2p=0.000/0 4p=0.258/12 last=4p:461.0s elapsed_min=7.7 eta_min=12.8
+gen=0004 benchmark progress=14/32 mean=0.221 2p=0.000/0 4p=0.221/14 last=4p:249.7s elapsed_min=10.6 eta_min=13.6
+gen=0004 benchmark progress=16/32 mean=0.194 2p=0.000/0 4p=0.194/16 last=4p:291.8s elapsed_min=11.0 eta_min=11.0
+gen=0004 benchmark progress=18/32 mean=0.283 2p=1.000/1 4p=0.241/17 last=4p:397.0s elapsed_min=12.0 eta_min=9.3
+gen=0004 benchmark progress=20/32 mean=0.255 2p=1.000/1 4p=0.216/19 last=4p:278.9s elapsed_min=12.3 eta_min=7.4
+gen=0004 benchmark progress=22/32 mean=0.232 2p=1.000/1 4p=0.195/21 last=4p:97.0s elapsed_min=13.2 eta_min=6.0
+gen=0004 benchmark progress=24/32 mean=0.254 2p=1.000/1 4p=0.222/23 last=4p:152.9s elapsed_min=14.9 eta_min=5.0
+gen=0004 benchmark progress=26/32 mean=0.235 2p=1.000/1 4p=0.204/25 last=4p:293.6s elapsed_min=15.6 eta_min=3.6
+gen=0004 benchmark progress=28/32 mean=0.219 2p=1.000/1 4p=0.190/27 last=4p:373.4s elapsed_min=16.8 eta_min=2.4
+gen=0004 benchmark progress=30/32 mean=0.205 2p=1.000/1 4p=0.177/29 last=4p:222.9s elapsed_min=18.6 eta_min=1.2
+gen=0004 benchmark progress=32/32 mean=0.192 2p=1.000/1 4p=0.166/31 last=4p:353.9s elapsed_min=20.3 eta_min=0.0
+gen=0004 guardian bench4p=0.166 bb=0.22 fronts=3.5 gap=0.313
+gen=0004 train=0.750 (2p 0.000/0 4p 0.750/16) eval=0.504 (2p 0.997 4p 0.391) bench=0.192 (2p 1.000/1 4p 0.166/31) sel=0.126 gap=0.313 best=-1.000 grad=21.51 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.07 div=1.46 conv=9.3/17.3 4pdiag=WARN xfer=0.64/0.30+ bb=0.24/0.15+ lock=0.92/0.90+ fronts=2.4/2.0- front_adj=-0.019 elapsed_min=115.1
+gen=0005 train_pair_start
+gen=0005 pair=1/4
+gen=0005 pair=2/4
+gen=0005 pair=3/4
+gen=0005 pair=4/4
+gen=0005 eval_start
+gen=0005 benchmark_start games=32
+gen=0005 benchmark progress=2/32 mean=0.498 2p=0.000/0 4p=0.498/2 last=4p:182.3s elapsed_min=3.0 eta_min=45.6
+gen=0005 benchmark progress=4/32 mean=0.249 2p=0.000/0 4p=0.249/4 last=4p:257.1s elapsed_min=4.3 eta_min=30.0
+gen=0005 benchmark progress=6/32 mean=0.499 2p=0.000/0 4p=0.499/6 last=4p:179.6s elapsed_min=7.1 eta_min=30.6
+gen=0005 benchmark progress=8/32 mean=0.374 2p=0.000/0 4p=0.374/8 last=4p:278.7s elapsed_min=7.5 eta_min=22.4
+gen=0005 benchmark progress=10/32 mean=0.311 2p=0.000/0 4p=0.311/10 last=4p:516.8s elapsed_min=8.6 eta_min=19.0
+gen=0005 benchmark progress=12/32 mean=0.343 2p=0.000/0 4p=0.343/12 last=4p:402.2s elapsed_min=9.7 eta_min=16.2
+gen=0005 benchmark progress=14/32 mean=0.294 2p=0.000/0 4p=0.294/14 last=4p:310.4s elapsed_min=13.2 eta_min=17.0
+gen=0005 benchmark progress=16/32 mean=0.257 2p=0.000/0 4p=0.257/16 last=4p:380.9s elapsed_min=13.8 eta_min=13.8
+gen=0005 benchmark progress=18/32 mean=0.233 2p=0.000/0 4p=0.233/18 last=4p:334.9s elapsed_min=15.3 eta_min=11.9
+gen=0005 benchmark progress=20/32 mean=0.260 2p=0.000/0 4p=0.260/20 last=4p:282.9s elapsed_min=15.9 eta_min=9.6
+gen=0005 benchmark progress=22/32 mean=0.236 2p=0.000/0 4p=0.236/22 last=4p:122.5s elapsed_min=16.6 eta_min=7.5
+gen=0005 benchmark progress=24/32 mean=0.258 2p=0.000/0 4p=0.258/24 last=4p:179.6s elapsed_min=19.0 eta_min=6.3
+gen=0005 benchmark progress=26/32 mean=0.277 2p=0.000/0 4p=0.277/26 last=4p:393.4s elapsed_min=19.7 eta_min=4.6
+gen=0005 benchmark progress=28/32 mean=0.293 2p=0.000/0 4p=0.293/28 last=4p:292.6s elapsed_min=20.8 eta_min=3.0
+gen=0005 benchmark progress=30/32 mean=0.274 2p=0.000/0 4p=0.274/30 last=4p:344.4s elapsed_min=22.3 eta_min=1.5
+gen=0005 benchmark progress=32/32 mean=0.257 2p=0.000/0 4p=0.257/32 last=4p:244.7s elapsed_min=23.1 eta_min=0.0
+gen=0005 guardian bench4p=0.257 bb=0.25 fronts=3.7 gap=0.242
+gen=0005 train=0.750 (2p 0.000/0 4p 0.750/16) eval=0.499 (2p 0.997 4p 0.385) bench=0.257 (2p 0.000/0 4p 0.257/32) sel=0.191 gap=0.242 best=-1.000 grad=34.40 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.12 div=1.81 conv=10.8/18.9 4pdiag=WARN xfer=0.68/0.30+ bb=0.25/0.15+ lock=0.92/0.90+ fronts=3.1/2.0- front_adj=-0.088 elapsed_min=145.7
+gen=0006 train_pair_start
+gen=0006 pair=1/4
+gen=0006 pair=2/4
+gen=0006 pair=3/4
+gen=0006 pair=4/4
+gen=0006 eval_start
+gen=0006 benchmark_start games=32
+gen=0006 benchmark progress=2/32 mean=0.000 2p=0.000/0 4p=0.000/2 last=4p:138.1s elapsed_min=2.3 eta_min=34.5
+gen=0006 benchmark progress=4/32 mean=0.000 2p=0.000/0 4p=0.000/4 last=4p:218.3s elapsed_min=3.6 eta_min=25.5
+gen=0006 benchmark progress=6/32 mean=0.167 2p=0.000/0 4p=0.167/6 last=4p:137.9s elapsed_min=5.2 eta_min=22.7
+gen=0006 benchmark progress=8/32 mean=0.125 2p=0.000/0 4p=0.125/8 last=4p:372.5s elapsed_min=6.2 eta_min=18.6
+gen=0006 benchmark progress=10/32 mean=0.200 2p=0.000/0 4p=0.200/10 last=4p:464.5s elapsed_min=7.7 eta_min=17.0
+gen=0006 benchmark progress=12/32 mean=0.170 2p=0.000/0 4p=0.170/12 last=4p:219.6s elapsed_min=7.9 eta_min=13.2
+gen=0006 benchmark progress=14/32 mean=0.145 2p=0.000/0 4p=0.145/14 last=4p:168.3s elapsed_min=9.0 eta_min=11.6
+gen=0006 benchmark progress=16/32 mean=0.127 2p=0.000/0 4p=0.127/16 last=4p:309.9s elapsed_min=10.7 eta_min=10.7
+gen=0006 benchmark progress=18/32 mean=0.169 2p=0.000/0 4p=0.169/18 last=4p:217.4s elapsed_min=12.5 eta_min=9.7
+gen=0006 benchmark progress=20/32 mean=0.202 2p=0.000/0 4p=0.202/20 last=4p:134.1s elapsed_min=12.9 eta_min=7.8
+gen=0006 benchmark progress=22/32 mean=0.183 2p=0.000/0 4p=0.183/22 last=4p:114.5s elapsed_min=13.8 eta_min=6.3
+gen=0006 benchmark progress=24/32 mean=0.210 2p=0.000/0 4p=0.210/24 last=4p:358.4s elapsed_min=15.0 eta_min=5.0
+gen=0006 benchmark progress=26/32 mean=0.232 2p=0.000/0 4p=0.232/26 last=4p:307.1s elapsed_min=15.5 eta_min=3.6
+gen=0006 benchmark progress=28/32 mean=0.217 2p=0.000/0 4p=0.217/28 last=4p:254.4s elapsed_min=16.7 eta_min=2.4
+gen=0006 benchmark progress=30/32 mean=0.235 2p=0.000/0 4p=0.235/30 last=4p:184.5s elapsed_min=18.1 eta_min=1.2
+gen=0006 benchmark progress=32/32 mean=0.221 2p=0.000/0 4p=0.221/32 last=4p:277.6s elapsed_min=19.3 eta_min=0.0
+gen=0006 guardian bench4p=0.221 bb=0.27 fronts=3.5 gap=0.216
+gen=0006 train=0.621 (2p 0.000/0 4p 0.621/16) eval=0.437 (2p 0.997 4p 0.308) bench=0.221 (2p 0.000/0 4p 0.221/32) sel=0.155 gap=0.216 best=-1.000 grad=16.73 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.12 div=1.91 conv=9.3/14.3 4pdiag=WARN xfer=0.55/0.30+ bb=0.23/0.15+ lock=0.97/0.90+ fronts=2.3/2.0- front_adj=-0.003 elapsed_min=172.4
+gen=0007 train_pair_start
+gen=0007 pair=1/4
+gen=0007 pair=2/4
+gen=0007 pair=3/4
+gen=0007 pair=4/4
+gen=0007 eval_start
+gen=0007 benchmark_start games=32
+gen=0007 benchmark progress=2/32 mean=0.500 2p=0.000/0 4p=0.500/2 last=4p:182.8s elapsed_min=3.0 eta_min=45.7
+gen=0007 benchmark progress=4/32 mean=0.250 2p=0.000/0 4p=0.250/4 last=4p:321.1s elapsed_min=5.4 eta_min=37.5
+gen=0007 benchmark progress=6/32 mean=0.167 2p=0.000/0 4p=0.167/6 last=4p:280.9s elapsed_min=6.8 eta_min=29.3
+gen=0007 benchmark progress=8/32 mean=0.250 2p=0.000/0 4p=0.250/8 last=4p:181.5s elapsed_min=7.3 eta_min=22.0
+gen=0007 benchmark progress=10/32 mean=0.210 2p=0.000/0 4p=0.210/10 last=4p:208.0s elapsed_min=8.8 eta_min=19.4
+gen=0007 benchmark progress=12/32 mean=0.259 2p=0.000/0 4p=0.259/12 last=4p:402.4s elapsed_min=9.8 eta_min=16.3
+gen=0007 benchmark progress=14/32 mean=0.222 2p=0.000/0 4p=0.222/14 last=4p:379.5s elapsed_min=13.4 eta_min=17.3
+gen=0007 benchmark progress=16/32 mean=0.194 2p=0.000/0 4p=0.194/16 last=4p:312.9s elapsed_min=13.6 eta_min=13.6
+gen=0007 benchmark progress=18/32 mean=0.174 2p=0.000/0 4p=0.174/18 last=4p:320.6s elapsed_min=15.1 eta_min=11.7
+gen=0007 benchmark progress=20/32 mean=0.157 2p=0.000/0 4p=0.157/20 last=4p:398.1s elapsed_min=16.1 eta_min=9.6
+gen=0007 benchmark progress=22/32 mean=0.192 2p=0.000/0 4p=0.192/22 last=4p:157.6s elapsed_min=16.3 eta_min=7.4
+gen=0007 benchmark progress=24/32 mean=0.176 2p=0.000/0 4p=0.176/24 last=4p:128.5s elapsed_min=18.4 eta_min=6.1
+gen=0007 benchmark progress=26/32 mean=0.167 2p=0.000/0 4p=0.167/26 last=4p:174.1s elapsed_min=19.0 eta_min=4.4
+gen=0007 benchmark progress=28/32 mean=0.157 2p=0.000/0 4p=0.157/28 last=4p:287.3s elapsed_min=19.9 eta_min=2.8
+gen=0007 benchmark progress=30/32 mean=0.180 2p=0.000/0 4p=0.180/30 last=4p:307.4s elapsed_min=21.4 eta_min=1.4
+gen=0007 benchmark progress=32/32 mean=0.169 2p=0.000/0 4p=0.169/32 last=4p:353.0s elapsed_min=22.2 eta_min=0.0
+gen=0007 guardian bench4p=0.169 bb=0.24 fronts=3.7 gap=0.205
+gen=0007 train=0.998 (2p 0.000/0 4p 0.998/16) eval=0.374 (2p 0.997 4p 0.231) bench=0.169 (2p 0.000/0 4p 0.169/32) sel=0.103 gap=0.205 best=-1.000 grad=24.83 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.20 div=2.00 conv=11.1/17.0 4pdiag=WARN xfer=0.72/0.30+ bb=0.34/0.15+ lock=0.94/0.90+ fronts=3.1/2.0- front_adj=-0.090 elapsed_min=201.5
+gen=0008 train_pair_start
+gen=0008 pair=1/4
+gen=0008 pair=2/4
+gen=0008 pair=3/4
+gen=0008 pair=4/4
+gen=0008 eval_start
+gen=0008 benchmark_start games=32
+gen=0008 benchmark progress=2/32 mean=0.500 2p=0.000/0 4p=0.500/2 last=4p:143.6s elapsed_min=2.4 eta_min=35.9
+gen=0008 benchmark progress=4/32 mean=0.250 2p=0.000/0 4p=0.250/4 last=4p:169.3s elapsed_min=2.8 eta_min=19.8
+gen=0008 benchmark progress=6/32 mean=0.333 2p=0.000/0 4p=0.333/6 last=4p:126.3s elapsed_min=4.7 eta_min=20.3
+gen=0008 benchmark progress=8/32 mean=0.250 2p=0.000/0 4p=0.250/8 last=4p:155.6s elapsed_min=5.4 eta_min=16.2
+gen=0008 benchmark progress=10/32 mean=0.200 2p=0.000/0 4p=0.200/10 last=4p:155.1s elapsed_min=7.0 eta_min=15.3
+gen=0008 benchmark progress=12/32 mean=0.256 2p=0.000/0 4p=0.256/12 last=4p:455.9s elapsed_min=7.6 eta_min=12.7
+gen=0008 benchmark progress=14/32 mean=0.220 2p=0.000/0 4p=0.220/14 last=4p:314.9s elapsed_min=10.2 eta_min=13.1
+gen=0008 benchmark progress=16/32 mean=0.192 2p=0.000/0 4p=0.192/16 last=4p:301.1s elapsed_min=10.4 eta_min=10.4
+gen=0008 benchmark progress=18/32 mean=0.226 2p=0.000/0 4p=0.226/18 last=4p:288.2s elapsed_min=12.4 eta_min=9.7
+gen=0008 benchmark progress=20/32 mean=0.204 2p=0.000/0 4p=0.204/20 last=4p:111.0s elapsed_min=13.1 eta_min=7.9
+gen=0008 benchmark progress=22/32 mean=0.185 2p=0.000/0 4p=0.185/22 last=4p:389.1s elapsed_min=13.5 eta_min=6.1
+gen=0008 benchmark progress=24/32 mean=0.253 2p=0.000/0 4p=0.253/24 last=4p:304.5s elapsed_min=15.4 eta_min=5.1
+gen=0008 benchmark progress=26/32 mean=0.234 2p=0.000/0 4p=0.234/26 last=4p:171.0s elapsed_min=16.0 eta_min=3.7
+gen=0008 benchmark progress=28/32 mean=0.217 2p=0.000/0 4p=0.217/28 last=4p:268.8s elapsed_min=16.9 eta_min=2.4
+gen=0008 benchmark progress=30/32 mean=0.236 2p=0.000/0 4p=0.236/30 last=4p:205.8s elapsed_min=17.4 eta_min=1.2
+gen=0008 benchmark progress=32/32 mean=0.252 2p=0.000/0 4p=0.252/32 last=4p:198.9s elapsed_min=18.7 eta_min=0.0
+gen=0008 guardian bench4p=0.252 bb=0.27 fronts=3.6 gap=0.185
+gen=0008 train=0.500 (2p 0.000/0 4p 0.500/16) eval=0.437 (2p 0.997 4p 0.308) bench=0.252 (2p 0.000/0 4p 0.252/32) sel=0.187 gap=0.185 best=-1.000 grad=12.06 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.20 div=2.00 conv=9.8/13.3 4pdiag=WARN xfer=0.58/0.30+ bb=0.19/0.15+ lock=0.98/0.90+ fronts=2.8/2.0- front_adj=-0.058 elapsed_min=228.2
+gen=0009 train_pair_start
+gen=0009 pair=1/4
+gen=0009 pair=2/4
+gen=0009 pair=3/4
+gen=0009 pair=4/4
+gen=0009 eval_start
+gen=0009 benchmark_start games=32
+gen=0009 benchmark progress=2/32 mean=0.500 2p=0.000/0 4p=0.500/2 last=4p:146.8s elapsed_min=2.4 eta_min=36.7
+gen=0009 benchmark progress=4/32 mean=0.250 2p=0.000/0 4p=0.250/4 last=4p:211.1s elapsed_min=3.5 eta_min=24.6
+gen=0009 benchmark progress=6/32 mean=0.167 2p=0.000/0 4p=0.167/6 last=4p:209.8s elapsed_min=5.0 eta_min=21.5
+gen=0009 benchmark progress=8/32 mean=0.250 2p=0.000/0 4p=0.250/8 last=4p:354.4s elapsed_min=5.9 eta_min=17.7
+gen=0009 benchmark progress=10/32 mean=0.300 2p=0.000/0 4p=0.300/10 last=4p:471.1s elapsed_min=7.9 eta_min=17.3
+gen=0009 benchmark progress=12/32 mean=0.333 2p=0.000/0 4p=0.333/12 last=4p:233.6s elapsed_min=8.3 eta_min=13.8
+gen=0009 benchmark progress=14/32 mean=0.286 2p=0.000/0 4p=0.286/14 last=4p:253.7s elapsed_min=10.4 eta_min=13.4
+gen=0009 benchmark progress=16/32 mean=0.250 2p=0.000/0 4p=0.250/16 last=4p:298.9s elapsed_min=10.9 eta_min=10.9
+gen=0009 benchmark progress=18/32 mean=0.278 2p=0.000/0 4p=0.278/18 last=4p:216.0s elapsed_min=12.4 eta_min=9.6
+gen=0009 benchmark progress=20/32 mean=0.250 2p=0.000/0 4p=0.250/20 last=4p:106.2s elapsed_min=13.3 eta_min=8.0
+gen=0009 benchmark progress=22/32 mean=0.273 2p=0.000/0 4p=0.273/22 last=4p:224.2s elapsed_min=14.6 eta_min=6.6
+gen=0009 benchmark progress=24/32 mean=0.333 2p=0.000/0 4p=0.333/24 last=4p:300.8s elapsed_min=15.7 eta_min=5.2
+gen=0009 benchmark progress=26/32 mean=0.308 2p=0.000/0 4p=0.308/26 last=4p:131.4s elapsed_min=16.1 eta_min=3.7
+gen=0009 benchmark progress=28/32 mean=0.286 2p=0.000/0 4p=0.286/28 last=4p:271.5s elapsed_min=16.9 eta_min=2.4
+gen=0009 benchmark progress=30/32 mean=0.333 2p=0.000/0 4p=0.333/30 last=4p:178.3s elapsed_min=17.8 eta_min=1.2
+gen=0009 benchmark progress=32/32 mean=0.312 2p=0.000/0 4p=0.312/32 last=4p:301.2s elapsed_min=19.6 eta_min=0.0
+gen=0009 guardian bench4p=0.312 bb=0.27 fronts=3.7 gap=0.124
+gen=0009 train=0.877 (2p 0.000/0 4p 0.877/16) eval=0.437 (2p 0.996 4p 0.308) bench=0.312 (2p 0.000/0 4p 0.312/32) sel=0.247 gap=0.124 best=-1.000 grad=32.22 promo=0 block=benchmark_low,bench4p_low,fronts_high explore=0.31 div=2.00 conv=10.4/18.2 4pdiag=WARN xfer=0.63/0.30+ bb=0.24/0.15+ lock=0.95/0.90+ fronts=2.6/2.0- front_adj=-0.040 elapsed_min=254.5
+gen=0010 train_pair_start
+gen=0010 pair=1/4
+gen=0010 pair=2/4
+gen=0010 pair=3/4
+gen=0010 pair=4/4
+gen=0010 eval_start
+gen=0010 benchmark_start games=32
+gen=0010 benchmark progress=2/32 mean=0.494 2p=0.000/0 4p=0.494/2 last=4p:127.4s elapsed_min=2.1 eta_min=31.9
+gen=0010 benchmark progress=4/32 mean=0.247 2p=0.000/0 4p=0.247/4 last=4p:180.4s elapsed_min=3.0 eta_min=21.1
+gen=0010 benchmark progress=6/32 mean=0.331 2p=0.000/0 4p=0.331/6 last=4p:195.0s elapsed_min=5.3 eta_min=22.8
+gen=0010 benchmark progress=8/32 mean=0.248 2p=0.000/0 4p=0.248/8 last=4p:155.0s elapsed_min=5.6 eta_min=16.8
+gen=0010 benchmark progress=10/32 mean=0.199 2p=0.000/0 4p=0.199/10 last=4p:161.5s elapsed_min=7.8 eta_min=17.1
+gen=0010 benchmark progress=12/32 mean=0.256 2p=0.000/0 4p=0.256/12 last=4p:476.3s elapsed_min=7.9 eta_min=13.2
+gen=0010 benchmark progress=14/32 mean=0.220 2p=0.000/0 4p=0.220/14 last=4p:265.8s elapsed_min=10.0 eta_min=12.9
+gen=0010 benchmark progress=16/32 mean=0.192 2p=0.000/0 4p=0.192/16 last=4p:307.5s elapsed_min=10.4 eta_min=10.4
+gen=0010 benchmark progress=18/32 mean=0.226 2p=0.000/0 4p=0.226/18 last=4p:217.0s elapsed_min=12.2 eta_min=9.5
+gen=0010 benchmark progress=20/32 mean=0.204 2p=0.000/0 4p=0.204/20 last=4p:84.6s elapsed_min=13.3 eta_min=8.0
+gen=0010 benchmark progress=22/32 mean=0.185 2p=0.000/0 4p=0.185/22 last=4p:369.4s elapsed_min=13.9 eta_min=6.3
+gen=0010 benchmark progress=24/32 mean=0.253 2p=0.000/0 4p=0.253/24 last=4p:294.1s elapsed_min=15.3 eta_min=5.1
+gen=0010 benchmark progress=26/32 mean=0.234 2p=0.000/0 4p=0.234/26 last=4p:161.0s elapsed_min=15.9 eta_min=3.7
+gen=0010 benchmark progress=28/32 mean=0.217 2p=0.000/0 4p=0.217/28 last=4p:249.0s elapsed_min=16.3 eta_min=2.3
+gen=0010 benchmark progress=30/32 mean=0.236 2p=0.000/0 4p=0.236/30 last=4p:223.6s elapsed_min=17.7 eta_min=1.2
+gen=0010 benchmark progress=32/32 mean=0.221 2p=0.000/0 4p=0.221/32 last=4p:314.8s elapsed_min=19.2 eta_min=0.0
+gen=0010 guardian bench4p=0.221 bb=0.27 fronts=3.7 gap=0.215
+gen=0010 train=0.812 (2p 0.000/0 4p 0.812/16) eval=0.437 (2p 0.995 4p 0.308) bench=0.221 (2p 0.000/0 4p 0.221/32) sel=0.155 gap=0.215 best=-1.000 grad=16.62 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.31 div=2.00 conv=10.2/17.7 4pdiag=WARN xfer=0.59/0.30+ bb=0.16/0.15+ lock=0.98/0.90+ fronts=3.0/2.0- front_adj=-0.084 elapsed_min=279.9
+gen=0011 train_pair_start
+gen=0011 pair=1/4
+gen=0011 pair=2/4
+gen=0011 pair=3/4
+gen=0011 pair=4/4
+gen=0011 eval_start
+gen=0011 benchmark_start games=32
+gen=0011 benchmark progress=2/32 mean=0.483 2p=0.000/0 4p=0.483/2 last=4p:127.1s elapsed_min=2.1 eta_min=31.8
+gen=0011 benchmark progress=4/32 mean=0.242 2p=0.000/0 4p=0.242/4 last=4p:193.5s elapsed_min=3.2 eta_min=22.6
+gen=0011 benchmark progress=6/32 mean=0.328 2p=0.000/0 4p=0.328/6 last=4p:135.5s elapsed_min=5.1 eta_min=22.1
+gen=0011 benchmark progress=8/32 mean=0.246 2p=0.000/0 4p=0.246/8 last=4p:155.1s elapsed_min=5.8 eta_min=17.4
+gen=0011 benchmark progress=10/32 mean=0.297 2p=0.000/0 4p=0.297/10 last=4p:425.7s elapsed_min=7.1 eta_min=15.6
+gen=0011 benchmark progress=12/32 mean=0.331 2p=0.000/0 4p=0.331/12 last=4p:468.9s elapsed_min=7.8 eta_min=13.0
+gen=0011 benchmark progress=14/32 mean=0.283 2p=0.000/0 4p=0.283/14 last=4p:247.9s elapsed_min=10.2 eta_min=13.1
+gen=0011 benchmark progress=16/32 mean=0.248 2p=0.000/0 4p=0.248/16 last=4p:301.1s elapsed_min=10.8 eta_min=10.8
+gen=0011 benchmark progress=18/32 mean=0.226 2p=0.000/0 4p=0.226/18 last=4p:207.0s elapsed_min=11.9 eta_min=9.3
+gen=0011 benchmark progress=20/32 mean=0.204 2p=0.000/0 4p=0.204/20 last=4p:330.8s elapsed_min=12.8 eta_min=7.7
+gen=0011 benchmark progress=22/32 mean=0.231 2p=0.000/0 4p=0.231/22 last=4p:426.8s elapsed_min=14.2 eta_min=6.5
+gen=0011 benchmark progress=24/32 mean=0.212 2p=0.000/0 4p=0.212/24 last=4p:127.1s elapsed_min=15.2 eta_min=5.1
+gen=0011 benchmark progress=26/32 mean=0.234 2p=0.000/0 4p=0.234/26 last=4p:203.0s elapsed_min=16.2 eta_min=3.7
+gen=0011 benchmark progress=28/32 mean=0.218 2p=0.000/0 4p=0.218/28 last=4p:288.4s elapsed_min=16.8 eta_min=2.4
+gen=0011 benchmark progress=30/32 mean=0.237 2p=0.000/0 4p=0.237/30 last=4p:184.4s elapsed_min=17.7 eta_min=1.2
+gen=0011 benchmark progress=32/32 mean=0.222 2p=0.000/0 4p=0.222/32 last=4p:292.7s elapsed_min=19.1 eta_min=0.0
+gen=0011 guardian bench4p=0.222 bb=0.26 fronts=3.9 gap=0.277
+gen=0011 train=0.500 (2p 0.000/0 4p 0.500/16) eval=0.499 (2p 0.997 4p 0.385) bench=0.222 (2p 0.000/0 4p 0.222/32) sel=0.156 gap=0.277 best=-1.000 grad=8.81 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.35 div=2.00 conv=9.3/15.6 4pdiag=WARN xfer=0.61/0.30+ bb=0.17/0.15+ lock=0.97/0.90+ fronts=3.1/2.0- front_adj=-0.085 elapsed_min=305.2
+gen=0012 train_pair_start
+gen=0012 pair=1/4
+gen=0012 pair=2/4
+gen=0012 pair=3/4
+gen=0012 pair=4/4
+gen=0012 eval_start
+gen=0012 benchmark_start games=32
+gen=0012 benchmark progress=2/32 mean=0.476 2p=0.000/0 4p=0.476/2 last=4p:128.8s elapsed_min=2.1 eta_min=32.2
+gen=0012 benchmark progress=4/32 mean=0.238 2p=0.000/0 4p=0.238/4 last=4p:180.6s elapsed_min=3.0 eta_min=21.1
+gen=0012 benchmark progress=6/32 mean=0.325 2p=0.000/0 4p=0.325/6 last=4p:110.6s elapsed_min=4.7 eta_min=20.4
+gen=0012 benchmark progress=8/32 mean=0.244 2p=0.000/0 4p=0.244/8 last=4p:155.4s elapsed_min=5.6 eta_min=16.8
+gen=0012 benchmark progress=10/32 mean=0.199 2p=0.000/0 4p=0.199/10 last=4p:460.4s elapsed_min=7.7 eta_min=16.9
+gen=0012 benchmark progress=12/32 mean=0.249 2p=0.000/0 4p=0.249/12 last=4p:481.7s elapsed_min=8.0 eta_min=13.4
+gen=0012 benchmark progress=14/32 mean=0.214 2p=0.000/0 4p=0.214/14 last=4p:273.9s elapsed_min=10.2 eta_min=13.1
+gen=0012 benchmark progress=16/32 mean=0.187 2p=0.000/0 4p=0.187/16 last=4p:317.4s elapsed_min=10.7 eta_min=10.7
+gen=0012 benchmark progress=18/32 mean=0.172 2p=0.000/0 4p=0.172/18 last=4p:211.0s elapsed_min=11.8 eta_min=9.2
+gen=0012 benchmark progress=20/32 mean=0.155 2p=0.000/0 4p=0.155/20 last=4p:86.5s elapsed_min=12.8 eta_min=7.7
+gen=0012 benchmark progress=22/32 mean=0.186 2p=0.000/0 4p=0.186/22 last=4p:243.0s elapsed_min=14.8 eta_min=6.7
+gen=0012 benchmark progress=24/32 mean=0.212 2p=0.000/0 4p=0.212/24 last=4p:337.8s elapsed_min=16.1 eta_min=5.4
+gen=0012 benchmark progress=26/32 mean=0.196 2p=0.000/0 4p=0.196/26 last=4p:183.9s elapsed_min=17.1 eta_min=3.9
+gen=0012 benchmark progress=28/32 mean=0.182 2p=0.000/0 4p=0.182/28 last=4p:320.5s elapsed_min=18.1 eta_min=2.6
+gen=0012 benchmark progress=30/32 mean=0.203 2p=0.000/0 4p=0.203/30 last=4p:244.3s elapsed_min=20.2 eta_min=1.3
+gen=0012 benchmark progress=32/32 mean=0.223 2p=0.000/0 4p=0.223/32 last=4p:390.5s elapsed_min=21.3 eta_min=0.0
+gen=0012 guardian bench4p=0.223 bb=0.26 fronts=3.9 gap=0.214
+gen=0012 train=0.997 (2p 0.000/0 4p 0.997/16) eval=0.437 (2p 0.995 4p 0.308) bench=0.223 (2p 0.000/0 4p 0.223/32) sel=0.157 gap=0.214 best=-1.000 grad=13.56 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.35 div=2.00 conv=9.9/16.1 4pdiag=WARN xfer=0.63/0.30+ bb=0.26/0.15+ lock=0.96/0.90+ fronts=2.4/2.0- front_adj=-0.015 elapsed_min=332.5
+gen=0013 train_pair_start
+gen=0013 pair=1/4
+gen=0013 pair=2/4
+gen=0013 pair=3/4
+gen=0013 pair=4/4
+gen=0013 eval_start
+gen=0013 benchmark_start games=32
+gen=0013 benchmark progress=2/32 mean=0.496 2p=0.000/0 4p=0.496/2 last=4p:170.4s elapsed_min=2.8 eta_min=42.6
+gen=0013 benchmark progress=4/32 mean=0.248 2p=0.000/0 4p=0.248/4 last=4p:266.1s elapsed_min=4.4 eta_min=31.0
+gen=0013 benchmark progress=6/32 mean=0.332 2p=0.000/0 4p=0.332/6 last=4p:381.4s elapsed_min=6.4 eta_min=27.5
+gen=0013 benchmark progress=8/32 mean=0.249 2p=0.000/0 4p=0.249/8 last=4p:297.4s elapsed_min=7.6 eta_min=22.9
+gen=0013 benchmark progress=10/32 mean=0.299 2p=0.000/0 4p=0.299/10 last=4p:493.9s elapsed_min=8.2 eta_min=18.1
+gen=0013 benchmark progress=12/32 mean=0.333 2p=0.000/0 4p=0.333/12 last=4p:401.8s elapsed_min=9.5 eta_min=15.9
+gen=0013 benchmark progress=14/32 mean=0.285 2p=0.000/0 4p=0.285/14 last=4p:291.8s elapsed_min=12.8 eta_min=16.4
+gen=0013 benchmark progress=16/32 mean=0.253 2p=0.000/0 4p=0.253/16 last=4p:445.5s elapsed_min=13.8 eta_min=13.8
+gen=0013 benchmark progress=18/32 mean=0.225 2p=0.000/0 4p=0.225/18 last=4p:342.3s elapsed_min=15.2 eta_min=11.9
+gen=0013 benchmark progress=20/32 mean=0.252 2p=0.000/0 4p=0.252/20 last=4p:292.6s elapsed_min=15.9 eta_min=9.6
+gen=0013 benchmark progress=22/32 mean=0.320 2p=0.000/0 4p=0.320/22 last=4p:201.7s elapsed_min=17.1 eta_min=7.8
+gen=0013 benchmark progress=24/32 mean=0.333 2p=0.000/0 4p=0.333/24 last=4p:191.8s elapsed_min=19.4 eta_min=6.5
+gen=0013 benchmark progress=26/32 mean=0.307 2p=0.000/0 4p=0.307/26 last=4p:405.8s elapsed_min=19.5 eta_min=4.5
+gen=0013 benchmark progress=28/32 mean=0.321 2p=0.000/0 4p=0.321/28 last=4p:320.1s elapsed_min=21.3 eta_min=3.0
+gen=0013 benchmark progress=30/32 mean=0.366 2p=0.000/0 4p=0.366/30 last=4p:349.6s elapsed_min=23.5 eta_min=1.6
+gen=0013 benchmark progress=32/32 mean=0.345 2p=0.000/0 4p=0.345/32 last=4p:413.5s elapsed_min=24.0 eta_min=0.0
+gen=0013 guardian bench4p=0.345 bb=0.24 fronts=4.0 gap=0.092
+gen=0013 train=0.809 (2p 0.000/0 4p 0.809/16) eval=0.437 (2p 0.995 4p 0.308) bench=0.345 (2p 0.000/0 4p 0.345/32) sel=0.279 gap=0.092 best=-1.000 grad=21.24 promo=0 block=benchmark_low,bench4p_low,fronts_high explore=0.35 div=2.00 conv=9.4/17.0 4pdiag=WARN xfer=0.51/0.30+ bb=0.16/0.15+ lock=0.98/0.90+ fronts=3.8/2.0- front_adj=-0.101 elapsed_min=364.9
+gen=0014 train_pair_start
+gen=0014 pair=1/4
+gen=0014 pair=2/4
+gen=0014 pair=3/4
+gen=0014 pair=4/4
+gen=0014 eval_start
+gen=0014 benchmark_start games=32
+gen=0014 benchmark progress=2/32 mean=0.496 2p=0.000/0 4p=0.496/2 last=4p:127.2s elapsed_min=2.1 eta_min=31.8
+gen=0014 benchmark progress=4/32 mean=0.248 2p=0.000/0 4p=0.248/4 last=4p:200.6s elapsed_min=3.3 eta_min=23.4
+gen=0014 benchmark progress=6/32 mean=0.332 2p=0.000/0 4p=0.332/6 last=4p:101.1s elapsed_min=4.5 eta_min=19.7
+gen=0014 benchmark progress=8/32 mean=0.249 2p=0.000/0 4p=0.249/8 last=4p:155.4s elapsed_min=5.9 eta_min=17.8
+gen=0014 benchmark progress=10/32 mean=0.199 2p=0.000/0 4p=0.199/10 last=4p:225.0s elapsed_min=7.7 eta_min=16.9
+gen=0014 benchmark progress=12/32 mean=0.256 2p=0.000/0 4p=0.256/12 last=4p:473.5s elapsed_min=7.9 eta_min=13.2
+gen=0014 benchmark progress=14/32 mean=0.219 2p=0.000/0 4p=0.219/14 last=4p:250.3s elapsed_min=10.4 eta_min=13.3
+gen=0014 benchmark progress=16/32 mean=0.192 2p=0.000/0 4p=0.192/16 last=4p:302.8s elapsed_min=11.0 eta_min=11.0
+gen=0014 benchmark progress=18/32 mean=0.226 2p=0.000/0 4p=0.226/18 last=4p:206.8s elapsed_min=12.0 eta_min=9.3
+gen=0014 benchmark progress=20/32 mean=0.204 2p=0.000/0 4p=0.204/20 last=4p:345.9s elapsed_min=13.6 eta_min=8.1
+gen=0014 benchmark progress=22/32 mean=0.228 2p=0.000/0 4p=0.228/22 last=4p:414.9s elapsed_min=14.6 eta_min=6.6
+gen=0014 benchmark progress=24/32 mean=0.251 2p=0.000/0 4p=0.251/24 last=4p:306.9s elapsed_min=16.0 eta_min=5.3
+gen=0014 benchmark progress=26/32 mean=0.232 2p=0.000/0 4p=0.232/26 last=4p:171.5s elapsed_min=16.4 eta_min=3.8
+gen=0014 benchmark progress=28/32 mean=0.215 2p=0.000/0 4p=0.215/28 last=4p:293.2s elapsed_min=16.9 eta_min=2.4
+gen=0014 benchmark progress=30/32 mean=0.201 2p=0.000/0 4p=0.201/30 last=4p:159.2s elapsed_min=18.7 eta_min=1.2
+gen=0014 benchmark progress=32/32 mean=0.220 2p=0.000/0 4p=0.220/32 last=4p:271.7s elapsed_min=19.5 eta_min=0.0
+gen=0014 guardian bench4p=0.220 bb=0.23 fronts=3.8 gap=0.217
+gen=0014 train=0.625 (2p 0.000/0 4p 0.625/16) eval=0.437 (2p 0.997 4p 0.308) bench=0.220 (2p 0.000/0 4p 0.220/32) sel=0.154 gap=0.217 best=-1.000 grad=8.01 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.35 div=2.00 conv=7.8/12.8 4pdiag=WARN xfer=0.70/0.30+ bb=0.21/0.15+ lock=0.97/0.90+ fronts=2.8/2.0- front_adj=-0.057 elapsed_min=391.1
+gen=0015 train_pair_start
+gen=0015 pair=1/4
+gen=0015 pair=2/4
+gen=0015 pair=3/4
+gen=0015 pair=4/4
+gen=0015 eval_start
+gen=0015 benchmark_start games=32
+gen=0015 benchmark progress=2/32 mean=0.496 2p=0.000/0 4p=0.496/2 last=4p:127.7s elapsed_min=2.1 eta_min=31.9
+gen=0015 benchmark progress=4/32 mean=0.253 2p=0.000/0 4p=0.253/4 last=4p:237.1s elapsed_min=4.0 eta_min=27.7
+gen=0015 benchmark progress=6/32 mean=0.335 2p=0.000/0 4p=0.335/6 last=4p:101.3s elapsed_min=4.5 eta_min=19.5
+gen=0015 benchmark progress=8/32 mean=0.251 2p=0.000/0 4p=0.251/8 last=4p:362.6s elapsed_min=6.0 eta_min=18.1
+gen=0015 benchmark progress=10/32 mean=0.207 2p=0.000/0 4p=0.207/10 last=4p:439.3s elapsed_min=7.3 eta_min=16.1
+gen=0015 benchmark progress=12/32 mean=0.256 2p=0.000/0 4p=0.256/12 last=4p:480.4s elapsed_min=8.0 eta_min=13.4
+gen=0015 benchmark progress=14/32 mean=0.219 2p=0.000/0 4p=0.219/14 last=4p:304.9s elapsed_min=10.7 eta_min=13.8
+gen=0015 benchmark progress=16/32 mean=0.192 2p=0.000/0 4p=0.192/16 last=4p:288.6s elapsed_min=10.9 eta_min=10.9
+gen=0015 benchmark progress=18/32 mean=0.177 2p=0.000/0 4p=0.177/18 last=4p:198.8s elapsed_min=12.1 eta_min=9.4
+gen=0015 benchmark progress=20/32 mean=0.159 2p=0.000/0 4p=0.159/20 last=4p:339.8s elapsed_min=13.5 eta_min=8.1
+gen=0015 benchmark progress=22/32 mean=0.187 2p=0.000/0 4p=0.187/22 last=4p:415.8s elapsed_min=14.3 eta_min=6.5
+gen=0015 benchmark progress=24/32 mean=0.255 2p=0.000/0 4p=0.255/24 last=4p:309.7s elapsed_min=15.9 eta_min=5.3
+gen=0015 benchmark progress=26/32 mean=0.235 2p=0.000/0 4p=0.235/26 last=4p:132.4s elapsed_min=16.3 eta_min=3.8
+gen=0015 benchmark progress=28/32 mean=0.219 2p=0.000/0 4p=0.219/28 last=4p:248.0s elapsed_min=16.7 eta_min=2.4
+gen=0015 benchmark progress=30/32 mean=0.238 2p=0.000/0 4p=0.238/30 last=4p:217.8s elapsed_min=18.0 eta_min=1.2
+gen=0015 benchmark progress=32/32 mean=0.224 2p=0.000/0 4p=0.224/32 last=4p:329.2s elapsed_min=19.7 eta_min=0.0
+gen=0015 guardian bench4p=0.224 bb=0.25 fronts=3.4 gap=0.213
+gen=0015 train=0.690 (2p 0.000/0 4p 0.690/16) eval=0.437 (2p 0.997 4p 0.308) bench=0.224 (2p 0.000/0 4p 0.224/32) sel=0.158 gap=0.213 best=-1.000 grad=7.85 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.35 div=2.00 conv=12.0/19.6 4pdiag=WARN xfer=0.59/0.30+ bb=0.13/0.15+ lock=0.97/0.90+ fronts=3.2/2.0- front_adj=-0.111 elapsed_min=418.5
+gen=0016 train_pair_start
+gen=0016 pair=1/4
+gen=0016 pair=2/4
+gen=0016 pair=3/4
+gen=0016 pair=4/4
+gen=0016 eval_start
+gen=0016 benchmark_start games=32
+gen=0016 benchmark progress=2/32 mean=0.496 2p=0.000/0 4p=0.496/2 last=4p:127.0s elapsed_min=2.1 eta_min=31.7
+gen=0016 benchmark progress=4/32 mean=0.248 2p=0.000/0 4p=0.248/4 last=4p:193.8s elapsed_min=3.2 eta_min=22.6
+gen=0016 benchmark progress=6/32 mean=0.335 2p=0.000/0 4p=0.335/6 last=4p:101.5s elapsed_min=4.7 eta_min=20.5
+gen=0016 benchmark progress=8/32 mean=0.251 2p=0.000/0 4p=0.251/8 last=4p:155.5s elapsed_min=5.8 eta_min=17.5
+gen=0016 benchmark progress=10/32 mean=0.301 2p=0.000/0 4p=0.301/10 last=4p:447.1s elapsed_min=7.5 eta_min=16.4
+gen=0016 benchmark progress=12/32 mean=0.251 2p=0.000/0 4p=0.251/12 last=4p:226.3s elapsed_min=7.7 eta_min=12.9
+gen=0016 benchmark progress=14/32 mean=0.219 2p=0.000/0 4p=0.219/14 last=4p:238.7s elapsed_min=9.8 eta_min=12.7
+gen=0016 benchmark progress=16/32 mean=0.191 2p=0.000/0 4p=0.191/16 last=4p:298.0s elapsed_min=10.8 eta_min=10.8
+gen=0016 benchmark progress=18/32 mean=0.226 2p=0.000/0 4p=0.226/18 last=4p:216.5s elapsed_min=11.6 eta_min=9.0
+gen=0016 benchmark progress=20/32 mean=0.203 2p=0.000/0 4p=0.203/20 last=4p:337.0s elapsed_min=13.3 eta_min=8.0
+gen=0016 benchmark progress=22/32 mean=0.185 2p=0.000/0 4p=0.185/22 last=4p:418.7s elapsed_min=14.4 eta_min=6.6
+gen=0016 benchmark progress=24/32 mean=0.212 2p=0.000/0 4p=0.212/24 last=4p:304.4s elapsed_min=15.7 eta_min=5.2
+gen=0016 benchmark progress=26/32 mean=0.196 2p=0.000/0 4p=0.196/26 last=4p:165.6s elapsed_min=16.1 eta_min=3.7
+gen=0016 benchmark progress=28/32 mean=0.183 2p=0.000/0 4p=0.183/28 last=4p:298.8s elapsed_min=16.5 eta_min=2.4
+gen=0016 benchmark progress=30/32 mean=0.204 2p=0.000/0 4p=0.204/30 last=4p:192.9s elapsed_min=17.7 eta_min=1.2
+gen=0016 benchmark progress=32/32 mean=0.191 2p=0.000/0 4p=0.191/32 last=4p:314.6s elapsed_min=19.7 eta_min=0.0
+gen=0016 guardian bench4p=0.191 bb=0.25 fronts=3.5 gap=0.245
+gen=0016 train=0.812 (2p 0.000/0 4p 0.812/16) eval=0.437 (2p 0.995 4p 0.308) bench=0.191 (2p 0.000/0 4p 0.191/32) sel=0.125 gap=0.245 best=-1.000 grad=18.36 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.35 div=2.00 conv=10.8/20.7 4pdiag=WARN xfer=0.63/0.30+ bb=0.19/0.15+ lock=0.94/0.90+ fronts=2.8/2.0- front_adj=-0.063 elapsed_min=444.2
+gen=0017 train_pair_start
+gen=0017 pair=1/4
+gen=0017 pair=2/4
+gen=0017 pair=3/4
+gen=0017 pair=4/4
+gen=0017 eval_start
+gen=0017 benchmark_start games=32
+gen=0017 benchmark progress=2/32 mean=0.500 2p=0.000/0 4p=0.500/2 last=4p:127.4s elapsed_min=2.1 eta_min=31.9
+gen=0017 benchmark progress=4/32 mean=0.251 2p=0.000/0 4p=0.251/4 last=4p:237.4s elapsed_min=4.0 eta_min=27.7
+gen=0017 benchmark progress=6/32 mean=0.334 2p=0.000/0 4p=0.334/6 last=4p:90.2s elapsed_min=4.5 eta_min=19.7
+gen=0017 benchmark progress=8/32 mean=0.251 2p=0.000/0 4p=0.251/8 last=4p:372.4s elapsed_min=6.2 eta_min=18.6
+gen=0017 benchmark progress=10/32 mean=0.301 2p=0.000/0 4p=0.301/10 last=4p:454.1s elapsed_min=7.6 eta_min=16.7
+gen=0017 benchmark progress=12/32 mean=0.334 2p=0.000/0 4p=0.334/12 last=4p:468.2s elapsed_min=7.8 eta_min=13.0
+gen=0017 benchmark progress=14/32 mean=0.286 2p=0.000/0 4p=0.286/14 last=4p:307.5s elapsed_min=10.5 eta_min=13.5
+gen=0017 benchmark progress=16/32 mean=0.250 2p=0.000/0 4p=0.250/16 last=4p:289.2s elapsed_min=11.0 eta_min=11.0
+gen=0017 benchmark progress=18/32 mean=0.278 2p=0.000/0 4p=0.278/18 last=4p:211.0s elapsed_min=11.9 eta_min=9.3
+gen=0017 benchmark progress=20/32 mean=0.250 2p=0.000/0 4p=0.250/20 last=4p:333.4s elapsed_min=13.2 eta_min=7.9
+gen=0017 benchmark progress=22/32 mean=0.229 2p=0.000/0 4p=0.229/22 last=4p:390.4s elapsed_min=14.1 eta_min=6.4
+gen=0017 benchmark progress=24/32 mean=0.254 2p=0.000/0 4p=0.254/24 last=4p:301.8s elapsed_min=15.6 eta_min=5.2
+gen=0017 benchmark progress=26/32 mean=0.234 2p=0.000/0 4p=0.234/26 last=4p:344.8s elapsed_min=16.3 eta_min=3.8
+gen=0017 benchmark progress=28/32 mean=0.218 2p=0.000/0 4p=0.218/28 last=4p:276.5s elapsed_min=16.5 eta_min=2.4
+gen=0017 benchmark progress=30/32 mean=0.237 2p=0.000/0 4p=0.237/30 last=4p:195.8s elapsed_min=18.3 eta_min=1.2
+gen=0017 benchmark progress=32/32 mean=0.253 2p=0.000/0 4p=0.253/32 last=4p:183.8s elapsed_min=18.6 eta_min=0.0
+gen=0017 guardian bench4p=0.253 bb=0.26 fronts=3.5 gap=0.183
+gen=0017 train=1.000 (2p 0.000/0 4p 1.000/16) eval=0.437 (2p 0.995 4p 0.308) bench=0.253 (2p 0.000/0 4p 0.253/32) sel=0.188 gap=0.183 best=-1.000 grad=15.66 promo=0 block=benchmark_low,gap_high,guardian_gap_high,bench4p_low,fronts_high explore=0.35 div=2.00 conv=14.0/26.8 4pdiag=WARN xfer=0.70/0.30+ bb=0.17/0.15+ lock=0.92/0.90+ fronts=3.2/2.0- front_adj=-0.096 elapsed_min=468.8
+gen=0018 train_pair_start
+gen=0018 pair=1/4
+gen=0018 pair=2/4
+gen=0018 pair=3/4
+gen=0018 pair=4/4
+gen=0018 eval_start
+gen=0018 benchmark_start games=32
+gen=0018 benchmark progress=2/32 mean=0.496 2p=0.000/0 4p=0.496/2 last=4p:127.3s elapsed_min=2.1 eta_min=31.8
+gen=0018 benchmark progress=4/32 mean=0.248 2p=0.000/0 4p=0.248/4 last=4p:195.7s elapsed_min=3.3 eta_min=22.8
+V9 timeout reached after 480.00 minutes; saving latest checkpoint
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+Saved latest=evaluations/v9_top1_punch_8h_latest.npz best=evaluations/v9_top1_punch_8h_best.npz bot_checkpoint=evaluations/v9_top1_punch_8h_policy.npz export_source=latest stop_reason=timeout

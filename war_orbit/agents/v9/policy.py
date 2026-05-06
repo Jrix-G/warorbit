@@ -165,6 +165,7 @@ class V9Policy:
         injected_plan_bias: Optional[Dict[str, float]] = None,
         front_pressure_plan_bias: float = 0.12,
         front_pressure_attack_penalty: float = 0.12,
+        four_p_front_budget: float = 2.7,
     ) -> List[Tuple[PlanCandidate, float, np.ndarray]]:
         state_feat = extract_state_features(world)
         scored: List[Tuple[PlanCandidate, float, np.ndarray]] = []
@@ -226,9 +227,16 @@ class V9Policy:
                 front_lock = float(metadata.get("front_lock", 0.0))
                 consolidation_threshold = float(metadata.get("consolidation_threshold", 0.0))
                 staged_finisher = float(metadata.get("staged_finisher", 0.0))
+                active_fronts = float(metadata.get("active_fronts", 0.0))
                 metadata_bonus += 0.36 * backbone
                 metadata_bonus += (0.12 + 0.14 * float(fronts)) * front_lock
                 metadata_bonus += 0.20 * consolidation_threshold
+                if active_fronts > 0.0:
+                    front_budget = max(1.0, float(four_p_front_budget))
+                    if active_fronts <= front_budget + 0.35 and (backbone > 0.0 or front_lock > 0.0):
+                        metadata_bonus += 0.06 + 0.04 * min(1.0, active_fronts / front_budget)
+                    elif active_fronts > front_budget + 0.75 and candidate.plan_type not in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
+                        metadata_bonus -= 0.06 * (active_fronts - front_budget)
                 if candidate.plan_type == "staging_transfer":
                     metadata_bonus += 0.10 + 0.16 * backbone + 0.08 * front_lock
                 if backbone > 0.0 and transfer >= 0.30 and attack < 0.35:
@@ -285,6 +293,7 @@ class V9Policy:
         injected_plan_bias: Optional[Dict[str, float]] = None,
         front_pressure_plan_bias: float = 0.12,
         front_pressure_attack_penalty: float = 0.12,
+        four_p_front_budget: float = 2.7,
         rng: Optional[random.Random] = None,
     ) -> Tuple[PlanCandidate, List[Tuple[PlanCandidate, float, np.ndarray]]]:
         scored = self.score_candidates(
@@ -296,6 +305,7 @@ class V9Policy:
             injected_plan_bias=injected_plan_bias,
             front_pressure_plan_bias=front_pressure_plan_bias,
             front_pressure_attack_penalty=front_pressure_attack_penalty,
+            four_p_front_budget=four_p_front_budget,
         )
         if not scored:
             return PlanCandidate("empty", [], "reserve_hold"), []
@@ -449,7 +459,8 @@ class V9Agent:
             front_anchor_id=self.front_lock_anchor,
             strict_single_target_4p=bool(getattr(self.config, "strict_single_target_4p", False)),
             disable_snipe_4p=bool(getattr(self.config, "disable_snipe_4p", False)),
-            max_focus_targets_4p=int(getattr(self.config, "max_focus_targets_4p", 2)),
+            max_focus_targets_4p=int(getattr(self.config, "max_focus_targets_4p", 3)),
+            four_p_front_budget=float(getattr(self.config, "four_p_front_budget", 2.7)),
             opening_punch_turns=int(getattr(self.config, "opening_punch_turns", 55)),
             opening_min_capture_send_2p=int(getattr(self.config, "opening_min_capture_send_2p", 14)),
             opening_min_capture_send_4p=int(getattr(self.config, "opening_min_capture_send_4p", 16)),
@@ -473,6 +484,7 @@ class V9Agent:
             injected_plan_bias=self.injected_plan_bias,
             front_pressure_plan_bias=self.config.front_pressure_plan_bias,
             front_pressure_attack_penalty=self.config.front_pressure_attack_penalty,
+            four_p_front_budget=float(getattr(self.config, "four_p_front_budget", 2.7)),
         )
         raw_scored.sort(key=lambda item: item[1], reverse=True)
         top = _diverse_top([c for c, _s, _f in raw_scored], self.config.search_width)
@@ -493,6 +505,7 @@ class V9Agent:
             injected_plan_bias=self.injected_plan_bias,
             front_pressure_plan_bias=self.config.front_pressure_plan_bias,
             front_pressure_attack_penalty=self.config.front_pressure_attack_penalty,
+            four_p_front_budget=float(getattr(self.config, "four_p_front_budget", 2.7)),
             rng=self.rng,
         )
         self.plan_history.append(best.plan_type)
