@@ -65,6 +65,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--front-lock-turns", type=int, default=24)
     parser.add_argument("--target-active-fronts", type=float, default=2.0)
     parser.add_argument("--target-backbone-turn-frac", type=float, default=0.15)
+    parser.add_argument("--front-budget-opening-4p", type=float, default=3.0)
+    parser.add_argument("--front-budget-midgame-4p", type=float, default=2.7)
+    parser.add_argument("--front-budget-late-4p", type=float, default=2.3)
     parser.add_argument("--front-penalty-weight", type=float, default=0.055)
     parser.add_argument("--front-penalty-cap", type=float, default=0.12)
     parser.add_argument("--front-ok-bonus", type=float, default=0.045)
@@ -73,6 +76,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--backbone-bonus-weight", type=float, default=0.060)
     parser.add_argument("--front-pressure-plan-bias", type=float, default=0.12)
     parser.add_argument("--front-pressure-attack-penalty", type=float, default=0.12)
+    parser.add_argument("--front-open-penalty-weight", type=float, default=0.10)
+    parser.add_argument("--front-close-bonus-weight", type=float, default=0.08)
+    parser.add_argument("--front-overlap-penalty-weight", type=float, default=0.08)
     parser.add_argument("--guardian-enabled", type=int, default=1)
     parser.add_argument("--guardian-min-benchmark-4p", type=float, default=0.42)
     parser.add_argument("--guardian-min-benchmark-backbone", type=float, default=0.08)
@@ -157,6 +163,9 @@ def main() -> None:
         front_lock_turns=args.front_lock_turns,
         target_active_fronts=args.target_active_fronts,
         target_backbone_turn_frac=args.target_backbone_turn_frac,
+        front_budget_opening_4p=args.front_budget_opening_4p,
+        front_budget_midgame_4p=args.front_budget_midgame_4p,
+        front_budget_late_4p=args.front_budget_late_4p,
         front_penalty_weight=args.front_penalty_weight,
         front_penalty_cap=args.front_penalty_cap,
         front_ok_bonus=args.front_ok_bonus,
@@ -165,6 +174,9 @@ def main() -> None:
         backbone_bonus_weight=args.backbone_bonus_weight,
         front_pressure_plan_bias=args.front_pressure_plan_bias,
         front_pressure_attack_penalty=args.front_pressure_attack_penalty,
+        front_open_penalty_weight=args.front_open_penalty_weight,
+        front_close_bonus_weight=args.front_close_bonus_weight,
+        front_overlap_penalty_weight=args.front_overlap_penalty_weight,
         guardian_enabled=bool(args.guardian_enabled),
         guardian_min_benchmark_4p=args.guardian_min_benchmark_4p,
         guardian_min_benchmark_backbone=args.guardian_min_benchmark_backbone,

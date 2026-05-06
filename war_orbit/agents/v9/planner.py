@@ -34,6 +34,12 @@ class PlanningParameters:
     opening_long_attack_risk_dist_4p: float = 55.0
     opening_source_commit_frac: float = 1.0
     four_p_front_budget: float = 2.7
+    front_budget_opening_4p: float = 3.0
+    front_budget_midgame_4p: float = 2.7
+    front_budget_late_4p: float = 2.3
+    front_open_penalty_weight: float = 0.10
+    front_close_bonus_weight: float = 0.08
+    front_overlap_penalty_weight: float = 0.08
     opening_close_neutral_bonus_4p: float = 0.10
     opening_low_prod_bonus_4p: float = 0.08
 
@@ -164,6 +170,17 @@ def _active_front_count(world, focus_enemy_id: Optional[int] = None) -> int:
     return count
 
 
+def _front_budget_for_world(world) -> float:
+    params = getattr(world, "_v9_params", PlanningParameters())
+    if not world.is_four_player:
+        return float(params.four_p_front_budget)
+    if world.is_opening:
+        return float(params.front_budget_opening_4p)
+    if world.is_late or world.is_very_late:
+        return float(params.front_budget_late_4p)
+    return float(params.front_budget_midgame_4p)
+
+
 CAPTURE_PUNCH_FAMILIES = {
     "balanced",
     "aggressive_expansion",
@@ -222,8 +239,13 @@ def _opening_neutral_targets(world, targets: Iterable[object]) -> List[object]:
 
 
 def _candidate_metadata(world, focus_enemy_id: Optional[int], anchor, **extra: float) -> Dict[str, float]:
+    active_fronts = float(_active_front_count(world, focus_enemy_id))
+    front_budget = _front_budget_for_world(world)
     meta: Dict[str, float] = {
-        "active_fronts": float(_active_front_count(world, focus_enemy_id)),
+        "active_fronts": active_fronts,
+        "front_phase_budget": front_budget,
+        "front_pressure": max(0.0, active_fronts - front_budget),
+        "front_room": max(0.0, front_budget - active_fronts),
     }
     if focus_enemy_id is not None:
         meta["focus_enemy_id"] = float(focus_enemy_id)
@@ -730,6 +752,8 @@ class V9Planner:
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
         anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
         active_fronts = _active_front_count(world, focus)
+        front_budget = _front_budget_for_world(world)
+        front_pressure = max(0.0, active_fronts - front_budget)
         b = MoveBuilder(world, reserve_scale=1.06, max_moves=self.params.max_moves_per_plan)
         score = _stage_to_front(
             b,
@@ -742,7 +766,8 @@ class V9Planner:
         if not b.moves:
             return None
         threshold_gap = max(0, 13 - len(world.my_planets))
-        score += 13.0 + 1.4 * threshold_gap + 2.2 * active_fronts
+        score += 13.0 + 1.4 * threshold_gap + 2.0 * active_fronts - 0.7 * front_pressure
+        score += float(self.params.front_close_bonus_weight) * max(0.0, front_budget - active_fronts)
         return PlanCandidate(
             "v9_4p_backbone",
             b.moves,
@@ -764,7 +789,7 @@ class V9Planner:
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
         anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
         active_fronts = _active_front_count(world, focus)
-        front_budget = float(self.params.four_p_front_budget)
+        front_budget = _front_budget_for_world(world)
         front_pressure = max(0.0, active_fronts - front_budget)
         under_threshold = len(world.my_planets) < 15 and world.step < 140
         if active_fronts <= 1 and not world.threatened_candidates and not world.doomed_candidates and not under_threshold:
@@ -782,6 +807,7 @@ class V9Planner:
         if not b.moves:
             return None
         score += 5.0 + 2.0 * active_fronts + 4.0 * front_pressure + (6.0 if under_threshold else 0.0)
+        score += float(self.params.front_close_bonus_weight) * max(0.0, front_budget - active_fronts)
         return PlanCandidate(
             "v9_front_lock_consolidation",
             b.moves,
@@ -801,7 +827,10 @@ class V9Planner:
             return None
         b = MoveBuilder(world, reserve_scale=1.05, max_moves=self.params.max_moves_per_plan)
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
-        high_front_pressure = world.is_four_player and _active_front_count(world, focus) > float(self.params.four_p_front_budget)
+        front_budget = _front_budget_for_world(world)
+        active_fronts = _active_front_count(world, focus)
+        front_pressure = max(0.0, active_fronts - front_budget)
+        high_front_pressure = world.is_four_player and active_fronts > front_budget
         score = _stage_to_front(
             b,
             ratio=0.64 if high_front_pressure else 0.58,
@@ -820,6 +849,7 @@ class V9Planner:
                 score += _commit_target(b, target, family="delayed_strike", aggression=1.02 if high_front_pressure else 1.08, max_sources=1, min_send=self.params.min_source_ships)
         if not b.moves:
             return None
+        score -= float(self.params.front_open_penalty_weight) * front_pressure
         return PlanCandidate(
             "v9_delayed_strike",
             b.moves,
@@ -834,6 +864,7 @@ class V9Planner:
         b = MoveBuilder(world, reserve_scale=1.10, max_moves=self.params.max_moves_per_plan)
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
         anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
+        front_pressure = max(0.0, _active_front_count(world, focus) - _front_budget_for_world(world))
         score = _stage_to_front(
             b,
             ratio=0.82,
@@ -844,6 +875,7 @@ class V9Planner:
         )
         if not b.moves:
             return None
+        score -= float(self.params.front_open_penalty_weight) * front_pressure
         return PlanCandidate(
             "v9_deep_staging",
             b.moves,
@@ -887,7 +919,7 @@ class V9Planner:
             return None
         b = MoveBuilder(world, reserve_scale=1.0, max_moves=self.params.max_moves_per_plan)
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
-        high_front_pressure = world.is_four_player and _active_front_count(world, focus) > float(self.params.four_p_front_budget)
+        high_front_pressure = world.is_four_player and _active_front_count(world, focus) > _front_budget_for_world(world)
         anchor = _frontier_anchor(world, focus, self.params.front_anchor_id)
         targets = sorted(
             world.enemy_planets,
@@ -1050,7 +1082,8 @@ class V9Planner:
         b = MoveBuilder(world, reserve_scale=0.82 if world.is_four_player else 0.72, max_moves=self.params.max_moves_per_plan)
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
         active_fronts = _active_front_count(world, focus) if world.is_four_player else 0
-        front_pressure = max(0, active_fronts - 2)
+        front_budget = _front_budget_for_world(world) if world.is_four_player else 2.0
+        front_pressure = max(0.0, active_fronts - front_budget)
         score = _commit_reinforcements(b, force=True)
         score += _stage_to_front(
             b,
@@ -1058,11 +1091,13 @@ class V9Planner:
             min_send=max(7, self.params.min_source_ships),
             focus_enemy_id=focus,
             preferred_anchor_id=self.params.front_anchor_id,
-            max_transfers=min(9, 6 + front_pressure) if world.is_four_player else None,
+            max_transfers=min(9, 6 + int(math.ceil(front_pressure))) if world.is_four_player else None,
         )
         if not b.moves:
             return None
         score += 4.0 * front_pressure + (4.0 if world.is_four_player else 0.0)
+        if world.is_four_player:
+            score += float(self.params.front_close_bonus_weight) * max(0.0, front_budget - active_fronts)
         return PlanCandidate(
             "v9_defensive_consolidation",
             b.moves,

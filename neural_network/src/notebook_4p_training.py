@@ -188,6 +188,9 @@ def _known_opponent_names(pool: Sequence[str]) -> List[str]:
     names = []
     external: Dict[str, Callable] | None = None
     for name in pool:
+        if name in {"self", "best_checkpoint", "latest_checkpoint"} or str(name).startswith("checkpoint:"):
+            names.append(str(name))
+            continue
         if name in LOCAL_ZOO:
             names.append(name)
             continue
@@ -238,6 +241,66 @@ def _reserve_planned_ships(game: Dict[str, Any], src_id: int, ships: int) -> Non
             return
 
 
+def _make_policy_agent(
+    model: NeuralNetworkModel,
+    config: Dict[str, Any],
+    temperature: float,
+    explore: bool,
+    log_probs: List[torch.Tensor] | None = None,
+    action_records: List[Dict[str, Any]] | None = None,
+):
+    log_probs = log_probs if log_probs is not None else []
+    action_records = action_records if action_records is not None else []
+
+    def agent(obs, _config=None):
+        game = obs_to_game_dict(obs)
+        ratios = _send_ratios(config)
+        min_expand_attack_ships = _min_expand_attack_ships(config)
+        max_actions = max(1, int(config.get("max_actions_per_turn", 4)))
+        planning_game = _copy_planning_game(game)
+        moves: list[list[int | float]] = []
+        for _ in range(max_actions):
+            encoded = encode_game_state(planning_game, config)
+            candidates = build_action_candidates(
+                planning_game,
+                send_ratios=ratios,
+                min_expand_attack_ships=min_expand_attack_ships,
+            )
+            candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
+            outputs = model(
+                torch.tensor(encoded.features, dtype=torch.float32),
+                torch.tensor(candidate_features, dtype=torch.float32),
+            )
+            cand, log_prob, entropy = choose_action_from_candidates(
+                outputs,
+                planning_game,
+                candidates,
+                temperature=temperature,
+                explore=explore,
+                return_entropy=True,
+                prior_strength=float(config.get("policy_prior_strength", 1.2)),
+            )
+            log_probs.append(log_prob)
+            action = reconstruct_action(cand, planning_game)
+            move = _candidate_move(planning_game, action)
+            executed_ships = int(move[0][2]) if move else 0
+            action_records.append(
+                {
+                    "mission": cand.mission if move else "do_nothing",
+                    "ships": executed_ships,
+                    "_value": outputs["value"].reshape(-1)[0],
+                    "_entropy": entropy,
+                }
+            )
+            if not move:
+                break
+            moves.extend(move)
+            _reserve_planned_ships(planning_game, action[0], executed_ships)
+        return moves
+
+    return agent
+
+
 def _send_ratios(config: Dict[str, Any]) -> Tuple[float, ...]:
     values = config.get("send_ratios", [0.5, 0.7, 0.9])
     ratios = tuple(float(v) for v in values if 0.0 < float(v) < 1.0)
@@ -249,10 +312,7 @@ def _min_expand_attack_ships(config: Dict[str, Any]) -> int:
 
 
 def _combine_terminal_dense_reward(terminal_reward: float, dense_reward: float) -> float:
-    total = float(terminal_reward) + float(dense_reward)
-    if float(terminal_reward) <= 0.0 and total > 0.0:
-        return 0.0
-    return total
+    return float(terminal_reward)
 
 
 def _official_fast_runner():
@@ -370,53 +430,16 @@ def _make_our_agent(
     temperature: float,
     explore: bool = True,
 ):
-    def agent(obs, _config=None):
-        game = obs_to_game_dict(obs)
-        ratios = _send_ratios(config)
-        min_expand_attack_ships = _min_expand_attack_ships(config)
-        max_actions = max(1, int(config.get("max_actions_per_turn", 4)))
-        planning_game = _copy_planning_game(game)
-        moves: list[list[int | float]] = []
-        for _ in range(max_actions):
-            encoded = encode_game_state(planning_game, config)
-            candidates = build_action_candidates(
-                planning_game,
-                send_ratios=ratios,
-                min_expand_attack_ships=min_expand_attack_ships,
-            )
-            candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
-            outputs = model(
-                torch.tensor(encoded.features, dtype=torch.float32),
-                torch.tensor(candidate_features, dtype=torch.float32),
-            )
-            cand, log_prob, entropy = choose_action_from_candidates(
-                outputs,
-                planning_game,
-                candidates,
-                temperature=temperature,
-                explore=explore,
-                return_entropy=True,
-                prior_strength=float(config.get("policy_prior_strength", 1.2)),
-            )
-            log_probs.append(log_prob)
-            action = reconstruct_action(cand, planning_game)
-            move = _candidate_move(planning_game, action)
-            executed_ships = int(move[0][2]) if move else 0
-            action_records.append(
-                {
-                    "mission": cand.mission if move else "do_nothing",
-                    "ships": executed_ships,
-                    "_value": outputs["value"].reshape(-1)[0],
-                    "_entropy": entropy,
-                }
-            )
-            if not move:
-                break
-            moves.extend(move)
-            _reserve_planned_ships(planning_game, action[0], executed_ships)
-        return moves
+    return _make_policy_agent(model, config, temperature, explore, log_probs=log_probs, action_records=action_records)
 
-    return agent
+
+def _make_model_agent(
+    model: NeuralNetworkModel,
+    config: Dict[str, Any],
+    temperature: float,
+    explore: bool = False,
+):
+    return _make_policy_agent(model, config, temperature, explore)
 
 
 def _sample_opponents(pool: Sequence[str], seed: int, count: int = 3) -> List[str]:
@@ -440,32 +463,35 @@ def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, 
             agents.append(our_agent)
         else:
             name = next(opp_iter, None)
-            agents.append(_agent_for_name(name or "random"))
+            if name == "self":
+                agents.append(_make_model_agent(model, config, temperature, explore=False))
+            elif name in {"best_checkpoint", "latest_checkpoint"} or (isinstance(name, str) and name.startswith("checkpoint:")):
+                checkpoint_value = config.get("best_checkpoint" if name == "best_checkpoint" else "latest_checkpoint") if name in {"best_checkpoint", "latest_checkpoint"} else name.split(":", 1)[1]
+                checkpoint = Path(str(checkpoint_value))
+                if checkpoint.exists():
+                    checkpoint_model = NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(config), hidden_dim=int(config.get("hidden_dim", 256))))
+                    state, _ = load_checkpoint(checkpoint)
+                    load_compatible_state_dict(checkpoint_model, state)
+                    agents.append(_make_model_agent(checkpoint_model, config, temperature, explore=False))
+                else:
+                    agents.append(_agent_for_name("random"))
+            else:
+                agents.append(_agent_for_name(name or "random"))
     return agents, log_probs, action_records, opp_names
 
 
 def _episode_reward(result: Dict[str, Any], our_index: int) -> float:
     """
-    Reward terminale centrée sur la victoire.
-    Rang 1 -> +1.0 | Rang 2 -> 0.0 | Rang 3 -> -0.5 | Rang 4 -> -1.0
-    La deuxieme place n'est plus une "petite victoire": elle ne rapporte rien.
+    Reward terminal binaire.
+    Victoire -> +1.0 | toute autre place -> -1.0.
     """
     scores = result.get("scores", [])
     ordered = sorted(
         ((float(score), idx) for idx, score in enumerate(scores)),
         reverse=True,
     )
-    rank = next(
-        (r for r, (_, idx) in enumerate(ordered, start=1) if idx == our_index),
-        4,
-    )
-    reward_by_rank = {
-        1: 1.0,
-        2: 0.0,
-        3: -0.5,
-        4: -1.0,
-    }
-    return float(reward_by_rank.get(rank, -1.0))
+    winner = ordered[0][1] if ordered else None
+    return 1.0 if winner == our_index else -1.0
 
 
 def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:

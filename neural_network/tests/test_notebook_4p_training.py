@@ -2,6 +2,7 @@ from pathlib import Path
 
 from neural_network.scripts.run_notebook_4p_training import _prepare_config
 from neural_network.scripts.run_90min_6agent_training import _prepare_config as _prepare_population_config
+from neural_network.scripts.run_24h_open_self_play import _prepare_config as _prepare_open_self_play_config
 from neural_network.src.model import ModelConfig, NeuralNetworkModel, count_parameters
 from neural_network.src.population_4p_training import (
     _composite_score,
@@ -15,7 +16,7 @@ from neural_network.src.population_4p_training import (
     _training_base_checkpoint,
     DEFAULT_CURRICULUM_TIERS,
 )
-from neural_network.src.notebook_4p_training import _combine_terminal_dense_reward, _episode_reward
+from neural_network.src.notebook_4p_training import _build_agents, _combine_terminal_dense_reward, _episode_reward
 from neural_network.src.trajectory import safe_plan_shot
 
 
@@ -55,6 +56,20 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     assert out["dense_reward_clip"] == 0.35
 
 
+def test_open_self_play_config_prefers_sparse_minimal_training():
+    cfg = {"checkpoint_dir": "x", "log_dir": "y", "seed": 42}
+    out = _prepare_open_self_play_config(cfg, 1440.0, 4, 16, "run_24h_test")
+    assert out["duration_minutes"] == 1440.0
+    assert out["dense_reward_enabled"] is False
+    assert out["imitation_warmstart_steps"] == 0
+    assert out["policy_prior_strength"] == 0.0
+    assert out["resume_from_tier_best"] is False
+    assert out["log_direct_path"].replace("\\", "/").endswith("run_24h_test/log_direct.txt")
+    assert out["opponent_curriculum_tiers"][0]["opponents"] == ["random", "greedy", "starter"]
+    assert out["opponent_curriculum_tiers"][1]["opponents"] == ["self", "random", "greedy"]
+    assert out["opponent_curriculum_tiers"][2]["opponents"] == ["self"]
+
+
 def test_population_config_resumes_from_best_and_confirms_promotions():
     cfg = {
         "checkpoint_dir": "x",
@@ -79,15 +94,15 @@ def test_population_promotion_requires_real_improvement():
 
 def test_rank_reward_prioritizes_wins_over_second_place():
     assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 0) == 1.0
-    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 1) == 0.0
-    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 2) == -0.5
+    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 1) == -1.0
+    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 2) == -1.0
     assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 3) == -1.0
 
 
-def test_dense_reward_cannot_make_second_place_positive():
+def test_terminal_reward_is_not_shaped_by_dense_bonus():
     assert _combine_terminal_dense_reward(0.0, 0.35) == 0.0
-    assert abs(_combine_terminal_dense_reward(-0.5, 0.35) - -0.15) < 1e-9
-    assert _combine_terminal_dense_reward(1.0, 0.35) == 1.35
+    assert _combine_terminal_dense_reward(-1.0, 0.35) == -1.0
+    assert _combine_terminal_dense_reward(1.0, 0.35) == 1.0
 
 
 def test_population_uses_tier_checkpoint_when_available(tmp_path):
@@ -169,6 +184,23 @@ def test_population_curriculum_starts_weak_and_advances():
     )
     assert advanced
     assert tiers[state["tier_index"]]["name"] == "heuristic_500"
+
+
+def test_notebook_build_agents_supports_self_play_opponent():
+    model = NeuralNetworkModel(ModelConfig(input_dim=10))
+    agents, log_probs, action_records, opp_names = _build_agents(
+        model,
+        {"max_actions_per_turn": 1, "policy_prior_strength": 0.0, "train_notebook_opponents": 3},
+        seed=7,
+        our_index=0,
+        temperature=1.0,
+        pool=["self"],
+        explore=False,
+    )
+    assert len(agents) == 4
+    assert opp_names == ["self", "self", "self"]
+    assert len(log_probs) == 0
+    assert len(action_records) == 0
 
 
 def test_population_config_caps_duration_at_eight_hours():

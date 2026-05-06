@@ -38,6 +38,9 @@ class V9Config:
     front_lock_turns: int = 24
     target_active_fronts: float = 2.7
     four_p_front_budget: float = 2.7
+    front_budget_opening_4p: float = 3.0
+    front_budget_midgame_4p: float = 2.7
+    front_budget_late_4p: float = 2.3
     target_backbone_turn_frac: float = 0.15
     front_penalty_weight: float = 0.055
     front_penalty_cap: float = 0.12
@@ -47,6 +50,9 @@ class V9Config:
     backbone_bonus_weight: float = 0.060
     front_pressure_plan_bias: float = 0.12
     front_pressure_attack_penalty: float = 0.12
+    front_open_penalty_weight: float = 0.10
+    front_close_bonus_weight: float = 0.08
+    front_overlap_penalty_weight: float = 0.08
     opening_close_neutral_bonus_4p: float = 0.10
     opening_low_prod_bonus_4p: float = 0.08
     seed: int = 9009
@@ -172,6 +178,9 @@ class V9Config:
             "front_lock_turns",
             "target_active_fronts",
             "four_p_front_budget",
+            "front_budget_opening_4p",
+            "front_budget_midgame_4p",
+            "front_budget_late_4p",
             "target_backbone_turn_frac",
             "front_penalty_weight",
             "front_penalty_cap",
@@ -181,6 +190,9 @@ class V9Config:
             "backbone_bonus_weight",
             "front_pressure_plan_bias",
             "front_pressure_attack_penalty",
+            "front_open_penalty_weight",
+            "front_close_bonus_weight",
+            "front_overlap_penalty_weight",
             "opening_close_neutral_bonus_4p",
             "opening_low_prod_bonus_4p",
             "guardian_enabled",

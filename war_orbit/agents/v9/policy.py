@@ -166,6 +166,9 @@ class V9Policy:
         front_pressure_plan_bias: float = 0.12,
         front_pressure_attack_penalty: float = 0.12,
         four_p_front_budget: float = 2.7,
+        front_open_penalty_weight: float = 0.10,
+        front_close_bonus_weight: float = 0.08,
+        front_overlap_penalty_weight: float = 0.08,
     ) -> List[Tuple[PlanCandidate, float, np.ndarray]]:
         state_feat = extract_state_features(world)
         scored: List[Tuple[PlanCandidate, float, np.ndarray]] = []
@@ -228,15 +231,17 @@ class V9Policy:
                 consolidation_threshold = float(metadata.get("consolidation_threshold", 0.0))
                 staged_finisher = float(metadata.get("staged_finisher", 0.0))
                 active_fronts = float(metadata.get("active_fronts", 0.0))
+                front_budget = max(1.0, float(metadata.get("front_phase_budget", four_p_front_budget)))
+                front_pressure = max(0.0, active_fronts - front_budget)
+                front_room = max(0.0, front_budget - active_fronts)
                 metadata_bonus += 0.36 * backbone
                 metadata_bonus += (0.12 + 0.14 * float(fronts)) * front_lock
                 metadata_bonus += 0.20 * consolidation_threshold
                 if active_fronts > 0.0:
-                    front_budget = max(1.0, float(four_p_front_budget))
                     if active_fronts <= front_budget + 0.35 and (backbone > 0.0 or front_lock > 0.0):
-                        metadata_bonus += 0.06 + 0.04 * min(1.0, active_fronts / front_budget)
+                        metadata_bonus += float(front_close_bonus_weight) + 0.04 * min(1.0, active_fronts / front_budget)
                     elif active_fronts > front_budget + 0.75 and candidate.plan_type not in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
-                        metadata_bonus -= 0.06 * (active_fronts - front_budget)
+                        metadata_bonus -= float(front_open_penalty_weight) * (active_fronts - front_budget)
                 if candidate.plan_type == "staging_transfer":
                     metadata_bonus += 0.10 + 0.16 * backbone + 0.08 * front_lock
                 if backbone > 0.0 and transfer >= 0.30 and attack < 0.35:
@@ -264,7 +269,9 @@ class V9Policy:
                     if attack > 0.35 and transfer < 0.18 and not finisher_ready:
                         metadata_bonus -= 0.10 + 0.10 * front_pressure
                 if fronts > 0.42 and candidate.plan_type not in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
-                    metadata_bonus -= 0.10 * float(fronts)
+                    metadata_bonus -= float(front_overlap_penalty_weight) * float(fronts)
+                if front_room > 0.0 and candidate.plan_type in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
+                    metadata_bonus += 0.03 * min(1.0, front_room / front_budget)
                 focus = metadata.get("focus_enemy_id")
                 if focus is not None and world.weakest_enemy_id is not None and int(focus) == int(world.weakest_enemy_id):
                     metadata_bonus += 0.05
@@ -294,6 +301,9 @@ class V9Policy:
         front_pressure_plan_bias: float = 0.12,
         front_pressure_attack_penalty: float = 0.12,
         four_p_front_budget: float = 2.7,
+        front_open_penalty_weight: float = 0.10,
+        front_close_bonus_weight: float = 0.08,
+        front_overlap_penalty_weight: float = 0.08,
         rng: Optional[random.Random] = None,
     ) -> Tuple[PlanCandidate, List[Tuple[PlanCandidate, float, np.ndarray]]]:
         scored = self.score_candidates(
@@ -306,6 +316,9 @@ class V9Policy:
             front_pressure_plan_bias=front_pressure_plan_bias,
             front_pressure_attack_penalty=front_pressure_attack_penalty,
             four_p_front_budget=four_p_front_budget,
+            front_open_penalty_weight=front_open_penalty_weight,
+            front_close_bonus_weight=front_close_bonus_weight,
+            front_overlap_penalty_weight=front_overlap_penalty_weight,
         )
         if not scored:
             return PlanCandidate("empty", [], "reserve_hold"), []
@@ -471,6 +484,12 @@ class V9Agent:
             opening_close_neutral_dist_4p=float(getattr(self.config, "opening_close_neutral_dist_4p", 42.0)),
             opening_long_attack_risk_dist_4p=float(getattr(self.config, "opening_long_attack_risk_dist_4p", 55.0)),
             opening_source_commit_frac=float(getattr(self.config, "opening_source_commit_frac", 1.0)),
+            front_budget_opening_4p=float(getattr(self.config, "front_budget_opening_4p", 3.0)),
+            front_budget_midgame_4p=float(getattr(self.config, "front_budget_midgame_4p", 2.7)),
+            front_budget_late_4p=float(getattr(self.config, "front_budget_late_4p", 2.3)),
+            front_open_penalty_weight=float(getattr(self.config, "front_open_penalty_weight", 0.10)),
+            front_close_bonus_weight=float(getattr(self.config, "front_close_bonus_weight", 0.08)),
+            front_overlap_penalty_weight=float(getattr(self.config, "front_overlap_penalty_weight", 0.08)),
         ))
         candidates = planner.generate(world, self.rng)
         if not candidates:
@@ -485,6 +504,9 @@ class V9Agent:
             front_pressure_plan_bias=self.config.front_pressure_plan_bias,
             front_pressure_attack_penalty=self.config.front_pressure_attack_penalty,
             four_p_front_budget=float(getattr(self.config, "four_p_front_budget", 2.7)),
+            front_open_penalty_weight=float(getattr(self.config, "front_open_penalty_weight", 0.10)),
+            front_close_bonus_weight=float(getattr(self.config, "front_close_bonus_weight", 0.08)),
+            front_overlap_penalty_weight=float(getattr(self.config, "front_overlap_penalty_weight", 0.08)),
         )
         raw_scored.sort(key=lambda item: item[1], reverse=True)
         top = _diverse_top([c for c, _s, _f in raw_scored], self.config.search_width)
@@ -506,6 +528,9 @@ class V9Agent:
             front_pressure_plan_bias=self.config.front_pressure_plan_bias,
             front_pressure_attack_penalty=self.config.front_pressure_attack_penalty,
             four_p_front_budget=float(getattr(self.config, "four_p_front_budget", 2.7)),
+            front_open_penalty_weight=float(getattr(self.config, "front_open_penalty_weight", 0.10)),
+            front_close_bonus_weight=float(getattr(self.config, "front_close_bonus_weight", 0.08)),
+            front_overlap_penalty_weight=float(getattr(self.config, "front_overlap_penalty_weight", 0.08)),
             rng=self.rng,
         )
         self.plan_history.append(best.plan_type)

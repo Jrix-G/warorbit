@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from neural_network.src.policy import build_action_candidates, choose_action, is_valid_action, _candidate_prior
+from neural_network.src.policy import ActionCandidate, build_action_candidates, choose_action, choose_action_from_candidates, is_valid_action, _candidate_prior
 from neural_network.src.model import NeuralNetworkModel, ModelConfig
 
 
@@ -60,3 +60,18 @@ def test_min_expand_attack_ships_filters_micro_expansions():
     candidates = build_action_candidates(game, send_ratios=[0.02, 0.5], min_expand_attack_ships=6)
     assert all(c.amount >= 6 for c in candidates if c.mission in {"expand", "attack"})
     assert not any(c.mission == "expand" and c.amount == 1 for c in candidates)
+
+
+def test_policy_falls_back_when_every_candidate_is_invalid():
+    game = sample_game()
+    model = NeuralNetworkModel(ModelConfig(input_dim=10))
+    state = torch.zeros(1, 10)
+    candidates = [
+        ActionCandidate(0, 1, 1, "attack", np.zeros(16, dtype=np.float32), valid=False),
+        ActionCandidate(0, 1, 2, "attack", np.zeros(16, dtype=np.float32), valid=False),
+    ]
+    feats = torch.tensor(np.stack([c.score_features for c in candidates]), dtype=torch.float32).unsqueeze(0)
+    out = model(state, feats)
+    chosen, log_prob = choose_action_from_candidates(out, game, candidates, explore=False)
+    assert chosen == candidates[0]
+    assert float(log_prob.item()) == 0.0

@@ -149,6 +149,30 @@ def is_valid_action(candidate: ActionCandidate, game: Dict[str, Any], check_traj
     return (not check_trajectory) or safe_plan_shot(src, tgt, game) is not None
 
 
+def candidate_valid_mask(
+    candidates: Sequence[ActionCandidate],
+    game: Dict[str, Any],
+    check_trajectory: bool = False,
+) -> torch.Tensor:
+    return torch.tensor(
+        [is_valid_action(candidate, game, check_trajectory=check_trajectory) for candidate in candidates],
+        dtype=torch.bool,
+    )
+
+
+def apply_action_mask(logits: torch.Tensor, valid_mask: torch.Tensor) -> torch.Tensor:
+    if valid_mask.dtype != torch.bool:
+        valid_mask = valid_mask.to(dtype=torch.bool)
+    if valid_mask.dim() != logits.dim():
+        raise ValueError("valid_mask must have the same rank as logits")
+    if logits.shape != valid_mask.shape:
+        raise ValueError("valid_mask must match logits shape")
+    masked = logits.clone()
+    min_value = torch.finfo(masked.dtype).min if masked.dtype.is_floating_point else -1e9
+    masked = masked.masked_fill(~valid_mask, min_value)
+    return masked
+
+
 def choose_action(
     outputs: Dict[str, torch.Tensor],
     game: Dict[str, Any],
@@ -193,8 +217,16 @@ def choose_action_from_candidates(
     if prior_strength:
         priors = torch.tensor([_candidate_prior(c, game) for c in candidates], dtype=torch.float32, device=masked_logits.device)
         masked_logits = masked_logits + float(prior_strength) * priors
-    valid_mask = torch.tensor([is_valid_action(c, game, check_trajectory=False) for c in candidates], dtype=torch.bool, device=masked_logits.device)
-    masked_logits = masked_logits.masked_fill(~valid_mask, -1e9)
+    valid_mask = candidate_valid_mask(candidates, game, check_trajectory=False).to(device=masked_logits.device)
+    if not bool(valid_mask.any()):
+        fallback_idx = next((idx for idx, candidate in enumerate(candidates) if candidate.mission == "do_nothing"), 0)
+        fallback = candidates[int(fallback_idx)]
+        log_prob = torch.zeros((), dtype=masked_logits.dtype, device=masked_logits.device)
+        entropy = torch.zeros((), dtype=masked_logits.dtype, device=masked_logits.device)
+        if return_entropy:
+            return fallback, log_prob, entropy
+        return fallback, log_prob
+    masked_logits = apply_action_mask(masked_logits, valid_mask)
     probs = torch.softmax(masked_logits, dim=-1)
     dist = Categorical(probs=probs)
     idx = dist.sample() if explore else torch.argmax(probs)

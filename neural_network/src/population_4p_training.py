@@ -4,6 +4,7 @@ import json
 import multiprocessing as mp
 import random
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
@@ -38,7 +39,24 @@ from .storage import append_jsonl, load_checkpoint, save_checkpoint
 from .torch_compat import ensure_torch_dynamo_stub
 from .utils import ensure_dir
 
-MAX_DURATION_MINUTES = 480.0
+MAX_DURATION_MINUTES = 1440.0
+
+_RUN_LOG_PATH: Path | None = None
+
+
+def configure_run_logging(path: str | Path | None) -> None:
+    global _RUN_LOG_PATH
+    _RUN_LOG_PATH = Path(path) if path else None
+
+
+def _log(message: str) -> None:
+    stamp = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+    line = f"[{stamp}] {message}"
+    print(line, flush=True)
+    if _RUN_LOG_PATH is not None:
+        _RUN_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _RUN_LOG_PATH.open("a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
 
 DEFAULT_CURRICULUM_TIERS: List[Dict[str, Any]] = [
     {
@@ -644,8 +662,8 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
             use_c_accel=bool(config.get("official_fast_c_accel", True)),
         )
         terminal_reward = _episode_reward(result, our_index)
-        dense_reward = _strategic_dense_reward(result, our_index, config) if bool(config.get("dense_reward_enabled", True)) else 0.0
-        reward = _combine_terminal_dense_reward(terminal_reward, dense_reward)
+        dense_reward = 0.0
+        reward = terminal_reward
         action_metrics = _action_summary(action_records)
         scores = result.get("scores", [])
         ordered = sorted(((float(score), idx) for idx, score in enumerate(scores)), reverse=True)
@@ -739,10 +757,7 @@ def _run_parallel(tasks: List[Dict[str, Any]], workers: int, fn, label: str, sta
         if deadline_epoch > 0.0 and time.time() >= deadline_epoch:
             return []
         results = [fn(tasks[0])]
-        print(
-            f"{label} done 1/{len(tasks)} elapsed={(time.time() - started_at)/60.0:.1f}m",
-            flush=True,
-        )
+        _log(f"{label} done 1/{len(tasks)} elapsed={(time.time() - started_at)/60.0:.1f}m")
         return results
 
     results: List[Dict[str, Any]] = []
@@ -754,10 +769,7 @@ def _run_parallel(tasks: List[Dict[str, Any]], workers: int, fn, label: str, sta
             if deadline_epoch > 0.0 and time.time() >= deadline_epoch:
                 process_pool.terminate()
                 process_pool.join()
-                print(
-                    f"{label} hard_deadline_reached elapsed={(time.time() - started_at)/60.0:.1f}m",
-                    flush=True,
-                )
+                _log(f"{label} hard_deadline_reached elapsed={(time.time() - started_at)/60.0:.1f}m")
                 return results
             newly_done = []
             for idx, job in enumerate(pending):
@@ -765,7 +777,7 @@ def _run_parallel(tasks: List[Dict[str, Any]], workers: int, fn, label: str, sta
                     try:
                         results.append(job.get())
                     except Exception as exc:
-                        print(f"{label} task_failed {type(exc).__name__}: {exc}", flush=True)
+                        _log(f"{label} task_failed {type(exc).__name__}: {exc}")
                     newly_done.append(idx)
             if not newly_done:
                 time.sleep(0.2)
@@ -773,10 +785,7 @@ def _run_parallel(tasks: List[Dict[str, Any]], workers: int, fn, label: str, sta
             for idx in reversed(newly_done):
                 pending.pop(idx)
                 done += 1
-                print(
-                    f"{label} done {done}/{len(tasks)} elapsed={(time.time() - started_at)/60.0:.1f}m",
-                    flush=True,
-                )
+                _log(f"{label} done {done}/{len(tasks)} elapsed={(time.time() - started_at)/60.0:.1f}m")
     return results
 
 
@@ -863,10 +872,9 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
         remaining_seconds = deadline_epoch - time.time()
         min_generation_seconds = max(0.0, float(cfg.get("min_generation_remaining_minutes", 0.0)) * 60.0)
         if min_generation_seconds > 0.0 and remaining_seconds < min_generation_seconds:
-            print(
+            _log(
                 f"stopping before generation {generation}: remaining={remaining_seconds/60.0:.1f}m "
-                f"< min_generation_remaining={min_generation_seconds/60.0:.1f}m",
-                flush=True,
+                f"< min_generation_remaining={min_generation_seconds/60.0:.1f}m"
             )
             break
         current_tier = _current_tier(curriculum_state, tiers) if curriculum_enabled else current_tier
@@ -881,11 +889,10 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             curriculum_state.setdefault("tier_best_scores", {})[tier_name] = tier_best_score
         tier_eval_default = min(eval_episodes, int(current_tier.get("candidate_eval_episodes", candidate_eval_episodes)))
         active_candidate_eval_episodes = max(4, int(cfg.get("candidate_eval_episodes", tier_eval_default)))
-        print(
+        _log(
             f"generation {generation} start elapsed={elapsed/60.0:.1f}m "
             f"global_best={global_best_score:.3f} tier_best={tier_best_score:.3f} tier={tier_name} pool={len(pool)} "
-            f"workers={workers} eval_fast={active_candidate_eval_episodes}",
-            flush=True,
+            f"workers={workers} eval_fast={active_candidate_eval_episodes}"
         )
         if time.time() >= deadline_epoch:
             break
@@ -910,7 +917,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
 
         candidates = _run_parallel(tasks, workers, _worker_train_candidate, f"generation {generation} train", started_at, deadline_epoch)
         if not candidates:
-            print("hard stop: no completed training candidates before deadline", flush=True)
+            _log("hard stop: no completed training candidates before deadline")
             break
 
         eval_tasks = [
@@ -927,7 +934,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
         ]
         eval_results = _run_parallel(eval_tasks, workers, _worker_evaluate_candidate, f"generation {generation} fast_eval", started_at, deadline_epoch)
         if not eval_results:
-            print("hard stop: no completed evaluation before deadline", flush=True)
+            _log("hard stop: no completed evaluation before deadline")
             break
 
         evaluated: List[Dict[str, Any]] = []
@@ -976,7 +983,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             }
             evaluated.append({"record": record, "state": candidate["state"]})
         if not evaluated:
-            print("hard stop: no candidate had completed eval record before deadline", flush=True)
+            _log("hard stop: no candidate had completed eval record before deadline")
             break
 
         evaluated.sort(key=lambda item: _score_record(item["record"]), reverse=True)
@@ -1126,7 +1133,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             tier_best_checkpoint=str(current_tier_checkpoint_path),
         )
 
-        print(
+        _log(
             f"generation {generation} candidate_score={generation_best['record']['score']:.3f} "
             f"winrate={generation_best['record'].get('winrate', 0.0):.3f} "
             f"rank={generation_best['record'].get('rank_mean', 4.0):.2f} "
@@ -1134,8 +1141,7 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             f"promoted={int(bool(generation_best['record'].get('checkpoint_promoted', False)))} "
             f"global_best={global_best_score:.3f} tier_best={tier_best_score:.3f} "
             f"eval_tier={tier_name} next_tier={current_tier.get('name')} "
-            f"params={parameter_count} pool={len(pool)}",
-            flush=True,
+            f"params={parameter_count} pool={len(pool)}"
         )
         generation += 1
 
