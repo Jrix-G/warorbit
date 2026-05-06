@@ -235,14 +235,33 @@ def _composite_score(record: Dict[str, Any]) -> float:
     avg_score = _clip01(float(record.get("avg_score", 0.0)) / 1000.0)
     do_nothing = _clip01(float(record.get("eval_do_nothing_rate", record.get("do_nothing_rate", 1.0))))
     ships_sent = _clip01(float(record.get("eval_avg_ships_sent", record.get("avg_ships_sent", 0.0))) / 50.0)
+    inactivity_excess = _clip01((do_nothing - 0.55) / 0.45)
     return float(
-        0.50 * winrate
-        + 0.25 * rank_score
-        + 0.15 * reward_score
-        + 0.05 * avg_score
-        + 0.05 * ships_sent
-        - 0.10 * do_nothing
+        0.52 * winrate
+        + 0.22 * rank_score
+        + 0.12 * reward_score
+        + 0.04 * avg_score
+        + 0.10 * ships_sent
+        - 0.18 * do_nothing
+        - 0.22 * (inactivity_excess * inactivity_excess)
     )
+
+
+def _activity_shaping_reward(action_metrics: Dict[str, Any], config: Dict[str, Any]) -> float:
+    do_nothing = _clip01(float(action_metrics.get("do_nothing_rate", 1.0)))
+    real_action_count = float(action_metrics.get("real_action_count", 0.0))
+    avg_ships_sent = float(action_metrics.get("avg_ships_sent", 0.0))
+    target_noop = _clip01(float(config.get("train_target_do_nothing_rate", 0.55)))
+    noop_penalty_coef = max(0.0, float(config.get("train_noop_penalty_coef", 0.30)))
+    action_bonus_coef = max(0.0, float(config.get("train_action_bonus_coef", 0.08)))
+    ships_bonus_coef = max(0.0, float(config.get("train_ships_sent_bonus_coef", 0.04)))
+    limit = max(0.0, float(config.get("train_activity_reward_clip", 0.35)))
+    reward = 0.0
+    if do_nothing > target_noop:
+        reward -= noop_penalty_coef * ((do_nothing - target_noop) / max(1e-6, 1.0 - target_noop))
+    reward += action_bonus_coef * _clip01(real_action_count / max(1.0, float(config.get("max_actions_per_turn", 4))))
+    reward += ships_bonus_coef * _clip01(avg_ships_sent / 40.0)
+    return float(max(-limit, min(limit, reward)))
 
 
 def _score_record(record: Dict[str, Any]) -> tuple[float, float, float, float, float, float]:
@@ -427,8 +446,25 @@ def _promotion_min_winrate(tier: Dict[str, Any], config: Dict[str, Any]) -> floa
     return max(0.125, min(0.35, advance_winrate * 0.5))
 
 
-def _should_try_promotion(record: Dict[str, Any], best_score: float, margin: float, min_winrate: float = 0.0) -> bool:
+def _promotion_max_do_nothing_rate(tier: Dict[str, Any], config: Dict[str, Any]) -> float | None:
+    if "promotion_max_do_nothing_rate" in config:
+        return _clip01(float(config["promotion_max_do_nothing_rate"]))
+    return None
+
+
+def _should_try_promotion(
+    record: Dict[str, Any],
+    best_score: float,
+    margin: float,
+    min_winrate: float = 0.0,
+    max_do_nothing_rate: float | None = None,
+    min_avg_ships_sent: float = 0.0,
+) -> bool:
     if float(record.get("winrate", 0.0)) < float(min_winrate):
+        return False
+    if max_do_nothing_rate is not None and float(record.get("eval_do_nothing_rate", 1.0)) > float(max_do_nothing_rate):
+        return False
+    if float(min_avg_ships_sent) > 0.0 and float(record.get("eval_avg_ships_sent", 0.0)) < float(min_avg_ships_sent):
         return False
     if best_score < -1e8:
         return True
@@ -663,8 +699,11 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
         )
         terminal_reward = _episode_reward(result, our_index)
         dense_reward = 0.0
-        reward = terminal_reward
         action_metrics = _action_summary(action_records)
+        if bool(config.get("dense_reward_enabled", True)):
+            dense_reward = _strategic_dense_reward(result, our_index, config)
+        activity_reward = _activity_shaping_reward(action_metrics, config)
+        reward = float(terminal_reward + dense_reward + activity_reward)
         scores = result.get("scores", [])
         ordered = sorted(((float(score), idx) for idx, score in enumerate(scores)), reverse=True)
         rank = next((rank for rank, (_, idx) in enumerate(ordered, start=1) if idx == our_index), 4)
@@ -696,6 +735,7 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
             "reward": reward,
             "terminal_reward": terminal_reward,
             "dense_reward": dense_reward,
+            "activity_reward": activity_reward,
             "baseline": baseline,
             "temperature": temperature,
             "entropy_coef": entropy_coef,
@@ -883,6 +923,8 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
         tier_best_score = _best_for_tier(curriculum_state, tier_name) if curriculum_enabled else global_best_score
         tier_checkpoint_path = _tier_best_checkpoint_path(cfg, checkpoint_dir, tier_name)
         promotion_min_winrate = _promotion_min_winrate(current_tier, cfg)
+        promotion_max_do_nothing_rate = _promotion_max_do_nothing_rate(current_tier, cfg)
+        promotion_min_avg_ships_sent = max(0.0, float(cfg.get("promotion_min_avg_ships_sent", 0.0)))
         if curriculum_enabled and tier_best_score < -1e8 and tier_checkpoint_path.exists():
             _, tier_metadata = load_checkpoint(tier_checkpoint_path)
             tier_best_score = _checkpoint_score(tier_metadata)
@@ -996,6 +1038,8 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
             tier_best_score,
             promotion_margin,
             min_winrate=promotion_min_winrate,
+            max_do_nothing_rate=promotion_max_do_nothing_rate,
+            min_avg_ships_sent=promotion_min_avg_ships_sent,
         )
         enough_time_for_confirmation = deadline_epoch - time.time() >= promotion_min_remaining_seconds
         can_bootstrap_without_confirmation = (
@@ -1029,6 +1073,8 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 tier_best_score,
                 promotion_margin,
                 min_winrate=promotion_min_winrate,
+                max_do_nothing_rate=promotion_max_do_nothing_rate,
+                min_avg_ships_sent=promotion_min_avg_ships_sent,
             ):
                 generation_best["record"]["promotion_reason"] = (
                     f"confirmed best score {promoted_score:.4f} with winrate {generation_best['record'].get('winrate', 0.0):.4f}"
@@ -1053,8 +1099,12 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                     f"promotion rejected after confirmation "
                     f"score={generation_best['record']['score']:.4f} "
                     f"winrate={generation_best['record'].get('winrate', 0.0):.4f} "
+                    f"noop={generation_best['record'].get('eval_do_nothing_rate', 1.0):.4f} "
+                    f"ships_sent={generation_best['record'].get('eval_avg_ships_sent', 0.0):.4f} "
                     f"required_score={tier_best_score + promotion_margin:.4f} "
-                    f"required_winrate={promotion_min_winrate:.4f}"
+                    f"required_winrate={promotion_min_winrate:.4f} "
+                    f"max_noop={promotion_max_do_nothing_rate if promotion_max_do_nothing_rate is not None else 'none'} "
+                    f"min_ships_sent={promotion_min_avg_ships_sent:.4f}"
                 )
                 fallback_base = _fallback_base_checkpoint(resume, best_path, latest_path)
                 base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)
@@ -1087,6 +1137,14 @@ def run_population_4p_training(config: Dict[str, Any], resume: bool = True) -> D
                 if float(generation_best["record"].get("winrate", 0.0)) < promotion_min_winrate:
                     generation_best["record"]["promotion_reason"] = (
                         f"promotion gated by low winrate {generation_best['record'].get('winrate', 0.0):.4f} < {promotion_min_winrate:.4f}"
+                    )
+                elif promotion_max_do_nothing_rate is not None and float(generation_best["record"].get("eval_do_nothing_rate", 1.0)) > promotion_max_do_nothing_rate:
+                    generation_best["record"]["promotion_reason"] = (
+                        f"promotion gated by high noop {generation_best['record'].get('eval_do_nothing_rate', 1.0):.4f} > {promotion_max_do_nothing_rate:.4f}"
+                    )
+                elif promotion_min_avg_ships_sent > 0.0 and float(generation_best["record"].get("eval_avg_ships_sent", 0.0)) < promotion_min_avg_ships_sent:
+                    generation_best["record"]["promotion_reason"] = (
+                        f"promotion gated by low ships_sent {generation_best['record'].get('eval_avg_ships_sent', 0.0):.4f} < {promotion_min_avg_ships_sent:.4f}"
                     )
                 fallback_base = _fallback_base_checkpoint(resume, best_path, latest_path)
                 base_checkpoint = _next_base_checkpoint(cfg, resume, tier_checkpoint_path, base_checkpoint, fallback_base)

@@ -33,15 +33,15 @@ class PlanningParameters:
     opening_close_neutral_dist_4p: float = 42.0
     opening_long_attack_risk_dist_4p: float = 55.0
     opening_source_commit_frac: float = 1.0
-    four_p_front_budget: float = 2.7
-    front_budget_opening_4p: float = 3.0
-    front_budget_midgame_4p: float = 2.7
-    front_budget_late_4p: float = 2.3
-    front_open_penalty_weight: float = 0.10
-    front_close_bonus_weight: float = 0.08
-    front_overlap_penalty_weight: float = 0.08
-    opening_close_neutral_bonus_4p: float = 0.10
-    opening_low_prod_bonus_4p: float = 0.08
+    four_p_front_budget: float = 2.0
+    front_budget_opening_4p: float = 2.6
+    front_budget_midgame_4p: float = 2.1
+    front_budget_late_4p: float = 1.8
+    front_open_penalty_weight: float = 0.18
+    front_close_bonus_weight: float = 0.10
+    front_overlap_penalty_weight: float = 0.18
+    opening_close_neutral_bonus_4p: float = 0.08
+    opening_low_prod_bonus_4p: float = 0.06
 
 
 class MoveBuilder:
@@ -563,6 +563,7 @@ class V9Planner:
         setattr(world, "_v9_params", self.params)
         candidates: List[PlanCandidate] = []
         p = self.params
+        hard_frontlock = self._is_hard_frontlock_state(world)
         families: List[Callable[[object], Optional[PlanCandidate]]] = [
             self._kovi_opening_conversion,
             self._balanced,
@@ -579,7 +580,20 @@ class V9Planner:
             self._probe,
             self._reserve_hold,
         ]
-        if p.candidate_diversity >= 1.35:
+        if hard_frontlock:
+            # V10.2: when 4p fronts are over budget, force consolidation-first
+            # search space and drop high-dispersion tactical families.
+            families = [
+                self._four_player_backbone,
+                self._front_lock_consolidation,
+                self._defensive_consolidation,
+                self._deep_staging,
+                self._reserve_hold,
+            ]
+            if world.is_late or world.is_very_late:
+                families.insert(4, self._staged_finisher)
+                families.insert(5, self._endgame_finisher)
+        if p.candidate_diversity >= 1.35 and not hard_frontlock:
             families.extend([self._wide_expansion, self._all_in_finisher, self._deep_staging])
         for fn in families:
             try:
@@ -603,7 +617,27 @@ class V9Planner:
             unique.sort(key=lambda c: (len(c.moves) == 0, -c.base_score))
         else:
             unique.sort(key=lambda c: (len(c.moves) == 0, -c.base_score))
+        # V10.3: once fronts are over budget in 4p midgame, hard-drop
+        # aggressive families to avoid reopening extra fronts.
+        if hard_frontlock:
+            safe_types = {"staging_transfer", "defensive_consolidation", "reserve_hold", "endgame_finisher"}
+            locked = [c for c in unique if c.plan_type in safe_types]
+            if locked:
+                unique = locked
         return unique[: p.max_candidates]
+
+    def _is_hard_frontlock_state(self, world) -> bool:
+        if not world.is_four_player:
+            return False
+        if world.is_late or world.is_very_late:
+            return False
+        focus = _focus_enemy_id(world, self.params.focus_enemy_id)
+        active_fronts = float(_active_front_count(world, focus))
+        front_budget = float(_front_budget_for_world(world))
+        if active_fronts <= front_budget + 0.05:
+            return False
+        # Apply only once we leave very-early opening and before pure endgame.
+        return len(world.my_planets) >= 5 and world.step >= 28
 
     def _balanced(self, world) -> PlanCandidate:
         b = MoveBuilder(world, max_moves=self.params.max_moves_per_plan)

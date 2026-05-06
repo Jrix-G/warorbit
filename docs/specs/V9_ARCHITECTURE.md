@@ -125,9 +125,14 @@ lock >= 0.90
 fronts <= 2.0
 ```
 
-Le patch du 2026-05-04 ajoute une penalite dure en midgame 4p si un candidat
-attaque un ennemi hors focus et loin du front anchor. Cela corrige le cas
-`lock=0.99` mais `fronts=3.6`.
+Le patch du 2026-05-06 durcit encore les contraintes 4p:
+
+- `target_active_fronts` est ramené à `2.0`;
+- le bonus `staging_transfer` est réduit;
+- les pénalités d'overlap et d'ouverture sont plus fortes;
+- le guardian durcit plus vite `strict_single_target_4p` quand le 4p sous-performe.
+
+Le but est d'éviter le cas classique `lock=0.99` mais `fronts=3.2-4.5`.
 
 ### Consolidation
 

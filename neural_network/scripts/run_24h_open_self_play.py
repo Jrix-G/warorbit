@@ -81,13 +81,18 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
     cfg["max_actions_per_turn"] = 4
     cfg["min_expand_attack_ships"] = max(4, int(cfg.get("min_expand_attack_ships", 4)))
     cfg["value_loss_coef"] = float(cfg.get("value_loss_coef", 0.25))
-    cfg["dense_reward_enabled"] = False
-    cfg["dense_planet_coef"] = 0.0
-    cfg["dense_production_coef"] = 0.0
-    cfg["dense_ship_share_coef"] = 0.0
-    cfg["dense_score_coef"] = 0.0
-    cfg["dense_survival_coef"] = 0.0
-    cfg["dense_reward_clip"] = 0.0
+    cfg["dense_reward_enabled"] = True
+    cfg["dense_planet_coef"] = 0.04
+    cfg["dense_production_coef"] = 0.03
+    cfg["dense_ship_share_coef"] = 0.12
+    cfg["dense_score_coef"] = 0.08
+    cfg["dense_survival_coef"] = 0.05
+    cfg["dense_reward_clip"] = 0.30
+    cfg["train_target_do_nothing_rate"] = 0.55
+    cfg["train_noop_penalty_coef"] = 0.35
+    cfg["train_action_bonus_coef"] = 0.08
+    cfg["train_ships_sent_bonus_coef"] = 0.04
+    cfg["train_activity_reward_clip"] = 0.35
     cfg["opponent_curriculum_enabled"] = True
     cfg["opponent_curriculum_start_tier"] = 0
     cfg["opponent_curriculum_tiers"] = [
@@ -99,7 +104,7 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
             "advance_score": 0.16,
             "advance_winrate": 0.06,
             "advance_rank_mean": 3.30,
-            "advance_do_nothing_rate": 0.78,
+            "advance_do_nothing_rate": 0.72,
             "candidate_eval_episodes": 4,
         },
         {
@@ -110,7 +115,7 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
             "advance_score": 0.18,
             "advance_winrate": 0.08,
             "advance_rank_mean": 3.05,
-            "advance_do_nothing_rate": 0.72,
+            "advance_do_nothing_rate": 0.68,
             "candidate_eval_episodes": 8,
         },
         {
@@ -129,8 +134,10 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
     cfg["temperature_end"] = min(float(cfg.get("temperature_end", 0.25)), 0.15)
     cfg["baseline_momentum"] = max(float(cfg.get("baseline_momentum", 0.05)), 0.10)
     cfg["send_ratios"] = [0.5, 0.7, 0.9]
-    cfg["policy_prior_strength"] = 0.0
-    cfg["promotion_margin"] = max(0.0, float(cfg.get("promotion_margin", 0.01)))
+    cfg["policy_prior_strength"] = max(1.0, float(cfg.get("policy_prior_strength", 1.0)))
+    cfg["promotion_margin"] = max(0.02, float(cfg.get("promotion_margin", 0.02)))
+    cfg["promotion_max_do_nothing_rate"] = min(0.82, float(cfg.get("promotion_max_do_nothing_rate", 0.82)))
+    cfg["promotion_min_avg_ships_sent"] = max(1.0, float(cfg.get("promotion_min_avg_ships_sent", 1.0)))
     cfg["bootstrap_promote_without_confirmation"] = True
     cfg["resume_from_tier_best"] = False
     cfg["run_name"] = run_name

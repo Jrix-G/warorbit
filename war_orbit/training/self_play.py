@@ -26,6 +26,14 @@ def official_fast_c_accel_enabled() -> bool:
         return False
 
 
+def _agent_for_config(config: V9Config | None, weights: V9Weights | None):
+    if config is not None and config.__class__.__name__ == "V10Config":
+        from ..agents.v10.policy import V10Agent
+
+        return V10Agent(config, weights)
+    return V9Agent(config or V9Config(), weights)
+
+
 def _safe_agent(fn: Callable):
     def wrapped(obs, config=None):
         try:
@@ -113,7 +121,7 @@ def local_greedy_agent(obs, config=None):
 
 def opponent_agent(name: str, config: V9Config | None = None, current_weights: V9Weights | None = None):
     if name in ("v9_current", "self_play"):
-        return V9Agent(config or V9Config(), current_weights)
+        return _agent_for_config(config or V9Config(), current_weights)
     if name.startswith("v9_checkpoint:"):
         path = name.split(":", 1)[1]
         from ..agents.v9.policy import get_weights, set_weights
@@ -336,7 +344,7 @@ def play_match_spec(weights: V9Weights, config: V9Config, spec: MatchSpec, deadl
     our_agent = None
     for slot in range(spec.n_players):
         if slot == spec.our_index:
-            our_agent = V9Agent(config, weights)
+            our_agent = _agent_for_config(config, weights)
             setattr(our_agent, "_tracked_player", int(spec.our_index))
             agents.append(our_agent)
         else:
@@ -416,6 +424,8 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
     max_planets = [float(r.get("max_planets", 0.0) or 0.0) for r in results]
     planets_t60 = [float(r.get("planets_t60", 0.0) or 0.0) for r in results]
     planets_t100 = [float(r.get("planets_t100", 0.0) or 0.0) for r in results]
+    steps_all = [float(r.get("steps", 0.0) or 0.0) for r in results]
+    steps_4p = [float(r.get("steps", 0.0) or 0.0) for r in results if r.get("mode") == "4p"]
     plan_counts: Dict[str, int] = {}
     stat_totals: Dict[str, float] = {}
     total_plans = 0
@@ -449,6 +459,10 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
         "avg_planets_t100": sum(planets_t100) / max(1, len(planets_t100)),
         "conversion_t60_rate": sum(1.0 for v in planets_t60 if v >= 8.0) / max(1, len(planets_t60)),
         "conversion_t100_rate": sum(1.0 for v in planets_t100 if v >= 13.0) / max(1, len(planets_t100)),
+        "avg_steps": sum(steps_all) / max(1, len(steps_all)),
+        "avg_steps_4p": sum(steps_4p) / max(1, len(steps_4p)) if steps_4p else 0.0,
+        "long_game_frac": sum(1.0 for s in steps_all if s >= 180.0) / max(1, len(steps_all)),
+        "long_game_frac_4p": sum(1.0 for s in steps_4p if s >= 180.0) / max(1, len(steps_4p)) if steps_4p else 0.0,
         "plan_entropy": entropy,
         "dominant_plan_frac": dominant,
         "transfer_move_frac": float(stat_totals.get("transfer_moves", 0.0)) / total_moves,

@@ -412,14 +412,19 @@ def _run_match_compat(
     except TypeError as exc:
         if "stop_player" not in str(exc):
             raise
-        return run_match(
-            agents,
-            seed=seed,
-            n_players=n_players,
-            max_steps=max_steps,
-            game_engine=str(config.get("game_engine", config.get("match_runner", "simgame"))),
-            use_c_accel=bool(config.get("official_fast_c_accel", True)),
-        )
+        try:
+            return run_match(
+                agents,
+                seed=seed,
+                n_players=n_players,
+                max_steps=max_steps,
+                game_engine=str(config.get("game_engine", config.get("match_runner", "simgame"))),
+                use_c_accel=bool(config.get("official_fast_c_accel", True)),
+            )
+        except TypeError as fallback_exc:
+            if "game_engine" not in str(fallback_exc) and "use_c_accel" not in str(fallback_exc):
+                raise
+            return run_match(agents, seed=seed, n_players=n_players, max_steps=max_steps)
 
 
 def _make_our_agent(

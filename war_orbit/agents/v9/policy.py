@@ -76,7 +76,7 @@ class V9Weights:
         plan_bias[PLAN_TYPE_TO_INDEX["resource_denial"]] = 0.11
         plan_bias[PLAN_TYPE_TO_INDEX["endgame_finisher"]] = 0.04
         plan_bias[PLAN_TYPE_TO_INDEX["defensive_consolidation"]] = 0.09
-        plan_bias[PLAN_TYPE_TO_INDEX["staging_transfer"]] = 0.20
+        plan_bias[PLAN_TYPE_TO_INDEX["staging_transfer"]] = 0.12
         plan_bias[PLAN_TYPE_TO_INDEX["opportunistic_snipe"]] = 0.08
         plan_bias[PLAN_TYPE_TO_INDEX["probe"]] = -0.02
         plan_bias[PLAN_TYPE_TO_INDEX["reserve_hold"]] = -0.10
@@ -88,7 +88,7 @@ class V9Weights:
         state_plan_w[PLAN_TYPE_TO_INDEX["endgame_finisher"], STATE_FEATURE_INDEX["finish_pressure"]] = 0.42
         state_plan_w[PLAN_TYPE_TO_INDEX["endgame_finisher"], STATE_FEATURE_INDEX["is_late"]] = 0.22
         state_plan_w[PLAN_TYPE_TO_INDEX["delayed_strike"], STATE_FEATURE_INDEX["is_4p"]] = 0.15
-        state_plan_w[PLAN_TYPE_TO_INDEX["staging_transfer"], STATE_FEATURE_INDEX["is_4p"]] = 0.48
+        state_plan_w[PLAN_TYPE_TO_INDEX["staging_transfer"], STATE_FEATURE_INDEX["is_4p"]] = 0.36
         state_plan_w[PLAN_TYPE_TO_INDEX["staging_transfer"], STATE_FEATURE_INDEX["active_front_ratio"]] = 0.24
         state_plan_w[PLAN_TYPE_TO_INDEX["multi_step_trap"], STATE_FEATURE_INDEX["active_front_ratio"]] = 0.18
         state_plan_w[PLAN_TYPE_TO_INDEX["defensive_consolidation"], STATE_FEATURE_INDEX["threatened_ratio"]] = 0.42
@@ -234,16 +234,19 @@ class V9Policy:
                 front_budget = max(1.0, float(metadata.get("front_phase_budget", four_p_front_budget)))
                 front_pressure = max(0.0, active_fronts - front_budget)
                 front_room = max(0.0, front_budget - active_fronts)
-                metadata_bonus += 0.36 * backbone
-                metadata_bonus += (0.12 + 0.14 * float(fronts)) * front_lock
-                metadata_bonus += 0.20 * consolidation_threshold
+                metadata_bonus += 0.30 * backbone
+                metadata_bonus += (0.10 + 0.12 * float(fronts)) * front_lock
+                metadata_bonus += 0.16 * consolidation_threshold
                 if active_fronts > 0.0:
-                    if active_fronts <= front_budget + 0.35 and (backbone > 0.0 or front_lock > 0.0):
+                    front_excess = max(0.0, active_fronts - front_budget)
+                    if active_fronts <= front_budget + 0.25 and (backbone > 0.0 or front_lock > 0.0):
                         metadata_bonus += float(front_close_bonus_weight) + 0.04 * min(1.0, active_fronts / front_budget)
-                    elif active_fronts > front_budget + 0.75 and candidate.plan_type not in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
-                        metadata_bonus -= float(front_open_penalty_weight) * (active_fronts - front_budget)
+                    elif active_fronts > front_budget + 0.50 and candidate.plan_type not in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
+                        metadata_bonus -= float(front_open_penalty_weight) * (front_excess + 0.35)
                 if candidate.plan_type == "staging_transfer":
-                    metadata_bonus += 0.10 + 0.16 * backbone + 0.08 * front_lock
+                    metadata_bonus += 0.05 + 0.10 * backbone + 0.05 * front_lock
+                    if active_fronts > front_budget + 0.25:
+                        metadata_bonus -= float(front_open_penalty_weight) * max(0.0, active_fronts - (front_budget + 0.25))
                 if backbone > 0.0 and transfer >= 0.30 and attack < 0.35:
                     metadata_bonus += 0.08
                 metadata_bonus += (0.12 + 0.30 * float(finish_pressure)) * staged_finisher
@@ -254,9 +257,9 @@ class V9Policy:
                 if fronts > 0.36 and not world.is_late:
                     front_pressure = float((fronts - 0.36) / 0.64)
                     if candidate.plan_type in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
-                        metadata_bonus += float(front_pressure_plan_bias) * (0.75 + front_pressure)
+                        metadata_bonus += float(front_pressure_plan_bias) * (0.75 + 0.50 * front_pressure)
                     if backbone > 0.0 or front_lock > 0.0 or consolidation_threshold > 0.0:
-                        metadata_bonus += 0.08 * front_pressure
+                        metadata_bonus += 0.12 * front_pressure
                     finisher_ready = candidate.plan_type == "endgame_finisher" and (staged_finisher > 0.0 or finish_pressure > 1.0)
                     if not finisher_ready and candidate.plan_type in (
                         "resource_denial",
@@ -265,13 +268,13 @@ class V9Policy:
                         "opportunistic_snipe",
                         "aggressive_expansion",
                     ):
-                        metadata_bonus -= float(front_pressure_attack_penalty) * (0.60 + front_pressure)
+                        metadata_bonus -= float(front_pressure_attack_penalty) * (0.75 + front_pressure)
                     if attack > 0.35 and transfer < 0.18 and not finisher_ready:
-                        metadata_bonus -= 0.10 + 0.10 * front_pressure
-                if fronts > 0.42 and candidate.plan_type not in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
-                    metadata_bonus -= float(front_overlap_penalty_weight) * float(fronts)
+                        metadata_bonus -= 0.12 + 0.12 * front_pressure
+                if active_fronts > front_budget + 0.15 and candidate.plan_type not in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
+                    metadata_bonus -= float(front_overlap_penalty_weight) * (max(0.0, active_fronts - front_budget) + 0.25 * float(fronts))
                 if front_room > 0.0 and candidate.plan_type in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
-                    metadata_bonus += 0.03 * min(1.0, front_room / front_budget)
+                    metadata_bonus += 0.02 * min(1.0, front_room / front_budget)
                 focus = metadata.get("focus_enemy_id")
                 if focus is not None and world.weakest_enemy_id is not None and int(focus) == int(world.weakest_enemy_id):
                     metadata_bonus += 0.05

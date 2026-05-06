@@ -5,6 +5,7 @@ from neural_network.scripts.run_90min_6agent_training import _prepare_config as 
 from neural_network.scripts.run_24h_open_self_play import _prepare_config as _prepare_open_self_play_config
 from neural_network.src.model import ModelConfig, NeuralNetworkModel, count_parameters
 from neural_network.src.population_4p_training import (
+    _activity_shaping_reward,
     _composite_score,
     _fallback_base_checkpoint,
     _load_curriculum_state,
@@ -56,13 +57,15 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     assert out["dense_reward_clip"] == 0.35
 
 
-def test_open_self_play_config_prefers_sparse_minimal_training():
+def test_open_self_play_config_discourages_passive_training():
     cfg = {"checkpoint_dir": "x", "log_dir": "y", "seed": 42}
     out = _prepare_open_self_play_config(cfg, 1440.0, 4, 16, "run_24h_test")
     assert out["duration_minutes"] == 1440.0
-    assert out["dense_reward_enabled"] is False
+    assert out["dense_reward_enabled"] is True
     assert out["imitation_warmstart_steps"] == 0
-    assert out["policy_prior_strength"] == 0.0
+    assert out["policy_prior_strength"] >= 1.0
+    assert out["promotion_max_do_nothing_rate"] <= 0.82
+    assert out["train_noop_penalty_coef"] > 0.0
     assert out["resume_from_tier_best"] is False
     assert out["log_direct_path"].replace("\\", "/").endswith("run_24h_test/log_direct.txt")
     assert out["opponent_curriculum_tiers"][0]["opponents"] == ["random", "greedy", "starter"]
@@ -90,6 +93,13 @@ def test_population_promotion_requires_real_improvement():
     assert not _should_try_promotion({"score": 0.375}, best_score=0.375, margin=0.02)
     assert _should_try_promotion({"score": 0.5}, best_score=0.375, margin=0.02)
     assert not _should_try_promotion({"score": 0.8, "winrate": 0.1}, best_score=-1e9, margin=0.02, min_winrate=0.25)
+    assert not _should_try_promotion(
+        {"score": 0.8, "winrate": 0.5, "eval_do_nothing_rate": 0.93},
+        best_score=-1e9,
+        margin=0.02,
+        min_winrate=0.25,
+        max_do_nothing_rate=0.82,
+    )
 
 
 def test_rank_reward_prioritizes_wins_over_second_place():
@@ -153,6 +163,21 @@ def test_population_composite_score_ignores_stale_cached_score():
         "eval_avg_ships_sent": 0.0,
     }
     assert _composite_score(stale) < 0.0
+
+
+def test_population_activity_shaping_penalizes_passive_policy():
+    passive = {"do_nothing_rate": 0.95, "real_action_count": 1, "avg_ships_sent": 5.0}
+    active = {"do_nothing_rate": 0.25, "real_action_count": 3, "avg_ships_sent": 20.0}
+    cfg = {
+        "max_actions_per_turn": 4,
+        "train_target_do_nothing_rate": 0.55,
+        "train_noop_penalty_coef": 0.35,
+        "train_action_bonus_coef": 0.08,
+        "train_ships_sent_bonus_coef": 0.04,
+        "train_activity_reward_clip": 0.35,
+    }
+    assert _activity_shaping_reward(passive, cfg) < 0.0
+    assert _activity_shaping_reward(active, cfg) > _activity_shaping_reward(passive, cfg)
 
 
 def test_safe_planner_rejects_sun_crossing_shot():

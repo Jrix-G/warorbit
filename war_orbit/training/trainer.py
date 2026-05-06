@@ -93,6 +93,37 @@ def _save_generation_snapshot(config: V9Config, weights: V9Weights, *, best_scor
     return str(train_path), str(policy_path)
 
 
+def _run_benchmark(
+    weights: V9Weights,
+    config: V9Config,
+    benchmark_opponents,
+    *,
+    deadline=None,
+    pool=None,
+    seed_offset: int = 80000,
+    progress_label: str = "benchmark",
+) -> Dict[str, float]:
+    benchmark_specs = build_cross_play_specs(
+        benchmark_opponents,
+        games=config.benchmark_games,
+        seed=config.seed,
+        seed_offset=seed_offset,
+        max_steps=config.eval_max_steps,
+        four_player_ratio=config.benchmark_four_player_ratio,
+        phase="benchmark",
+    )
+    benchmark_results = evaluate_weights(
+        weights,
+        config,
+        benchmark_specs,
+        deadline=deadline,
+        progress_label=progress_label,
+        progress_every=max(1, int(config.benchmark_progress_every)),
+        pool=pool,
+    )
+    return summarise_results(benchmark_results)
+
+
 def _load_opponents(config: V9Config):
     opponents = list(config.training_opponents)
     try:
@@ -190,6 +221,7 @@ def _promotion_blockers(selection_score: float, best_score: float, eval_summary:
     benchmark_score = float(benchmark_summary.get("mean", 0.0))
     benchmark_games = int(benchmark_summary.get("n_2p", 0)) + int(benchmark_summary.get("n_4p", 0))
     gap = eval_score - benchmark_score
+    eval_4p = float(eval_summary.get("wr_4p", 0.0))
     benchmark_4p = float(benchmark_summary.get("wr_4p", 0.0))
     benchmark_bb = float(benchmark_summary.get("backbone_turn_frac", 0.0))
     benchmark_fronts = float(benchmark_summary.get("active_front_avg", 99.0))
@@ -200,6 +232,8 @@ def _promotion_blockers(selection_score: float, best_score: float, eval_summary:
         blockers.append("benchmark_low")
     if benchmark_games < config.min_promotion_benchmark_games:
         blockers.append("benchmark_games_low")
+    if eval_4p < float(getattr(config, "guardian_min_benchmark_4p", 0.0)):
+        blockers.append("eval4p_low")
     if gap > config.max_generalization_gap:
         blockers.append("gap_high")
     if gap > float(getattr(config, "guardian_max_generalization_gap", config.max_generalization_gap)):
@@ -259,15 +293,17 @@ def _apply_guardian_adjustments(config: V9Config, train_summary: Dict[str, float
         config.backbone_bonus_weight = min(0.16, float(config.backbone_bonus_weight) + 0.014)
         config.front_pressure_plan_bias = min(0.24, float(config.front_pressure_plan_bias) + 0.012)
         config.train_state_perturbation = min(0.09, float(config.train_state_perturbation) + 0.006)
+        config.front_overlap_penalty_weight = min(0.28, float(config.front_overlap_penalty_weight) + 0.015)
         if bench_fronts <= float(config.target_active_fronts) + 0.15:
             config.front_penalty_weight = max(0.035, float(config.front_penalty_weight) - 0.006)
         event["backbone_fix"] = 1.0
         changed = True
 
     if bench_fronts > float(config.guardian_max_benchmark_fronts):
-        config.front_penalty_weight = min(0.10, float(config.front_penalty_weight) + 0.010)
-        config.front_pressure_attack_penalty = min(0.22, float(config.front_pressure_attack_penalty) + 0.012)
-        config.front_lock_turns = min(28, int(config.front_lock_turns) + 2)
+        config.front_penalty_weight = min(0.16, float(config.front_penalty_weight) + 0.014)
+        config.front_overlap_penalty_weight = min(0.30, float(config.front_overlap_penalty_weight) + 0.020)
+        config.front_pressure_attack_penalty = min(0.24, float(config.front_pressure_attack_penalty) + 0.016)
+        config.front_lock_turns = min(32, int(config.front_lock_turns) + 2)
         event["front_fix"] = 1.0
         changed = True
 
@@ -277,18 +313,20 @@ def _apply_guardian_adjustments(config: V9Config, train_summary: Dict[str, float
         config.four_player_ratio = min(1.0, float(config.four_player_ratio) + step)
         config.benchmark_four_player_ratio = min(1.0, float(config.benchmark_four_player_ratio) + step)
         config.candidate_diversity = min(1.90, float(config.candidate_diversity) + 2.0 * step)
+        config.max_focus_targets_4p = 1 if deficit >= 0.12 else min(int(config.max_focus_targets_4p), 2)
         event["four_p_fix"] = 1.0
         event["four_p_step"] = float(step)
         changed = True
 
     low_4p_streak = int(getattr(config, "_guardian_low_4p_streak", 0))
-    low_4p_streak = low_4p_streak + 1 if bench_4p < 0.30 else 0
+    low_4p_streak = low_4p_streak + 1 if bench_4p < 0.28 else 0
     setattr(config, "_guardian_low_4p_streak", low_4p_streak)
-    if low_4p_streak >= 4 and bench_4p < 0.22:
+    if low_4p_streak >= 3 and bench_4p < 0.25:
         config.strict_single_target_4p = True
         config.disable_snipe_4p = True
         config.max_focus_targets_4p = 1
         config.front_pressure_attack_penalty = min(0.24, float(config.front_pressure_attack_penalty) + 0.012)
+        config.front_overlap_penalty_weight = min(0.32, float(config.front_overlap_penalty_weight) + 0.015)
         event["strict_focus_fix"] = 1.0
         event["low_4p_streak"] = float(low_4p_streak)
         changed = True
@@ -527,25 +565,15 @@ class V9Trainer:
                     )
                     if run_benchmark:
                         print(f"gen={self.generation:04d} benchmark_start games={self.config.benchmark_games}", flush=True)
-                        benchmark_specs = build_cross_play_specs(
-                            benchmark_opponents,
-                            games=self.config.benchmark_games,
-                            seed=self.config.seed,
-                            seed_offset=80000,
-                            max_steps=self.config.eval_max_steps,
-                            four_player_ratio=self.config.benchmark_four_player_ratio,
-                            phase="benchmark",
-                        )
-                        benchmark_results = evaluate_weights(
+                        benchmark_summary = _run_benchmark(
                             self.weights,
                             active_config,
-                            benchmark_specs,
+                            benchmark_opponents,
                             deadline=deadline,
-                            progress_label=f"gen={self.generation:04d} benchmark",
-                            progress_every=max(1, int(self.config.benchmark_progress_every)),
                             pool=pool,
+                            seed_offset=80000,
+                            progress_label=f"gen={self.generation:04d} benchmark",
                         )
-                        benchmark_summary = summarise_results(benchmark_results)
                     selection_score = _selection_score(eval_summary, benchmark_summary, self.config)
                     promotion_blockers = _promotion_blockers(selection_score, self.best_score, eval_summary, benchmark_summary, self.config)
                     if _should_promote(selection_score, self.best_score, eval_summary, benchmark_summary, self.config):
@@ -695,6 +723,37 @@ class V9Trainer:
             if pool is not None:
                 pool.close()
                 pool.join()
+
+        if self.config.train_only and int(self.config.benchmark_games) > 0:
+            print(f"final benchmark_start games={self.config.benchmark_games}", flush=True)
+            benchmark_summary = _run_benchmark(
+                self.weights,
+                self.config,
+                benchmark_opponents,
+                progress_label="final benchmark",
+                seed_offset=90000,
+            )
+            latest_summary.update({
+                "benchmark_mean": float(benchmark_summary["mean"]),
+                "benchmark_2p": float(benchmark_summary["wr_2p"]),
+                "benchmark_4p": float(benchmark_summary["wr_4p"]),
+                "benchmark_transfer_move_frac": float(benchmark_summary.get("transfer_move_frac", 0.0)),
+                "benchmark_backbone_turn_frac": float(benchmark_summary.get("backbone_turn_frac", 0.0)),
+                "benchmark_front_lock_turn_frac": float(benchmark_summary.get("front_lock_turn_frac", 0.0)),
+                "benchmark_focused_front_avg": float(benchmark_summary.get("focused_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
+                "benchmark_global_front_avg": float(benchmark_summary.get("global_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
+                "benchmark_avg_planets_t60": float(benchmark_summary.get("avg_planets_t60", 0.0)),
+                "benchmark_avg_planets_t100": float(benchmark_summary.get("avg_planets_t100", 0.0)),
+                "benchmark_conversion_t100_rate": float(benchmark_summary.get("conversion_t100_rate", 0.0)),
+                "benchmark_4p_diag": _four_p_diag(benchmark_summary),
+            })
+            print(
+                f"final benchmark mean={benchmark_summary['mean']:.3f} "
+                f"2p={benchmark_summary['wr_2p']:.3f}/{benchmark_summary['n_2p']} "
+                f"4p={benchmark_summary['wr_4p']:.3f}/{benchmark_summary['n_4p']} "
+                f"{_format_four_p_diag(benchmark_summary)}",
+                flush=True,
+            )
 
         latest_summary["stop_reason"] = stop_reason
         latest_summary["elapsed_min"] = (time.time() - start) / 60.0

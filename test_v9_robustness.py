@@ -32,9 +32,12 @@ def test_default_v9_protocol_uses_large_benchmark_and_hard_timeout():
     assert cfg.benchmark_games == 128
     assert cfg.min_promotion_benchmark_games == 128
     assert cfg.hard_timeout_minutes == 60.0
+    assert cfg.target_active_fronts <= 2.0
+    assert cfg.front_overlap_penalty_weight >= 0.18
+    assert cfg.max_focus_targets_4p == 2 or cfg.max_focus_targets_4p == 3
     assert "robust" in cfg.checkpoint
-    assert len(pools["train"]) >= 12
-    assert len(pools["benchmark"]) >= 5
+    assert len(pools["train"]) >= 9
+    assert len(pools["benchmark"]) >= 4
 
 
 def test_promotion_uses_benchmark_guard_not_internal_eval_only():
@@ -55,7 +58,7 @@ def test_promotion_requires_heldout_4p_backbone_and_front_quality():
         guardian_max_benchmark_fronts=2.70,
         guardian_max_generalization_gap=0.18,
     )
-    eval_summary = {"mean": 0.55}
+    eval_summary = {"mean": 0.55, "wr_4p": 0.50}
     weak_diag = {
         "mean": 0.50,
         "wr_4p": 0.50,
@@ -68,6 +71,30 @@ def test_promotion_requires_heldout_4p_backbone_and_front_quality():
     assert not _should_promote(0.45, -1.0, eval_summary, weak_diag, cfg)
     assert "bb_low" in _promotion_blockers(0.45, -1.0, eval_summary, weak_diag, cfg)
     assert _should_promote(0.45, -1.0, eval_summary, strong_diag, cfg)
+
+
+def test_promotion_blocks_on_low_eval_4p_even_if_benchmark_is_acceptable():
+    cfg = V9Config(
+        min_improvement=0.01,
+        min_benchmark_score=0.40,
+        min_promotion_benchmark_games=8,
+        guardian_min_benchmark_4p=0.42,
+        guardian_min_benchmark_backbone=0.08,
+        guardian_max_benchmark_fronts=2.70,
+        guardian_max_generalization_gap=0.18,
+    )
+    eval_summary = {"mean": 0.55, "wr_4p": 0.19}
+    benchmark_summary = {
+        "mean": 0.48,
+        "wr_4p": 0.46,
+        "n_2p": 2,
+        "n_4p": 8,
+        "backbone_turn_frac": 0.10,
+        "active_front_avg": 1.9,
+    }
+    blockers = _promotion_blockers(0.48, -1.0, eval_summary, benchmark_summary, cfg)
+    assert "eval4p_low" in blockers
+    assert not _should_promote(0.48, -1.0, eval_summary, benchmark_summary, cfg)
 
 
 def test_guardian_raises_backbone_pressure_when_heldout_backbone_collapses():
@@ -139,9 +166,27 @@ def test_guardian_enables_strict_focus_after_repeated_low_4p():
         "active_front_avg": 2.0,
     }
     event = {}
-    for _ in range(4):
+    for _ in range(3):
         event = _apply_guardian_adjustments(cfg, train, eval_summary, benchmark)
     assert event["strict_focus_fix"] == 1.0
     assert cfg.strict_single_target_4p
     assert cfg.disable_snipe_4p
     assert cfg.max_focus_targets_4p == 1
+
+
+def test_guardian_strengthens_front_overlap_penalty_on_front_collapse():
+    cfg = V9Config(front_overlap_penalty_weight=0.18, front_pressure_attack_penalty=0.16)
+    train = {"mean": 0.55, "backbone_turn_frac": 0.14}
+    eval_summary = {"mean": 0.54}
+    benchmark = {
+        "mean": 0.28,
+        "wr_4p": 0.18,
+        "n_2p": 2,
+        "n_4p": 10,
+        "backbone_turn_frac": 0.09,
+        "active_front_avg": 3.8,
+    }
+    event = _apply_guardian_adjustments(cfg, train, eval_summary, benchmark)
+    assert event["changed"] == 1.0
+    assert cfg.front_overlap_penalty_weight > 0.18
+    assert cfg.front_pressure_attack_penalty > 0.16

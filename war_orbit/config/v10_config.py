@@ -1,0 +1,218 @@
+"""Configuration for the V10 4p-first adaptive planner and trainer."""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from typing import Dict, List, Optional
+
+
+@dataclass
+class V10Config:
+    # Runtime planning.
+    max_candidates: int = 22
+    search_width: int = 8
+    simulation_depth: int = 3
+    simulation_rollouts: int = 2
+    opponent_samples: int = 4
+    train_search_width: int = 4
+    train_simulation_depth: int = 1
+    train_simulation_rollouts: int = 0
+    train_opponent_samples: int = 1
+    candidate_diversity: float = 1.15
+    exploration_rate: float = 0.08
+    uncertainty_penalty: float = 0.20
+    rollout_weight: float = 0.42
+    finisher_bias: float = 1.0
+    min_source_ships: int = 8
+    max_moves_per_plan: int = 12
+    opening_punch_turns: int = 65
+    opening_min_capture_send_2p: int = 14
+    opening_min_capture_send_4p: int = 16
+    midgame_min_capture_send_4p: int = 24
+    capture_garrison_margin: float = 0.22
+    capture_target_ship_margin: float = 0.15
+    midgame_capture_target_margin_4p: float = 0.35
+    opening_close_neutral_dist_4p: float = 42.0
+    opening_long_attack_risk_dist_4p: float = 55.0
+    opening_source_commit_frac: float = 1.0
+    front_lock_turns: int = 50
+    target_active_fronts: float = 2.4
+    four_p_front_budget: float = 2.3
+    front_budget_opening_4p: float = 2.7
+    front_budget_midgame_4p: float = 2.3
+    front_budget_late_4p: float = 1.8
+    target_backbone_turn_frac: float = 0.18
+    front_penalty_weight: float = 0.10
+    front_penalty_cap: float = 0.24
+    front_ok_bonus: float = 0.060
+    front_partial_bonus: float = 0.040
+    backbone_penalty_weight: float = 0.26
+    backbone_bonus_weight: float = 0.24
+    front_pressure_plan_bias: float = 0.10
+    front_pressure_attack_penalty: float = 0.16
+    front_open_penalty_weight: float = 0.18
+    front_close_bonus_weight: float = 0.12
+    front_overlap_penalty_weight: float = 0.20
+    opening_close_neutral_bonus_4p: float = 0.08
+    opening_low_prod_bonus_4p: float = 0.06
+    seed: int = 9009
+
+    # Training schedule.
+    minutes: float = 30.0
+    hard_timeout_minutes: float = 60.0
+    pairs: int = 8
+    games_per_eval: int = 4
+    eval_games: int = 32
+    max_steps: int = 160
+    eval_max_steps: int = 220
+    four_player_ratio: float = 0.95
+    eval_four_player_ratio: Optional[float] = 1.0
+    sigma: float = 0.07
+    learning_rate: float = 0.035
+    l2: float = 0.0004
+    confidence_l2: float = 0.0025
+    reward_noise: float = 0.015
+    four_p_signal_boost: float = 1.4
+    train_state_perturbation: float = 0.040
+    eval_every: int = 1
+    benchmark_every: int = 1
+    workers: int = 1
+    game_engine: str = "official_fast"
+    train_only: bool = False
+    benchmark_games: int = 48
+    min_promotion_benchmark_games: int = 48
+    benchmark_progress_every: int = 1
+    benchmark_four_player_ratio: float = 1.0
+    guardian_enabled: bool = True
+    guardian_min_benchmark_4p: float = 0.50
+    guardian_min_benchmark_backbone: float = 0.14
+    guardian_max_benchmark_fronts: float = 2.8
+    guardian_max_generalization_gap: float = 0.12
+    export_best_on_finish: bool = True
+    benchmark_on_best_when_train_only: bool = True
+    snapshot_every: int = 1
+    snapshot_dir: Optional[str] = None
+    strict_single_target_4p: bool = True
+    disable_snipe_4p: bool = False
+    max_focus_targets_4p: int = 1
+    stagnation_window: int = 4
+    min_improvement: float = 0.010
+    min_benchmark_score: float = 0.30
+    max_generalization_gap: float = 0.16
+    overfit_train_threshold: float = 0.80
+    overfit_eval_threshold: float = 0.70
+    benchmark_collapse_threshold: float = 0.12
+    reset_fraction: float = 0.18
+    target_winrate_low: float = 0.60
+    target_winrate_high: float = 0.70
+
+    # Opponents and persistence.
+    opponent_pool_limit: int = 15
+    training_opponents: List[str] = field(default_factory=lambda: [
+        "random",
+        "noisy_greedy",
+        "starter",
+        "distance",
+        "sun_dodge",
+        "structured",
+        "orbit_stars",
+        "bot_v7",
+        "notebook_tactical_heuristic",
+        "notebook_mdmahfuzsumon_how_my_ai_wins_space_wars",
+        "notebook_pilkwang_orbit_wars_structured_baseline",
+        "notebook_sigmaborov_orbit_wars_2026_starter",
+        "notebook_sigmaborov_orbit_wars_2026_tactical_heuristic",
+        "notebook_aminmahmoudalifayed_kronos_omega",
+        "notebook_kashiwaba_orbit_wars_reinforcement_learning_tutorial",
+        "notebook_orbitbotnext",
+        "notebook_distance_prioritized",
+        "notebook_physics_accurate",
+        "notebook_pascalledesma_orbitwork_v14",
+    ])
+    eval_opponents: List[str] = field(default_factory=lambda: [
+        "heldout_random",
+        "heldout_greedy",
+        "notebook_johnjanson_lb_max_score_1000_agi_is_here",
+        "notebook_romantamrazov_orbit_star_wars_lb_max_1224",
+        "notebook_pascalledesma_orbitbotnext",
+        "notebook_sigmaborov_lb_958_1_orbit_wars_2026_reinforce",
+    ])
+    benchmark_opponents: List[str] = field(default_factory=lambda: [
+        "notebook_orbitbotnext",
+        "notebook_distance_prioritized",
+        "notebook_physics_accurate",
+        "notebook_djenkivanov_orbit_wars_optimized_nearest_planet_sniper",
+        "notebook_pascalledesma_orbitwork_v14",
+    ])
+    checkpoint: str = "evaluations/v10_4p_latest.npz"
+    best_checkpoint: str = "evaluations/v10_4p_best.npz"
+    export_checkpoint: str = "evaluations/v10_4p_policy.npz"
+    log_jsonl: str = "evaluations/v10_4p_train.jsonl"
+
+    def resolved_eval_four_player_ratio(self) -> float:
+        return self.four_player_ratio if self.eval_four_player_ratio is None else self.eval_four_player_ratio
+
+    def planning_kwargs(self) -> Dict[str, object]:
+        keys = {
+            "max_candidates",
+            "search_width",
+            "simulation_depth",
+            "simulation_rollouts",
+            "opponent_samples",
+            "train_search_width",
+            "train_simulation_depth",
+            "train_simulation_rollouts",
+            "train_opponent_samples",
+            "candidate_diversity",
+            "exploration_rate",
+            "uncertainty_penalty",
+            "rollout_weight",
+            "finisher_bias",
+            "min_source_ships",
+            "max_moves_per_plan",
+            "opening_punch_turns",
+            "opening_min_capture_send_2p",
+            "opening_min_capture_send_4p",
+            "midgame_min_capture_send_4p",
+            "capture_garrison_margin",
+            "capture_target_ship_margin",
+            "midgame_capture_target_margin_4p",
+            "opening_close_neutral_dist_4p",
+            "opening_long_attack_risk_dist_4p",
+            "opening_source_commit_frac",
+            "front_lock_turns",
+            "target_active_fronts",
+            "four_p_front_budget",
+            "front_budget_opening_4p",
+            "front_budget_midgame_4p",
+            "front_budget_late_4p",
+            "target_backbone_turn_frac",
+            "front_penalty_weight",
+            "front_penalty_cap",
+            "front_ok_bonus",
+            "front_partial_bonus",
+            "backbone_penalty_weight",
+            "backbone_bonus_weight",
+            "front_pressure_plan_bias",
+            "front_pressure_attack_penalty",
+            "front_open_penalty_weight",
+            "front_close_bonus_weight",
+            "front_overlap_penalty_weight",
+            "opening_close_neutral_bonus_4p",
+            "opening_low_prod_bonus_4p",
+            "guardian_enabled",
+            "guardian_min_benchmark_4p",
+            "guardian_min_benchmark_backbone",
+            "guardian_max_benchmark_fronts",
+            "guardian_max_generalization_gap",
+            "export_best_on_finish",
+            "strict_single_target_4p",
+            "disable_snipe_4p",
+            "max_focus_targets_4p",
+            "seed",
+        }
+        data = asdict(self)
+        return {k: data[k] for k in keys}
+
+    def to_dict(self) -> Dict[str, object]:
+        return asdict(self)
