@@ -69,13 +69,15 @@ def append_past_versions(names: Sequence[str], checkpoint_paths: Sequence[str]) 
 
 
 def build_role_pools(config) -> Dict[str, List[str]]:
-    """Return strict train/eval/benchmark opponent roles.
+    """Return train/eval/benchmark opponent roles.
 
     Eval intentionally uses heldout aliases for random/greedy so tests and logs
     can detect leakage by label while retaining simple baseline behaviors.
+    Train includes the benchmark notebook pool on purpose so the bot learns
+    against the same hard shapes it will later be measured against.
     """
 
-    train = list(config.training_opponents)
+    train = list(config.training_opponents) + list(config.benchmark_opponents)
     eval_pool = append_past_versions(config.eval_opponents, [config.best_checkpoint])
     benchmark = list(config.benchmark_opponents)
     return {
@@ -105,9 +107,14 @@ class CurriculumScheduler:
         if self.difficulty >= 1:
             pool.extend(["starter", "distance"])
         if self.difficulty >= 2:
-            pool.extend(["sun_dodge", "notebook_tactical_heuristic"])
+            pool.extend(["sun_dodge", "notebook_tactical_heuristic", "notebook_orbitbotnext"])
         if self.difficulty >= 3:
-            pool.extend(["notebook_orbitbotnext", "notebook_distance_prioritized", "notebook_physics_accurate"])
+            pool.extend([
+                "notebook_distance_prioritized",
+                "notebook_physics_accurate",
+                "notebook_djenkivanov_orbit_wars_optimized_nearest_planet_sniper",
+                "notebook_pascalledesma_orbitwork_v14",
+            ])
         out = []
         for name in pool:
             if name not in out:

@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--l2", type=float, default=0.0004)
     parser.add_argument("--eval-every", type=int, default=1)
     parser.add_argument("--benchmark-every", type=int, default=1)
-    parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--workers", type=int, default=V10Config.workers)
     parser.add_argument("--game-engine", choices=("kaggle", "official_fast", "kaggle_fast"), default="official_fast")
     parser.add_argument("--train-only", action="store_true", help="Skip in-loop eval/benchmark and optimize for training volume.")
     parser.add_argument("--benchmark-games", type=int, default=48)
@@ -61,20 +61,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--opening-long-attack-risk-dist-4p", type=float, default=55.0)
     parser.add_argument("--opening-source-commit-frac", type=float, default=1.0)
     parser.add_argument("--front-lock-turns", type=int, default=50)
-    parser.add_argument("--target-active-fronts", type=float, default=2.4)
-    parser.add_argument("--target-backbone-turn-frac", type=float, default=0.18)
-    parser.add_argument("--front-budget-opening-4p", type=float, default=2.7)
-    parser.add_argument("--front-budget-midgame-4p", type=float, default=2.3)
-    parser.add_argument("--front-budget-late-4p", type=float, default=1.8)
-    parser.add_argument("--front-penalty-weight", type=float, default=0.10)
-    parser.add_argument("--front-penalty-cap", type=float, default=0.24)
+    parser.add_argument("--target-active-fronts", type=float, default=V10Config.target_active_fronts)
+    parser.add_argument("--target-backbone-turn-frac", type=float, default=V10Config.target_backbone_turn_frac)
+    parser.add_argument("--front-budget-opening-4p", type=float, default=V10Config.front_budget_opening_4p)
+    parser.add_argument("--front-budget-midgame-4p", type=float, default=V10Config.front_budget_midgame_4p)
+    parser.add_argument("--front-budget-late-4p", type=float, default=V10Config.front_budget_late_4p)
+    parser.add_argument("--front-penalty-weight", type=float, default=V10Config.front_penalty_weight)
+    parser.add_argument("--front-penalty-cap", type=float, default=V10Config.front_penalty_cap)
     parser.add_argument("--front-ok-bonus", type=float, default=0.06)
     parser.add_argument("--front-partial-bonus", type=float, default=0.04)
-    parser.add_argument("--backbone-penalty-weight", type=float, default=0.26)
-    parser.add_argument("--backbone-bonus-weight", type=float, default=0.24)
-    parser.add_argument("--front-pressure-plan-bias", type=float, default=0.10)
-    parser.add_argument("--front-pressure-attack-penalty", type=float, default=0.16)
-    parser.add_argument("--front-open-penalty-weight", type=float, default=0.18)
+    parser.add_argument("--backbone-penalty-weight", type=float, default=V10Config.backbone_penalty_weight)
+    parser.add_argument("--backbone-bonus-weight", type=float, default=V10Config.backbone_bonus_weight)
+    parser.add_argument("--front-pressure-plan-bias", type=float, default=V10Config.front_pressure_plan_bias)
+    parser.add_argument("--front-pressure-attack-penalty", type=float, default=V10Config.front_pressure_attack_penalty)
+    parser.add_argument("--front-open-penalty-weight", type=float, default=V10Config.front_open_penalty_weight)
     parser.add_argument("--front-close-bonus-weight", type=float, default=0.12)
     parser.add_argument("--front-overlap-penalty-weight", type=float, default=0.20)
     parser.add_argument("--guardian-enabled", type=int, default=1)
@@ -84,6 +84,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--guardian-max-generalization-gap", type=float, default=0.12)
     parser.add_argument("--export-best-on-finish", type=int, default=1)
     parser.add_argument("--benchmark-on-best-when-train-only", type=int, default=1)
+    parser.add_argument("--reset-best-on-resume", type=int, default=0)
+    parser.add_argument("--holdout-eval-games-train-only", type=int, default=V10Config.holdout_eval_games_train_only)
+    parser.add_argument("--train-only-benchmark-every", type=int, default=V10Config.train_only_benchmark_every)
+    parser.add_argument("--train-only-benchmark-games", type=int, default=V10Config.train_only_benchmark_games)
     parser.add_argument("--snapshot-every", type=int, default=1, help="Save recoverable generation snapshots every N generations; 0 disables.")
     parser.add_argument("--snapshot-dir", default=None, help="Directory for generation snapshots. Defaults next to --checkpoint.")
     parser.add_argument("--strict-single-target-4p", type=int, default=1)
@@ -93,7 +97,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--confidence-l2", type=float, default=0.0025)
     parser.add_argument("--reward-noise", type=float, default=0.015)
     parser.add_argument("--four-p-signal-boost", type=float, default=1.4)
-    parser.add_argument("--train-state-perturbation", type=float, default=0.040)
+    parser.add_argument("--train-state-perturbation", type=float, default=V10Config.train_state_perturbation)
     parser.add_argument("--no-resume", action="store_true")
     parser.add_argument("--skip-training", action="store_true")
     parser.add_argument("--skip-eval", action="store_true")
@@ -184,6 +188,10 @@ def main() -> None:
         guardian_max_generalization_gap=args.guardian_max_generalization_gap,
         export_best_on_finish=bool(args.export_best_on_finish),
         benchmark_on_best_when_train_only=bool(args.benchmark_on_best_when_train_only),
+        reset_best_on_resume=bool(args.reset_best_on_resume),
+        holdout_eval_games_train_only=args.holdout_eval_games_train_only,
+        train_only_benchmark_every=args.train_only_benchmark_every,
+        train_only_benchmark_games=args.train_only_benchmark_games,
         snapshot_every=args.snapshot_every,
         snapshot_dir=args.snapshot_dir,
         strict_single_target_4p=bool(args.strict_single_target_4p),

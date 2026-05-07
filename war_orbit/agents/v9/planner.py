@@ -480,6 +480,8 @@ def _commit_reinforcements(builder: MoveBuilder, *, force: bool = False) -> floa
     threatened = list(builder.world.threatened_candidates)
     if force:
         threatened.extend(pid for pid in builder.world.doomed_candidates if pid not in threatened)
+    if not threatened:
+        return 0.0
     for target_id in threatened:
         target = builder.world.planet_by_id.get(target_id)
         if target is None or target.owner != builder.world.player:
@@ -502,7 +504,8 @@ def _commit_reinforcements(builder: MoveBuilder, *, force: bool = False) -> floa
             send = min(left, max(need + 2, int(src.ships * 0.28)))
             if send <= 0:
                 continue
-            option_score = (40.0 + 8.0 * target.production + 0.2 * need) / (1.0 + turns)
+            urgency = max(0.0, float(need))
+            option_score = (16.0 + 5.0 * target.production + 0.45 * urgency) / (1.0 + turns)
             if best is None or option_score > best[0]:
                 best = (option_score, src, aim[0], turns, send)
         if best is None:
@@ -582,6 +585,43 @@ def _stage_to_front(
             transfers += 1
             anchor_bonus = 1.12 if stage_target.id == front.id else 1.0
             score += anchor_bonus * sent / max(1.0, aim[1])
+    return score
+
+
+def _commit_front_breakthrough(builder: MoveBuilder, *, focus_enemy_id: Optional[int],
+                               preferred_anchor_id: Optional[int], max_attacks: int = 1) -> float:
+    world = builder.world
+    anchor = _frontier_anchor(world, focus_enemy_id, preferred_anchor_id)
+    if anchor is None:
+        return 0.0
+    targets = [
+        t for t in _frontier_objectives(world, focus_enemy_id, include_neutrals=False)
+        if t.owner != world.player
+    ]
+    if not targets:
+        return 0.0
+    targets.sort(key=lambda t: (
+        _dist(anchor, t),
+        float(t.ships) - 1.6 * float(t.production),
+        -float(t.production),
+    ))
+    score = 0.0
+    committed = 0
+    for target in targets[:4]:
+        if committed >= int(max_attacks):
+            break
+        before = len(builder.moves)
+        gained = _commit_target(
+            builder,
+            target,
+            family="balanced",
+            aggression=1.18,
+            max_sources=3,
+            min_send=max(6, builder.params.min_source_ships - 1),
+        )
+        if gained > 0.0 and len(builder.moves) > before:
+            committed += 1
+            score += 1.25 * gained
     return score
 
 
@@ -852,20 +892,27 @@ class V9Planner:
         front_pressure = max(0.0, active_fronts - front_budget)
         main_front = _main_front_metrics(world, focus, anchor)
         mass_short = max(0.0, float(self.params.target_main_front_ship_share_4p) - main_front["main_front_ship_share"])
-        b = MoveBuilder(world, reserve_scale=1.06, max_moves=self.params.max_moves_per_plan)
+        b = MoveBuilder(world, reserve_scale=1.12, max_moves=self.params.max_moves_per_plan)
         score = _stage_to_front(
             b,
-            ratio=0.90 if mass_short > 0.0 and _in_concentration_phase(world) else 0.80,
+            ratio=0.94 if mass_short > 0.0 and _in_concentration_phase(world) else 0.86,
             min_send=max(6, self.params.min_source_ships - 1),
             focus_enemy_id=focus,
             preferred_anchor_id=self.params.front_anchor_id,
-            max_transfers=10 if mass_short > 0.0 else 9,
+            max_transfers=12 if mass_short > 0.0 else 10,
+        )
+        breakthrough = _commit_front_breakthrough(
+            b,
+            focus_enemy_id=focus,
+            preferred_anchor_id=self.params.front_anchor_id,
+            max_attacks=1 if world.step < 125 else 2,
         )
         if not b.moves:
             return None
         threshold_gap = max(0, 13 - len(world.my_planets))
-        score += 13.0 + 1.4 * threshold_gap + 2.0 * active_fronts - 0.7 * front_pressure
-        score += 18.0 * mass_short
+        score += 18.0 + 1.6 * threshold_gap + 2.8 * active_fronts - 0.4 * front_pressure
+        score += 26.0 * mass_short
+        score += 0.80 * breakthrough
         score += float(self.params.front_close_bonus_weight) * max(0.0, front_budget - active_fronts)
         return PlanCandidate(
             "v9_4p_backbone",
@@ -895,19 +942,26 @@ class V9Planner:
         mass_short = max(0.0, float(self.params.target_main_front_ship_share_4p) - main_front["main_front_ship_share"])
         if active_fronts <= 1 and not world.threatened_candidates and not world.doomed_candidates and not under_threshold:
             return None
-        b = MoveBuilder(world, reserve_scale=0.78, max_moves=self.params.max_moves_per_plan)
+        b = MoveBuilder(world, reserve_scale=0.84, max_moves=self.params.max_moves_per_plan)
         score = _commit_reinforcements(b, force=True)
         score += _stage_to_front(
             b,
-            ratio=min(0.82, 0.52 + 0.06 * front_pressure + 0.20 * mass_short),
+            ratio=min(0.90, 0.58 + 0.08 * front_pressure + 0.24 * mass_short),
             min_send=max(5, self.params.min_source_ships - 2),
             focus_enemy_id=focus,
             preferred_anchor_id=self.params.front_anchor_id,
-            max_transfers=min(9, 6 + int(math.ceil(front_pressure))),
+            max_transfers=min(11, 7 + int(math.ceil(front_pressure))),
         )
+        if active_fronts <= front_budget + 0.75 or main_front["main_front_ship_share"] >= float(self.params.target_main_front_ship_share_4p):
+            score += 0.60 * _commit_front_breakthrough(
+                b,
+                focus_enemy_id=focus,
+                preferred_anchor_id=self.params.front_anchor_id,
+                max_attacks=1,
+            )
         if not b.moves:
             return None
-        score += 5.0 + 2.0 * active_fronts + 4.0 * front_pressure + (6.0 if under_threshold else 0.0) + 12.0 * mass_short
+        score += 8.0 + 2.8 * active_fronts + 5.0 * front_pressure + (7.0 if under_threshold else 0.0) + 18.0 * mass_short
         score += float(self.params.front_close_bonus_weight) * max(0.0, front_budget - active_fronts)
         return PlanCandidate(
             "v9_front_lock_consolidation",
@@ -1286,4 +1340,6 @@ class V9Planner:
     def _reserve_hold(self, world) -> PlanCandidate:
         b = MoveBuilder(world, reserve_scale=0.55, max_moves=self.params.max_moves_per_plan)
         score = _commit_reinforcements(b, force=True)
+        if not world.threatened_candidates and not world.doomed_candidates:
+            score *= 0.20
         return PlanCandidate("v9_reserve_hold", b.moves, "reserve_hold", base_score=score)

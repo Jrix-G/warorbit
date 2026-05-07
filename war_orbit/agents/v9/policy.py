@@ -242,9 +242,9 @@ class V9Policy:
                     int(getattr(params, "concentration_phase_start_4p", 45)) <= int(world.step) < int(getattr(params, "concentration_phase_end_4p", 125))
                     and 5 <= len(world.my_planets) < 15
                 )
-                metadata_bonus += 0.30 * backbone
-                metadata_bonus += (0.10 + 0.12 * float(fronts)) * front_lock
-                metadata_bonus += 0.16 * consolidation_threshold
+                metadata_bonus += 0.42 * backbone
+                metadata_bonus += (0.16 + 0.16 * float(fronts)) * front_lock
+                metadata_bonus += 0.22 * consolidation_threshold
                 if in_concentration:
                     mass_short = max(0.0, target_main_share - main_share) / max(0.05, target_main_share)
                     if candidate.plan_type in ("staging_transfer", "defensive_consolidation", "reserve_hold"):
@@ -260,11 +260,11 @@ class V9Policy:
                     elif active_fronts > front_budget + 0.50 and candidate.plan_type not in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
                         metadata_bonus -= float(front_open_penalty_weight) * (front_excess + 0.35)
                 if candidate.plan_type == "staging_transfer":
-                    metadata_bonus += 0.05 + 0.10 * backbone + 0.05 * front_lock
+                    metadata_bonus += 0.08 + 0.16 * backbone + 0.10 * front_lock
                     if active_fronts > front_budget + 0.25:
                         metadata_bonus -= float(front_open_penalty_weight) * max(0.0, active_fronts - (front_budget + 0.25))
                 if backbone > 0.0 and transfer >= 0.30 and attack < 0.35:
-                    metadata_bonus += 0.08
+                    metadata_bonus += 0.14
                 metadata_bonus += (0.12 + 0.30 * float(finish_pressure)) * staged_finisher
                 if 6 <= len(world.my_planets) < 15 and not world.is_late:
                     metadata_bonus += 0.18 * float(transfer + defense)
@@ -273,7 +273,7 @@ class V9Policy:
                 if fronts > 0.36 and not world.is_late:
                     front_pressure = float((fronts - 0.36) / 0.64)
                     if candidate.plan_type in ("defensive_consolidation", "staging_transfer", "reserve_hold"):
-                        metadata_bonus += float(front_pressure_plan_bias) * (0.75 + 0.50 * front_pressure)
+                        metadata_bonus += float(front_pressure_plan_bias) * (1.05 + 0.65 * front_pressure)
                     if backbone > 0.0 or front_lock > 0.0 or consolidation_threshold > 0.0:
                         metadata_bonus += 0.12 * front_pressure
                     finisher_ready = candidate.plan_type == "endgame_finisher" and (staged_finisher > 0.0 or finish_pressure > 1.0)

@@ -168,7 +168,7 @@ def _regularized_train_score(summary: Dict[str, float], flat: np.ndarray, defaul
     repeated = max(0.0, float(summary.get("dominant_plan_frac", 1.0)) - 0.72)
     score -= float(config.confidence_l2) * confidence
     score -= 0.05 * low_entropy + 0.04 * repeated
-    score += 1.80 * _front_pressure_adjustment(summary, config)
+    score += 0.30 * _front_pressure_adjustment(summary, config)
     score -= 0.07 * max(0.0, (avg_steps_4p - 160.0) / 80.0)
     score -= 0.08 * long_game_frac_4p
     if config.reward_noise > 0:
@@ -242,14 +242,14 @@ def _main_front_progress_score(summary: Dict[str, float], config: V10Config) -> 
     c120 = float(summary.get("conversion_t120_rate", 0.0))
     return (
         0.20 * share
-        + 0.14 * core_share
-        + 0.14 * ready
-        + 0.12 * p80
-        + 0.12 * p100
-        + 0.12 * p120
-        + 0.05 * c80
-        + 0.05 * c100
-        + 0.06 * c120
+        + 0.04 * core_share
+        + 0.02 * ready
+        + 0.14 * p80
+        + 0.18 * p100
+        + 0.20 * p120
+        + 0.06 * c80
+        + 0.08 * c100
+        + 0.08 * c120
     )
 
 
@@ -359,6 +359,15 @@ def _partial_reset(flat: np.ndarray, defaults: np.ndarray, rng: np.random.Genera
         out[mask] = defaults[mask] + 0.25 * (out[mask] - defaults[mask])
         out[mask] += rng.normal(0.0, 0.01, size=int(np.sum(mask))).astype(np.float32)
     return out.astype(np.float32)
+
+
+def _train_seed_offset(config: V10Config, rng: np.random.Generator, generation: int, pair_index: int) -> int:
+    base = int(generation) * 10000 + int(pair_index) * 101
+    perturb = max(0.0, min(1.0, float(getattr(config, "train_state_perturbation", 0.0))))
+    if perturb <= 0.0:
+        return base
+    jitter_span = max(1000, int(1_000_000 * perturb))
+    return base + int(rng.integers(1, jitter_span + 1))
 
 
 def _apply_guardian_adjustments(config: V10Config, train_summary: Dict[str, float],
@@ -506,6 +515,8 @@ class V10Trainer:
         self.resume = bool(resume)
         if self.resume and Path(config.checkpoint).exists():
             self.weights, self.best_score, self.generation = _load_train_checkpoint(config.checkpoint)
+            if bool(getattr(config, "reset_best_on_resume", False)):
+                self.best_score = -1.0
             print(f"Resumed {config.checkpoint} generation={self.generation} best_score={self.best_score:.4f}", flush=True)
         else:
             self.weights = V10Weights.defaults()
@@ -634,7 +645,7 @@ class V10Trainer:
                     print(f"gen={self.generation:04d} pair={i+1}/{self.config.pairs}", flush=True)
                     specs = scheduler.build(
                         self.config.games_per_eval,
-                        seed_offset=self.generation * 100 + i,
+                        seed_offset=_train_seed_offset(self.config, self.rng, self.generation, i),
                         max_steps=self.config.max_steps,
                         four_player_ratio=self.config.four_player_ratio,
                         phase="train",
@@ -739,7 +750,7 @@ class V10Trainer:
                         + 0.07 * float(train_summary.get("conversion_t120_rate", 0.0))
                         + 0.24 * _main_front_progress_score(train_summary, self.config)
                         - 0.025 * max(0.0, float(train_summary.get("focus_switches", 0.0)) - 1.2)
-                        + 1.80 * _front_pressure_adjustment(train_summary, self.config)
+                        + 0.30 * _front_pressure_adjustment(train_summary, self.config)
                         - 0.07 * max(0.0, (float(train_summary.get("avg_steps_4p", 0.0)) - 160.0) / 80.0)
                         - 0.08 * float(train_summary.get("long_game_frac_4p", 0.0))
                     )

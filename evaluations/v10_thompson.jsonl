@@ -2,3 +2,13 @@
 {"arm": "front_relax", "n": 1, "post_mean": 0.042005503416396174, "post_std": 0.031234752377721213, "reward": 0.06888902560288973}
 {"arm": "front_strict", "n": 1, "post_mean": 0.0, "post_std": 0.031234752377721213, "reward": 0.0}
 {"arm": "lr_up", "n": 1, "post_mean": -0.026397744506945008, "post_std": 0.031234752377721213, "reward": -0.04329230099138981}
+{"arm": "front_strict", "n": 1, "post_mean": 0.0, "post_std": 0.031234752377721213, "reward": 0.0}
+{"arm": "lr_up", "n": 1, "post_mean": -0.07809251540468239, "post_std": 0.031234752377721213, "reward": -0.1280717252636791}
+{"arm": "front_strict", "n": 1, "post_mean": 0.0, "post_std": 0.031234752377721213, "reward": 0.0}
+{"arm": "front_strict", "n": 1, "post_mean": 0.0, "post_std": 0.031234752377721213, "reward": 0.0}
+{"arm": "front_strict", "n": 1, "post_mean": 0.0, "post_std": 0.031234752377721213, "reward": 0.0}
+{"arm": "lr_up", "n": 1, "post_mean": 0.012340465835891589, "post_std": 0.031234752377721213, "reward": 0.020238363970862205}
+{"arm": "conversion_t120_up", "n": 1, "post_mean": -0.06323111172687562, "post_std": 0.031234752377721213, "reward": -0.10369902323207603}
+{"arm": "front_strict", "n": 1, "post_mean": 0.0, "post_std": 0.031234752377721213, "reward": 0.0}
+{"arm": "front_strict", "n": 1, "post_mean": 0.0, "post_std": 0.031234752377721213, "reward": 0.0}
+{"arm": "lr_up", "n": 1, "post_mean": 0.022400949370396366, "post_std": 0.031234752377721213, "reward": 0.03673755696745004}

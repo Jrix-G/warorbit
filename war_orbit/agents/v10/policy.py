@@ -107,11 +107,11 @@ class V10Policy(V9Policy):
             mass_short = max(0.0, target_main_share - main_share) / max(0.05, target_main_share)
             delta = 0.0
             if backbone > 0.0:
-                delta += 0.18
+                delta += 0.26
                 if 6 <= my_planets < 15 and not getattr(world, "is_late", False):
-                    delta += 0.08
+                    delta += 0.12
                 if active_fronts <= front_budget + 0.50:
-                    delta += 0.06
+                    delta += 0.10
             if in_concentration and mass_short > 0.0:
                 if candidate.plan_type in ("staging_transfer", "defensive_consolidation", "reserve_hold"):
                     delta += main_mass_bonus * (0.20 + 0.65 * mass_short)
@@ -120,9 +120,9 @@ class V10Policy(V9Policy):
             elif main_share >= target_main_share and candidate.plan_type in ("delayed_strike", "resource_denial", "endgame_finisher"):
                 delta += 0.04
             if candidate.plan_type == "defensive_consolidation":
-                delta += 0.10
+                delta += 0.16
             if active_fronts > front_budget + 0.50 and candidate.plan_type in ("resource_denial", "delayed_strike", "opportunistic_snipe", "aggressive_expansion"):
-                delta -= 0.06
+                delta -= 0.10
             adjusted.append((candidate, score + delta, features))
         return adjusted
 
