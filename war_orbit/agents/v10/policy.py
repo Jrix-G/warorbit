@@ -91,11 +91,20 @@ class V10Policy(V9Policy):
 
         my_planets = len(getattr(world, "my_planets", []) or [])
         adjusted: List[Tuple[PlanCandidate, float, object]] = []
+        params = getattr(world, "_v9_params", None)
+        target_main_share = float(getattr(params, "target_main_front_ship_share_4p", 0.42))
+        main_mass_bonus = float(getattr(params, "main_front_mass_bonus", 0.22))
+        in_concentration = (
+            int(getattr(params, "concentration_phase_start_4p", 45)) <= int(getattr(world, "step", 0)) < int(getattr(params, "concentration_phase_end_4p", 125))
+            and 5 <= my_planets < 15
+        )
         for candidate, score, features in scored:
             metadata = candidate.metadata or {}
             backbone = float(metadata.get("backbone", 0.0))
             active_fronts = float(metadata.get("active_fronts", 0.0))
             front_budget = max(1.0, float(metadata.get("front_phase_budget", four_p_front_budget)))
+            main_share = float(metadata.get("main_front_ship_share", 0.0))
+            mass_short = max(0.0, target_main_share - main_share) / max(0.05, target_main_share)
             delta = 0.0
             if backbone > 0.0:
                 delta += 0.18
@@ -103,6 +112,13 @@ class V10Policy(V9Policy):
                     delta += 0.08
                 if active_fronts <= front_budget + 0.50:
                     delta += 0.06
+            if in_concentration and mass_short > 0.0:
+                if candidate.plan_type in ("staging_transfer", "defensive_consolidation", "reserve_hold"):
+                    delta += main_mass_bonus * (0.20 + 0.65 * mass_short)
+                elif candidate.plan_type in ("resource_denial", "delayed_strike", "opportunistic_snipe", "aggressive_expansion"):
+                    delta -= 0.08 * mass_short
+            elif main_share >= target_main_share and candidate.plan_type in ("delayed_strike", "resource_denial", "endgame_finisher"):
+                delta += 0.04
             if candidate.plan_type == "defensive_consolidation":
                 delta += 0.10
             if active_fronts > front_budget + 0.50 and candidate.plan_type in ("resource_denial", "delayed_strike", "opportunistic_snipe", "aggressive_expansion"):

@@ -234,9 +234,25 @@ class V9Policy:
                 front_budget = max(1.0, float(metadata.get("front_phase_budget", four_p_front_budget)))
                 front_pressure = max(0.0, active_fronts - front_budget)
                 front_room = max(0.0, front_budget - active_fronts)
+                params = getattr(world, "_v9_params", None)
+                target_main_share = float(getattr(params, "target_main_front_ship_share_4p", 0.42))
+                main_share = float(metadata.get("main_front_ship_share", 0.0))
+                main_mass_bonus = float(getattr(params, "main_front_mass_bonus", 0.22))
+                in_concentration = (
+                    int(getattr(params, "concentration_phase_start_4p", 45)) <= int(world.step) < int(getattr(params, "concentration_phase_end_4p", 125))
+                    and 5 <= len(world.my_planets) < 15
+                )
                 metadata_bonus += 0.30 * backbone
                 metadata_bonus += (0.10 + 0.12 * float(fronts)) * front_lock
                 metadata_bonus += 0.16 * consolidation_threshold
+                if in_concentration:
+                    mass_short = max(0.0, target_main_share - main_share) / max(0.05, target_main_share)
+                    if candidate.plan_type in ("staging_transfer", "defensive_consolidation", "reserve_hold"):
+                        metadata_bonus += main_mass_bonus * (0.35 + mass_short)
+                    elif mass_short > 0.0 and attack > 0.20 and transfer < 0.20:
+                        metadata_bonus -= 0.16 * mass_short
+                elif main_share >= target_main_share and candidate.plan_type in ("delayed_strike", "resource_denial", "endgame_finisher"):
+                    metadata_bonus += 0.05
                 if active_fronts > 0.0:
                     front_excess = max(0.0, active_fronts - front_budget)
                     if active_fronts <= front_budget + 0.25 and (backbone > 0.0 or front_lock > 0.0):
@@ -431,6 +447,39 @@ def _active_front_count_runtime(world, focus_enemy_id: Optional[int]) -> int:
     return count
 
 
+def _main_front_snapshot_runtime(world, focus_enemy_id: Optional[int], anchor_id: Optional[int]) -> Dict[str, float]:
+    anchor = world.planet_by_id.get(int(anchor_id)) if anchor_id is not None else None
+    if anchor is None:
+        selected = _select_front_anchor(world, focus_enemy_id, None)
+        anchor = world.planet_by_id.get(int(selected)) if selected is not None else None
+    if anchor is None or not world.my_planets:
+        return {"main_front_ships": 0.0, "main_front_ship_share": 0.0, "main_front_planets": 0.0}
+    radius = float(getattr(world, "_main_front_radius_4p", 46.0))
+    front_planets = [
+        p for p in world.my_planets
+        if _dist_planets(p, anchor) <= radius + float(p.radius) + float(anchor.radius)
+    ]
+    front_ids = {int(p.id) for p in front_planets}
+    planet_ships = sum(float(p.ships) for p in front_planets)
+    fleet_ships = 0.0
+    for fleet in getattr(world, "fleets", []) or []:
+        if int(getattr(fleet, "owner", -1)) != int(world.player):
+            continue
+        if int(getattr(fleet, "from_planet_id", -1)) in front_ids:
+            fleet_ships += float(getattr(fleet, "ships", 0.0))
+            continue
+        fx = float(getattr(fleet, "x", 0.0))
+        fy = float(getattr(fleet, "y", 0.0))
+        if math.hypot(fx - float(anchor.x), fy - float(anchor.y)) <= radius:
+            fleet_ships += float(getattr(fleet, "ships", 0.0))
+    main_front_ships = planet_ships + fleet_ships
+    return {
+        "main_front_ships": float(main_front_ships),
+        "main_front_ship_share": float(main_front_ships / max(1.0, float(getattr(world, "my_total", 0.0)))),
+        "main_front_planets": float(len(front_planets)),
+    }
+
+
 class V9Agent:
     """Callable Kaggle-compatible V9 agent."""
 
@@ -493,6 +542,12 @@ class V9Agent:
             front_open_penalty_weight=float(getattr(self.config, "front_open_penalty_weight", 0.10)),
             front_close_bonus_weight=float(getattr(self.config, "front_close_bonus_weight", 0.08)),
             front_overlap_penalty_weight=float(getattr(self.config, "front_overlap_penalty_weight", 0.08)),
+            main_front_radius_4p=float(getattr(self.config, "main_front_radius_4p", 46.0)),
+            target_main_front_ship_share_4p=float(getattr(self.config, "target_main_front_ship_share_4p", 0.42)),
+            main_front_mass_bonus=float(getattr(self.config, "main_front_mass_bonus", 0.22)),
+            scatter_penalty_weight_4p=float(getattr(self.config, "scatter_penalty_weight_4p", 0.18)),
+            concentration_phase_start_4p=int(getattr(self.config, "concentration_phase_start_4p", 45)),
+            concentration_phase_end_4p=int(getattr(self.config, "concentration_phase_end_4p", 125)),
         ))
         candidates = planner.generate(world, self.rng)
         if not candidates:
@@ -579,14 +634,24 @@ class V9Agent:
     def _record_plan_diagnostics(self, world, candidate: PlanCandidate) -> None:
         stats = self.plan_stats
         stats["turns"] = stats.get("turns", 0.0) + 1.0
+        setattr(world, "_main_front_radius_4p", float(getattr(self.config, "main_front_radius_4p", 46.0)))
         if world.is_four_player:
             stats["four_p_turns"] = stats.get("four_p_turns", 0.0) + 1.0
             stats["front_lock_turns"] = stats.get("front_lock_turns", 0.0) + (1.0 if self.front_lock_owner is not None else 0.0)
             focused_fronts = float(_active_front_count_runtime(world, self.front_lock_owner))
             global_fronts = float(_active_front_count_runtime(world, None))
+            main_front = _main_front_snapshot_runtime(world, self.front_lock_owner, self.front_lock_anchor)
             stats["active_front_sum"] = stats.get("active_front_sum", 0.0) + focused_fronts
             stats["focused_active_front_sum"] = stats.get("focused_active_front_sum", 0.0) + focused_fronts
             stats["global_active_front_sum"] = stats.get("global_active_front_sum", 0.0) + global_fronts
+            stats["main_front_ship_share_sum"] = stats.get("main_front_ship_share_sum", 0.0) + main_front["main_front_ship_share"]
+            stats["main_front_ship_sum"] = stats.get("main_front_ship_sum", 0.0) + main_front["main_front_ships"]
+            stats["main_front_planet_sum"] = stats.get("main_front_planet_sum", 0.0) + main_front["main_front_planets"]
+            if 45 <= int(world.step) < 125:
+                stats["main_front_core_turns"] = stats.get("main_front_core_turns", 0.0) + 1.0
+                stats["main_front_core_ship_share_sum"] = stats.get("main_front_core_ship_share_sum", 0.0) + main_front["main_front_ship_share"]
+            if main_front["main_front_ship_share"] >= float(getattr(self.config, "target_main_front_ship_share_4p", 0.42)):
+                stats["main_front_ready_turns"] = stats.get("main_front_ready_turns", 0.0) + 1.0
         metadata = candidate.metadata or {}
         plan_type_key = f"plan_type:{candidate.plan_type}"
         stats[plan_type_key] = stats.get(plan_type_key, 0.0) + 1.0

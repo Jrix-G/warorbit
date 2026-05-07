@@ -233,7 +233,9 @@ def _run_kaggle_game_with_deadline(
     first_obs = env.steps[-1][tracked_player].observation
     max_planets = _obs_player_planets(first_obs, tracked_player)
     planets_t60 = None
+    planets_t80 = None
     planets_t100 = None
+    planets_t120 = None
 
     while not env.done:
         if deadline is not None and time.time() >= deadline:
@@ -259,8 +261,12 @@ def _run_kaggle_game_with_deadline(
         step_after = int(_obs_get(obs, "step", 0) or 0)
         if planets_t60 is None and step_after >= 60:
             planets_t60 = owned
+        if planets_t80 is None and step_after >= 80:
+            planets_t80 = owned
         if planets_t100 is None and step_after >= 100:
             planets_t100 = owned
+        if planets_t120 is None and step_after >= 120:
+            planets_t120 = owned
 
     elapsed = time.perf_counter() - started
     final_obs = env.steps[-1][0].observation
@@ -274,7 +280,9 @@ def _run_kaggle_game_with_deadline(
         "steps_per_second": steps / max(elapsed, 1e-9),
         "max_planets": int(max_planets),
         "planets_t60": int(planets_t60 if planets_t60 is not None else max_planets),
+        "planets_t80": int(planets_t80 if planets_t80 is not None else max_planets),
         "planets_t100": int(planets_t100 if planets_t100 is not None else max_planets),
+        "planets_t120": int(planets_t120 if planets_t120 is not None else max_planets),
     }
 
 
@@ -294,7 +302,9 @@ def _run_kaggle_fast_game_with_deadline(
     tracked_player = int(tracked_player) if 0 <= int(tracked_player) < int(n_players) else 0
     max_planets = _obs_player_planets(game.observation(tracked_player), tracked_player)
     planets_t60 = None
+    planets_t80 = None
     planets_t100 = None
+    planets_t120 = None
 
     while not game.done:
         if deadline is not None and time.time() >= deadline:
@@ -319,8 +329,12 @@ def _run_kaggle_fast_game_with_deadline(
         step_after = int(game.observation(0).get("step", 0) or 0)
         if planets_t60 is None and step_after >= 60:
             planets_t60 = owned
+        if planets_t80 is None and step_after >= 80:
+            planets_t80 = owned
         if planets_t100 is None and step_after >= 100:
             planets_t100 = owned
+        if planets_t120 is None and step_after >= 120:
+            planets_t120 = owned
 
     elapsed = time.perf_counter() - started
     steps = int(game.observation(0).get("step", 0) or 0)
@@ -334,7 +348,9 @@ def _run_kaggle_fast_game_with_deadline(
         "c_accel_enabled": bool(getattr(game, "c_accel_enabled", False)),
         "max_planets": int(max_planets),
         "planets_t60": int(planets_t60 if planets_t60 is not None else max_planets),
+        "planets_t80": int(planets_t80 if planets_t80 is not None else max_planets),
         "planets_t100": int(planets_t100 if planets_t100 is not None else max_planets),
+        "planets_t120": int(planets_t120 if planets_t120 is not None else max_planets),
     }
 
 
@@ -423,7 +439,9 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
     r4 = [float(r.get("reward", 0.0)) for r in results if r.get("mode") == "4p"]
     max_planets = [float(r.get("max_planets", 0.0) or 0.0) for r in results]
     planets_t60 = [float(r.get("planets_t60", 0.0) or 0.0) for r in results]
+    planets_t80 = [float(r.get("planets_t80", r.get("planets_t60", 0.0)) or 0.0) for r in results]
     planets_t100 = [float(r.get("planets_t100", 0.0) or 0.0) for r in results]
+    planets_t120 = [float(r.get("planets_t120", r.get("planets_t100", 0.0)) or 0.0) for r in results]
     steps_all = [float(r.get("steps", 0.0) or 0.0) for r in results]
     steps_4p = [float(r.get("steps", 0.0) or 0.0) for r in results if r.get("mode") == "4p"]
     plan_counts: Dict[str, int] = {}
@@ -461,9 +479,13 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
         "n_4p": len(r4),
         "avg_max_planets": sum(max_planets) / max(1, len(max_planets)),
         "avg_planets_t60": sum(planets_t60) / max(1, len(planets_t60)),
+        "avg_planets_t80": sum(planets_t80) / max(1, len(planets_t80)),
         "avg_planets_t100": sum(planets_t100) / max(1, len(planets_t100)),
+        "avg_planets_t120": sum(planets_t120) / max(1, len(planets_t120)),
         "conversion_t60_rate": sum(1.0 for v in planets_t60 if v >= 8.0) / max(1, len(planets_t60)),
+        "conversion_t80_rate": sum(1.0 for v in planets_t80 if v >= 9.0) / max(1, len(planets_t80)),
         "conversion_t100_rate": sum(1.0 for v in planets_t100 if v >= 13.0) / max(1, len(planets_t100)),
+        "conversion_t120_rate": sum(1.0 for v in planets_t120 if v >= 12.0) / max(1, len(planets_t120)),
         "avg_steps": sum(steps_all) / max(1, len(steps_all)),
         "avg_steps_4p": sum(steps_4p) / max(1, len(steps_4p)) if steps_4p else 0.0,
         "long_game_frac": sum(1.0 for s in steps_all if s >= 180.0) / max(1, len(steps_all)),
@@ -482,5 +504,10 @@ def summarise_results(results: Iterable[dict]) -> Dict[str, float]:
         "active_front_avg": float(stat_totals.get("active_front_sum", 0.0)) / four_p_turns,
         "focused_front_avg": float(stat_totals.get("focused_active_front_sum", stat_totals.get("active_front_sum", 0.0))) / four_p_turns,
         "global_front_avg": float(stat_totals.get("global_active_front_sum", stat_totals.get("active_front_sum", 0.0))) / four_p_turns,
+        "main_front_ship_share": float(stat_totals.get("main_front_ship_share_sum", 0.0)) / four_p_turns,
+        "main_front_ships": float(stat_totals.get("main_front_ship_sum", 0.0)) / four_p_turns,
+        "main_front_planets": float(stat_totals.get("main_front_planet_sum", 0.0)) / four_p_turns,
+        "main_front_core_ship_share": float(stat_totals.get("main_front_core_ship_share_sum", 0.0)) / max(1.0, float(stat_totals.get("main_front_core_turns", 0.0))),
+        "main_front_ready_frac": float(stat_totals.get("main_front_ready_turns", 0.0)) / four_p_turns,
         "focus_switches": float(stat_totals.get("focus_switches", 0.0)) / max(1.0, len(results)),
     }

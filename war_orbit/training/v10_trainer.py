@@ -17,6 +17,8 @@ from ..config.v10_config import V10Config
 from ..optimization.tuning import apply_adaptation
 from .curriculum import CurriculumScheduler, build_cross_play_specs, build_role_pools
 from .self_play import DeadlineExceeded, evaluate_weights, official_fast_c_accel_enabled, summarise_results
+from .progress_monitor import ProgressMonitor, sprt_decision
+from .thompson_controller import ThompsonController, default_v10_arms, apply_arm, restore
 
 
 V10_4P_LOG_TARGETS = {
@@ -145,11 +147,21 @@ def _regularized_train_score(summary: Dict[str, float], flat: np.ndarray, defaul
     wr_2p = float(summary.get("wr_2p", 0.0))
     wr_4p = float(summary.get("wr_4p", 0.0))
     conv60 = float(summary.get("conversion_t60_rate", 0.0))
+    conv80 = float(summary.get("conversion_t80_rate", 0.0))
     conv100 = float(summary.get("conversion_t100_rate", 0.0))
+    conv120 = float(summary.get("conversion_t120_rate", 0.0))
     focus_switches = float(summary.get("focus_switches", 0.0))
     avg_steps_4p = float(summary.get("avg_steps_4p", 0.0))
     long_game_frac_4p = float(summary.get("long_game_frac_4p", 0.0))
-    score = 0.80 * wr_4p + 0.08 * wr_2p + 0.04 * conv60 + 0.08 * conv100
+    score = (
+        0.74 * wr_4p
+        + 0.08 * wr_2p
+        + 0.03 * conv60
+        + 0.05 * conv80
+        + 0.08 * conv100
+        + 0.07 * conv120
+        + 0.24 * _main_front_progress_score(summary, config)
+    )
     score -= 0.025 * max(0.0, focus_switches - 1.2)
     confidence = float(np.linalg.norm(flat - defaults) / max(1.0, np.sqrt(flat.size)))
     low_entropy = max(0.0, 0.45 - float(summary.get("plan_entropy", 0.0)))
@@ -173,9 +185,17 @@ def _front_pressure_adjustment(summary: Dict[str, float], config: V10Config) -> 
     xfer = float(summary.get("transfer_move_frac", 0.0))
     backbone = float(summary.get("backbone_turn_frac", 0.0))
     lock = float(summary.get("front_lock_turn_frac", 0.0))
+    main_front = float(summary.get("main_front_ship_share", 0.0))
+    main_front_ready = float(summary.get("main_front_ready_frac", 0.0))
+    target_main_front = max(0.05, float(getattr(config, "target_main_front_ship_share_4p", 0.42)))
+    main_front_score = min(1.0, main_front / target_main_front)
 
     excess = max(0.0, fronts - target_fronts)
     penalty = min(float(getattr(config, "front_penalty_cap", 0.12)), excess * float(getattr(config, "front_penalty_weight", 0.055)))
+    if main_front_score >= 0.95:
+        penalty *= 0.65
+    elif main_front_score < 0.70:
+        penalty += 0.05 * (0.70 - main_front_score) / 0.70
     backbone_shortfall = max(0.0, (target_backbone - backbone) / target_backbone)
     penalty += 1.20 * float(getattr(config, "backbone_penalty_weight", 0.08)) * backbone_shortfall
     if backbone < 0.15:
@@ -194,13 +214,66 @@ def _front_pressure_adjustment(summary: Dict[str, float], config: V10Config) -> 
         + backbone_score
         + min(1.0, lock / 0.90)
         + min(front_score, backbone_score)
-    ) / 4.0
+        + main_front_score
+        + min(1.0, main_front_ready / 0.35)
+    ) / 6.0
     bonus = float(getattr(config, "front_partial_bonus", 0.025)) * progress
     if backbone >= target_backbone and fronts <= target_fronts:
         bonus += float(getattr(config, "backbone_bonus_weight", 0.06))
+    if main_front_score >= 1.0 and main_front_ready >= 0.30:
+        bonus += 0.035
     if xfer >= 0.30 and backbone >= target_backbone and lock >= 0.90 and fronts <= target_fronts:
         bonus += float(getattr(config, "front_ok_bonus", 0.045))
-    return bonus - penalty
+    return max(-0.24, min(0.22, bonus - penalty))
+
+
+def _main_front_progress_score(summary: Dict[str, float], config: V10Config) -> float:
+    if int(summary.get("n_4p", 0)) <= 0:
+        return 0.0
+    target_share = max(0.05, float(getattr(config, "target_main_front_ship_share_4p", 0.42)))
+    share = min(1.25, float(summary.get("main_front_ship_share", 0.0)) / target_share)
+    core_share = min(1.25, float(summary.get("main_front_core_ship_share", 0.0)) / target_share)
+    ready = min(1.0, float(summary.get("main_front_ready_frac", 0.0)) / 0.35)
+    p80 = min(1.25, float(summary.get("avg_planets_t80", 0.0)) / 9.0)
+    p100 = min(1.25, float(summary.get("avg_planets_t100", 0.0)) / 10.0)
+    p120 = min(1.25, float(summary.get("avg_planets_t120", 0.0)) / 12.0)
+    c80 = float(summary.get("conversion_t80_rate", 0.0))
+    c100 = float(summary.get("conversion_t100_rate", 0.0))
+    c120 = float(summary.get("conversion_t120_rate", 0.0))
+    return (
+        0.20 * share
+        + 0.14 * core_share
+        + 0.14 * ready
+        + 0.12 * p80
+        + 0.12 * p100
+        + 0.12 * p120
+        + 0.05 * c80
+        + 0.05 * c100
+        + 0.06 * c120
+    )
+
+
+def _train_only_promotion_blockers(train_summary: Dict[str, float], eval_summary: Dict[str, float],
+                                   selection_score: float, best_score: float, config: V10Config,
+                                   skill_lcb: float | None) -> list[str]:
+    blockers: list[str] = ["train_only"]
+    if selection_score < best_score + max(1e-6, float(config.min_improvement)):
+        blockers.append("score_not_improved")
+    eval_4p = float(eval_summary.get("wr_4p", 0.0))
+    train_4p = float(train_summary.get("wr_4p", 0.0))
+    eval_t120 = float(eval_summary.get("conversion_t120_rate", 0.0))
+    train_t120 = float(train_summary.get("conversion_t120_rate", 0.0))
+    if eval_4p < max(0.18, min(0.32, train_4p - 0.18)):
+        blockers.append("holdout4p_low")
+    if train_4p - eval_4p > 0.18:
+        blockers.append("train_holdout_gap")
+    if eval_t120 < max(0.10, train_t120 - 0.24):
+        blockers.append("holdout_t120_low")
+    previous_lcb = getattr(config, "_last_train_only_skill_lcb", None)
+    if skill_lcb is not None and previous_lcb is not None:
+        if skill_lcb < float(previous_lcb) - 0.015:
+            blockers.append("skill_lcb_down")
+    return blockers
 
 
 def _is_front_backbone_collapse(summary: Dict[str, float]) -> bool:
@@ -301,6 +374,7 @@ def _apply_guardian_adjustments(config: V10Config, train_summary: Dict[str, floa
     train_bb = float(train_summary.get("backbone_turn_frac", 0.0))
     bench_bb = float(bench["bb"])
     bench_fronts = float(bench["fronts"])
+    bench_main_front = float(bench["main_front"])
     bench_4p = float(benchmark_summary.get("wr_4p", 0.0))
     gap = float(eval_summary.get("mean", 0.0)) - float(benchmark_summary.get("mean", 0.0))
     changed = False
@@ -331,6 +405,11 @@ def _apply_guardian_adjustments(config: V10Config, train_summary: Dict[str, floa
         config.benchmark_four_player_ratio = min(1.0, float(config.benchmark_four_player_ratio) + step)
         config.candidate_diversity = min(1.90, float(config.candidate_diversity) + 2.0 * step)
         config.max_focus_targets_4p = 1 if deficit >= 0.12 else min(int(config.max_focus_targets_4p), 2)
+        if bench_main_front < float(getattr(config, "target_main_front_ship_share_4p", 0.42)):
+            config.main_front_mass_bonus = min(0.38, float(getattr(config, "main_front_mass_bonus", 0.22)) + 0.025)
+            config.scatter_penalty_weight_4p = min(0.34, float(getattr(config, "scatter_penalty_weight_4p", 0.18)) + 0.018)
+            config.concentration_phase_end_4p = min(150, int(getattr(config, "concentration_phase_end_4p", 125)) + 4)
+            event["main_front_fix"] = 1.0
         event["four_p_fix"] = 1.0
         event["four_p_step"] = float(step)
         changed = True
@@ -361,6 +440,7 @@ def _apply_guardian_adjustments(config: V10Config, train_summary: Dict[str, floa
         "bench_4p": bench_4p,
         "bench_bb": bench_bb,
         "bench_fronts": bench_fronts,
+        "bench_main_front": bench_main_front,
         "gap": gap,
         "front_penalty_weight": float(config.front_penalty_weight),
         "backbone_penalty_weight": float(config.backbone_penalty_weight),
@@ -369,6 +449,9 @@ def _apply_guardian_adjustments(config: V10Config, train_summary: Dict[str, floa
         "strict_single_target_4p": 1.0 if bool(getattr(config, "strict_single_target_4p", False)) else 0.0,
         "disable_snipe_4p": 1.0 if bool(getattr(config, "disable_snipe_4p", False)) else 0.0,
         "max_focus_targets_4p": float(getattr(config, "max_focus_targets_4p", 2)),
+        "main_front_mass_bonus": float(getattr(config, "main_front_mass_bonus", 0.22)),
+        "scatter_penalty_weight_4p": float(getattr(config, "scatter_penalty_weight_4p", 0.18)),
+        "concentration_phase_end_4p": float(getattr(config, "concentration_phase_end_4p", 125)),
     })
     return event
 
@@ -378,17 +461,24 @@ def _four_p_diag(summary: Dict[str, float]) -> Dict[str, float | str | bool]:
     bb = float(summary.get("backbone_turn_frac", 0.0))
     lock = float(summary.get("front_lock_turn_frac", 0.0))
     fronts = float(summary.get("active_front_avg", 0.0))
+    main_front = float(summary.get("main_front_ship_share", 0.0))
+    main_front_core = float(summary.get("main_front_core_ship_share", 0.0))
+    main_front_ready = float(summary.get("main_front_ready_frac", 0.0))
     ok = (
         xfer >= V10_4P_LOG_TARGETS["xfer"]
         and bb >= V10_4P_LOG_TARGETS["bb"]
         and lock >= V10_4P_LOG_TARGETS["lock"]
         and fronts <= V10_4P_LOG_TARGETS["fronts"]
+        and main_front >= 0.40
     )
     return {
         "xfer": xfer,
         "bb": bb,
         "lock": lock,
         "fronts": fronts,
+        "main_front": main_front,
+        "main_front_core": main_front_core,
+        "main_front_ready": main_front_ready,
         "ok": bool(ok),
         "status": "OK" if ok else "WARN",
         "target_xfer_min": V10_4P_LOG_TARGETS["xfer"],
@@ -405,7 +495,8 @@ def _format_four_p_diag(summary: Dict[str, float]) -> str:
         f"xfer={diag['xfer']:.2f}/{V10_4P_LOG_TARGETS['xfer']:.2f}+ "
         f"bb={diag['bb']:.2f}/{V10_4P_LOG_TARGETS['bb']:.2f}+ "
         f"lock={diag['lock']:.2f}/{V10_4P_LOG_TARGETS['lock']:.2f}+ "
-        f"fronts={diag['fronts']:.1f}/{V10_4P_LOG_TARGETS['fronts']:.1f}-"
+        f"fronts={diag['fronts']:.1f}/{V10_4P_LOG_TARGETS['fronts']:.1f}- "
+        f"mf={diag['main_front']:.2f}/0.40+ ready={diag['main_front_ready']:.2f}"
     )
 
 
@@ -435,6 +526,18 @@ class V10Trainer:
         self.rng = np.random.default_rng(config.seed + self.generation)
         self.log_path = Path(config.log_jsonl)
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Bayesian progress monitor + Thompson sampling controller.
+        self.monitor = ProgressMonitor(log_path=getattr(config, "progress_monitor_log", None)) \
+            if bool(getattr(config, "progress_monitor_enabled", True)) else None
+        self.thompson = ThompsonController(arms=default_v10_arms(),
+                                           seed=config.seed + 7919,
+                                           log_path=getattr(config, "thompson_log", None)) \
+            if bool(getattr(config, "thompson_enabled", True)) else None
+        self._last_skill_lcb: float | None = None
+        self._champion_skill: float = 0.0  # posterior mean of best confirmed gen
+        self._challenger_acc_wins: int = 0
+        self._challenger_acc_n: int = 0
 
     def train(self) -> Dict[str, float]:
         start = time.time()
@@ -502,6 +605,12 @@ class V10Trainer:
         try:
             while time.time() < deadline:
                 self.generation += 1
+                # --- Thompson sampling: pick an arm for this generation ---
+                arm = None
+                arm_prev: Dict[str, object] = {}
+                if self.thompson is not None:
+                    arm = self.thompson.sample()
+                    arm_prev = apply_arm(self.config, arm)
                 active_config = apply_adaptation(self.config, self.controller)
                 active_config.checkpoint = self.config.checkpoint
                 active_config.best_checkpoint = self.config.best_checkpoint
@@ -561,24 +670,130 @@ class V10Trainer:
                 benchmark_summary = {"mean": 0.0, "wr_2p": 0.0, "wr_4p": 0.0, "n_2p": 0, "n_4p": 0}
                 selection_score = float(train_summary["mean"]) if self.config.train_only else 0.0
                 promoted = False
-                promotion_blockers: list[str] = ["train_only"] if self.config.train_only else []
+                promotion_blockers: list[str] = []
                 guardian_event: Dict[str, float | str] = {"event": "not_run"}
+
+                # --- V10.5 holdout eval + periodic benchmark in train_only ---
+                # Fixes bug where eval_summary aliased train_summary (no generalization signal).
+                holdout_eval_games = int(getattr(self.config, "holdout_eval_games_train_only", 0) or 0)
+                bench_every = int(getattr(self.config, "train_only_benchmark_every", 0) or 0)
+                bench_games_to = int(getattr(self.config, "train_only_benchmark_games", 0) or 0)
+                if self.config.train_only and holdout_eval_games > 0 and eval_opponents:
+                    holdout_specs = build_cross_play_specs(
+                        eval_opponents,
+                        games=holdout_eval_games,
+                        seed=self.config.seed,
+                        seed_offset=60000 + self.generation * 17,
+                        max_steps=self.config.eval_max_steps,
+                        four_player_ratio=self.config.resolved_eval_four_player_ratio(),
+                        phase="holdout",
+                    )
+                    try:
+                        holdout_results = evaluate_weights(self.weights, active_config, holdout_specs,
+                                                           deadline=deadline, pool=pool)
+                        eval_summary = summarise_results(holdout_results)
+                    except DeadlineExceeded:
+                        raise
+                    except Exception:
+                        eval_summary = train_summary
+                if (self.config.train_only and bench_every > 0 and bench_games_to > 0
+                        and (self.generation == 1 or self.generation % bench_every == 0)
+                        and benchmark_opponents):
+                    try:
+                        bench_cfg_games = active_config.benchmark_games
+                        active_config.benchmark_games = bench_games_to
+                        benchmark_summary = _run_benchmark(
+                            self.weights, active_config, benchmark_opponents,
+                            deadline=deadline, pool=pool, seed_offset=70000 + self.generation,
+                            progress_label=f"gen={self.generation:04d} train_only_bench",
+                        )
+                        active_config.benchmark_games = bench_cfg_games
+                    except DeadlineExceeded:
+                        raise
+                    except Exception:
+                        pass
+
+                # Record into Bayesian skill monitor (per-mode aggregate).
+                if self.monitor is not None:
+                    for src_name, summary in (("train", train_summary), ("eval", eval_summary), ("bench", benchmark_summary)):
+                        for mode_key, n_key, wr_key in (("2p", "n_2p", "wr_2p"), ("4p", "n_4p", "wr_4p")):
+                            n = int(summary.get(n_key, 0) or 0)
+                            if n <= 0:
+                                continue
+                            wr = float(summary.get(wr_key, 0.0))
+                            wins = int(round(wr * n))
+                            weight = {"train": 0.4, "eval": 1.0, "bench": 1.6}.get(src_name, 1.0)
+                            self.monitor.record(self.generation, mode_key, src_name, wins, n, weight=weight)
+                current_skill_lcb: float | None = None
+                if self.monitor is not None and len(self.monitor.history) >= 1:
+                    skill_mean_now, skill_sigma_now = self.monitor.latest_skill()
+                    current_skill_lcb = max(0.0, skill_mean_now - 1.645 * skill_sigma_now)
+
                 if self.config.train_only:
                     selection_score = (
-                        0.80 * float(train_summary.get("wr_4p", 0.0))
+                        0.74 * float(train_summary.get("wr_4p", 0.0))
                         + 0.08 * float(train_summary.get("wr_2p", 0.0))
-                        + 0.04 * float(train_summary.get("conversion_t60_rate", 0.0))
+                        + 0.03 * float(train_summary.get("conversion_t60_rate", 0.0))
+                        + 0.05 * float(train_summary.get("conversion_t80_rate", 0.0))
                         + 0.08 * float(train_summary.get("conversion_t100_rate", 0.0))
+                        + 0.07 * float(train_summary.get("conversion_t120_rate", 0.0))
+                        + 0.24 * _main_front_progress_score(train_summary, self.config)
                         - 0.025 * max(0.0, float(train_summary.get("focus_switches", 0.0)) - 1.2)
                         + 1.80 * _front_pressure_adjustment(train_summary, self.config)
                         - 0.07 * max(0.0, (float(train_summary.get("avg_steps_4p", 0.0)) - 160.0) / 80.0)
                         - 0.08 * float(train_summary.get("long_game_frac_4p", 0.0))
                     )
+                    promotion_blockers = _train_only_promotion_blockers(
+                        train_summary,
+                        eval_summary,
+                        selection_score,
+                        self.best_score,
+                        self.config,
+                        current_skill_lcb,
+                    )
                     train_backbone = float(train_summary.get("backbone_turn_frac", 0.0))
-                    min_train_backbone = max(0.12, float(getattr(self.config, "guardian_min_benchmark_backbone", 0.14)) - 0.02)
-                    if train_backbone < min_train_backbone:
+                    min_train_backbone = max(
+                        float(getattr(self.config, "train_bb_floor", 0.10)),
+                        float(getattr(self.config, "guardian_min_benchmark_backbone", 0.14)) - 0.04,
+                    )
+                    # --- SPRT-based promotion (Bayesian) takes precedence if enabled ---
+                    sprt_promote = False
+                    if (self.monitor is not None
+                            and bool(getattr(self.config, "sprt_promo_enabled", False))
+                            and len(self.monitor.history) >= 1):
+                        latest = self.monitor.history[-1]
+                        wins_chal = 0
+                        n_chal = 0
+                        for key, post in latest.posteriors.items():
+                            wins_chal += int(round(post.alpha - 0.5))
+                            n_chal += int(round((post.alpha - 0.5) + (post.beta - 0.5)))
+                        self._challenger_acc_wins += max(0, wins_chal)
+                        self._challenger_acc_n += max(0, n_chal)
+                        if self._challenger_acc_n >= 24:
+                            decision, log_lr = sprt_decision(
+                                self._challenger_acc_wins, self._challenger_acc_n,
+                                p_champ=max(self._champion_skill, float(self.config.min_benchmark_score)),
+                                delta=float(self.config.sprt_delta),
+                                alpha=float(self.config.sprt_alpha),
+                                beta=float(self.config.sprt_beta),
+                            )
+                            if decision == "accept":
+                                sprt_promote = True
+                                self._champion_skill = float(self._challenger_acc_wins / max(1, self._challenger_acc_n))
+                                self._challenger_acc_wins = 0
+                                self._challenger_acc_n = 0
+                            elif decision == "reject":
+                                self._challenger_acc_wins = 0
+                                self._challenger_acc_n = 0
+                            promotion_blockers.append(f"sprt={decision}({log_lr:+.2f})")
+                    if train_backbone < min_train_backbone and not sprt_promote:
                         promotion_blockers.append(f"train_bb<{min_train_backbone:.2f}")
-                    elif selection_score > self.best_score + max(1e-6, self.config.min_improvement):
+                    hard_blockers = [
+                        b for b in promotion_blockers
+                        if b not in ("train_only", "score_not_improved") and not b.startswith("sprt=continue")
+                    ]
+                    score_improved = "score_not_improved" not in promotion_blockers
+                    if not hard_blockers and (sprt_promote or score_improved):
                         self.best_score = float(selection_score)
                         promoted = True
                         _save_train_checkpoint(
@@ -729,8 +944,16 @@ class V10Trainer:
                     "train_focused_front_avg": float(train_summary.get("focused_front_avg", train_summary.get("active_front_avg", 0.0))),
                     "train_global_front_avg": float(train_summary.get("global_front_avg", train_summary.get("active_front_avg", 0.0))),
                     "train_avg_planets_t60": float(train_summary.get("avg_planets_t60", 0.0)),
+                    "train_avg_planets_t80": float(train_summary.get("avg_planets_t80", 0.0)),
                     "train_avg_planets_t100": float(train_summary.get("avg_planets_t100", 0.0)),
+                    "train_avg_planets_t120": float(train_summary.get("avg_planets_t120", 0.0)),
+                    "train_conversion_t80_rate": float(train_summary.get("conversion_t80_rate", 0.0)),
                     "train_conversion_t100_rate": float(train_summary.get("conversion_t100_rate", 0.0)),
+                    "train_conversion_t120_rate": float(train_summary.get("conversion_t120_rate", 0.0)),
+                    "train_main_front_ship_share": float(train_summary.get("main_front_ship_share", 0.0)),
+                    "train_main_front_core_ship_share": float(train_summary.get("main_front_core_ship_share", 0.0)),
+                    "train_main_front_ready_frac": float(train_summary.get("main_front_ready_frac", 0.0)),
+                    "train_main_front_progress_score": float(_main_front_progress_score(train_summary, self.config)),
                     "train_avg_steps_4p": float(train_summary.get("avg_steps_4p", 0.0)),
                     "train_long_game_frac_4p": float(train_summary.get("long_game_frac_4p", 0.0)),
                     "train_plan_type_frac": dict(train_summary.get("plan_type_frac", {}) or {}),
@@ -740,14 +963,30 @@ class V10Trainer:
                     "eval_front_lock_turn_frac": float(eval_summary.get("front_lock_turn_frac", 0.0)),
                     "eval_focused_front_avg": float(eval_summary.get("focused_front_avg", eval_summary.get("active_front_avg", 0.0))),
                     "eval_global_front_avg": float(eval_summary.get("global_front_avg", eval_summary.get("active_front_avg", 0.0))),
+                    "eval_avg_planets_t80": float(eval_summary.get("avg_planets_t80", 0.0)),
+                    "eval_avg_planets_t100": float(eval_summary.get("avg_planets_t100", 0.0)),
+                    "eval_avg_planets_t120": float(eval_summary.get("avg_planets_t120", 0.0)),
+                    "eval_conversion_t120_rate": float(eval_summary.get("conversion_t120_rate", 0.0)),
+                    "eval_main_front_ship_share": float(eval_summary.get("main_front_ship_share", 0.0)),
+                    "eval_main_front_core_ship_share": float(eval_summary.get("main_front_core_ship_share", 0.0)),
+                    "eval_main_front_ready_frac": float(eval_summary.get("main_front_ready_frac", 0.0)),
+                    "eval_main_front_progress_score": float(_main_front_progress_score(eval_summary, self.config)),
                     "benchmark_transfer_move_frac": float(benchmark_summary.get("transfer_move_frac", 0.0)),
                     "benchmark_backbone_turn_frac": float(benchmark_summary.get("backbone_turn_frac", 0.0)),
                     "benchmark_front_lock_turn_frac": float(benchmark_summary.get("front_lock_turn_frac", 0.0)),
                     "benchmark_focused_front_avg": float(benchmark_summary.get("focused_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
                     "benchmark_global_front_avg": float(benchmark_summary.get("global_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
                     "benchmark_avg_planets_t60": float(benchmark_summary.get("avg_planets_t60", 0.0)),
+                    "benchmark_avg_planets_t80": float(benchmark_summary.get("avg_planets_t80", 0.0)),
                     "benchmark_avg_planets_t100": float(benchmark_summary.get("avg_planets_t100", 0.0)),
+                    "benchmark_avg_planets_t120": float(benchmark_summary.get("avg_planets_t120", 0.0)),
+                    "benchmark_conversion_t80_rate": float(benchmark_summary.get("conversion_t80_rate", 0.0)),
                     "benchmark_conversion_t100_rate": float(benchmark_summary.get("conversion_t100_rate", 0.0)),
+                    "benchmark_conversion_t120_rate": float(benchmark_summary.get("conversion_t120_rate", 0.0)),
+                    "benchmark_main_front_ship_share": float(benchmark_summary.get("main_front_ship_share", 0.0)),
+                    "benchmark_main_front_core_ship_share": float(benchmark_summary.get("main_front_core_ship_share", 0.0)),
+                    "benchmark_main_front_ready_frac": float(benchmark_summary.get("main_front_ready_frac", 0.0)),
+                    "benchmark_main_front_progress_score": float(_main_front_progress_score(benchmark_summary, self.config)),
                     "eval_plan_type_frac": dict(eval_summary.get("plan_type_frac", {}) or {}),
                     "benchmark_plan_type_frac": dict(benchmark_summary.get("plan_type_frac", {}) or {}),
                     "train_focus_switches": float(train_summary.get("focus_switches", 0.0)),
@@ -780,15 +1019,42 @@ class V10Trainer:
                     f"best={self.best_score:.3f} grad={grad_norm:.2f} promo={int(promoted)} "
                     f"block={','.join(promotion_blockers) or '-'} "
                     f"explore={state.exploration_rate:.2f} div={state.candidate_diversity:.2f} "
-                    f"conv={train_summary.get('avg_planets_t60', 0.0):.1f}/{train_summary.get('avg_planets_t100', 0.0):.1f} "
+                    f"conv={train_summary.get('avg_planets_t60', 0.0):.1f}/{train_summary.get('avg_planets_t80', 0.0):.1f}/"
+                    f"{train_summary.get('avg_planets_t100', 0.0):.1f}/{train_summary.get('avg_planets_t120', 0.0):.1f} "
                     f"sw={train_summary.get('focus_switches', 0.0):.2f} "
                     f"{_format_four_p_diag(train_summary)} "
+                    f"mfp={_main_front_progress_score(train_summary, self.config):.2f} "
                     f"front_adj={_front_pressure_adjustment(train_summary, self.config):+.3f} "
                     f"elapsed_min={elapsed:.1f}"
                 )
                 print(line, flush=True)
                 with self.log_path.open("a", encoding="utf-8") as f:
                     f.write(json.dumps(latest_summary, sort_keys=True) + "\n")
+
+                # --- Bayesian monitor: log skill posterior + GP slope this gen ---
+                if self.monitor is not None:
+                    skill_mean, skill_sigma = self.monitor.latest_skill()
+                    skill_lcb = max(0.0, skill_mean - 1.645 * skill_sigma)
+                    slope_mu, slope_sd = self.monitor.slope() if len(self.monitor.history) >= 3 else (0.0, 1.0)
+                    plateau = self.monitor.is_plateau()
+                    print(
+                        f"gen={self.generation:04d} monitor "
+                        f"skill={skill_mean:.3f}±{skill_sigma:.3f} lcb={skill_lcb:.3f} "
+                        f"slope={slope_mu:+.4f}±{slope_sd:.4f} plateau={int(plateau)}",
+                        flush=True,
+                    )
+                    self.monitor.to_jsonl()
+                    # Reward for Thompson = ΔLCB skill (robust to noise; rewards confident progress).
+                    reward = 0.0 if self._last_skill_lcb is None else (skill_lcb - self._last_skill_lcb)
+                    self._last_skill_lcb = skill_lcb
+                    if self.config.train_only:
+                        setattr(self.config, "_last_train_only_skill_lcb", skill_lcb)
+                    if self.thompson is not None and arm is not None:
+                        self.thompson.observe(arm, reward)
+
+                # --- Restore arm overrides (Thompson is per-generation) ---
+                if arm is not None and arm_prev:
+                    restore(self.config, arm_prev)
         except DeadlineExceeded:
             stop_reason = "timeout"
             print(f"V10 timeout reached after {budget_minutes:.2f} minutes; saving latest checkpoint", flush=True)
@@ -826,8 +1092,16 @@ class V10Trainer:
                 "benchmark_focused_front_avg": float(benchmark_summary.get("focused_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
                 "benchmark_global_front_avg": float(benchmark_summary.get("global_front_avg", benchmark_summary.get("active_front_avg", 0.0))),
                 "benchmark_avg_planets_t60": float(benchmark_summary.get("avg_planets_t60", 0.0)),
+                "benchmark_avg_planets_t80": float(benchmark_summary.get("avg_planets_t80", 0.0)),
                 "benchmark_avg_planets_t100": float(benchmark_summary.get("avg_planets_t100", 0.0)),
+                "benchmark_avg_planets_t120": float(benchmark_summary.get("avg_planets_t120", 0.0)),
+                "benchmark_conversion_t80_rate": float(benchmark_summary.get("conversion_t80_rate", 0.0)),
                 "benchmark_conversion_t100_rate": float(benchmark_summary.get("conversion_t100_rate", 0.0)),
+                "benchmark_conversion_t120_rate": float(benchmark_summary.get("conversion_t120_rate", 0.0)),
+                "benchmark_main_front_ship_share": float(benchmark_summary.get("main_front_ship_share", 0.0)),
+                "benchmark_main_front_core_ship_share": float(benchmark_summary.get("main_front_core_ship_share", 0.0)),
+                "benchmark_main_front_ready_frac": float(benchmark_summary.get("main_front_ready_frac", 0.0)),
+                "benchmark_main_front_progress_score": float(_main_front_progress_score(benchmark_summary, self.config)),
                 "benchmark_4p_diag": _four_p_diag(benchmark_summary),
             })
             print(

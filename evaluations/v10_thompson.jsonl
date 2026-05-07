@@ -1,0 +1,4 @@
+{"arm": "front_strict", "n": 1, "post_mean": 0.0, "post_std": 0.031234752377721213, "reward": 0.0}
+{"arm": "front_relax", "n": 1, "post_mean": 0.042005503416396174, "post_std": 0.031234752377721213, "reward": 0.06888902560288973}
+{"arm": "front_strict", "n": 1, "post_mean": 0.0, "post_std": 0.031234752377721213, "reward": 0.0}
+{"arm": "lr_up", "n": 1, "post_mean": -0.026397744506945008, "post_std": 0.031234752377721213, "reward": -0.04329230099138981}

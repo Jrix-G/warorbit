@@ -42,6 +42,12 @@ class PlanningParameters:
     front_overlap_penalty_weight: float = 0.18
     opening_close_neutral_bonus_4p: float = 0.08
     opening_low_prod_bonus_4p: float = 0.06
+    main_front_radius_4p: float = 46.0
+    target_main_front_ship_share_4p: float = 0.42
+    main_front_mass_bonus: float = 0.22
+    scatter_penalty_weight_4p: float = 0.18
+    concentration_phase_start_4p: int = 45
+    concentration_phase_end_4p: int = 125
 
 
 class MoveBuilder:
@@ -170,6 +176,46 @@ def _active_front_count(world, focus_enemy_id: Optional[int] = None) -> int:
     return count
 
 
+def _main_front_metrics(world, focus_enemy_id: Optional[int] = None, anchor=None) -> Dict[str, float]:
+    params = getattr(world, "_v9_params", PlanningParameters())
+    if anchor is None:
+        anchor = _frontier_anchor(world, focus_enemy_id, getattr(params, "front_anchor_id", None))
+    if anchor is None or not world.my_planets:
+        return {"main_front_ships": 0.0, "main_front_ship_share": 0.0, "main_front_planets": 0.0}
+    radius = float(getattr(params, "main_front_radius_4p", 46.0))
+    front_planets = [p for p in world.my_planets if _dist(p, anchor) <= radius + float(p.radius) + float(anchor.radius)]
+    front_ids = {int(p.id) for p in front_planets}
+    planet_ships = sum(float(p.ships) for p in front_planets)
+    fleet_ships = 0.0
+    for fleet in getattr(world, "fleets", []) or []:
+        if int(getattr(fleet, "owner", -1)) != int(world.player):
+            continue
+        from_id = int(getattr(fleet, "from_planet_id", -1))
+        if from_id in front_ids:
+            fleet_ships += float(getattr(fleet, "ships", 0.0))
+            continue
+        fx = float(getattr(fleet, "x", 0.0))
+        fy = float(getattr(fleet, "y", 0.0))
+        if math.hypot(fx - float(anchor.x), fy - float(anchor.y)) <= radius:
+            fleet_ships += float(getattr(fleet, "ships", 0.0))
+    total = max(1.0, float(getattr(world, "my_total", 0.0)))
+    main_ships = planet_ships + fleet_ships
+    return {
+        "main_front_ships": float(main_ships),
+        "main_front_ship_share": float(main_ships / total),
+        "main_front_planets": float(len(front_planets)),
+    }
+
+
+def _in_concentration_phase(world) -> bool:
+    params = getattr(world, "_v9_params", PlanningParameters())
+    return (
+        bool(getattr(world, "is_four_player", False))
+        and int(getattr(params, "concentration_phase_start_4p", 45)) <= int(world.step) < int(getattr(params, "concentration_phase_end_4p", 125))
+        and 5 <= len(getattr(world, "my_planets", []) or []) < 15
+    )
+
+
 def _front_budget_for_world(world) -> float:
     params = getattr(world, "_v9_params", PlanningParameters())
     if not world.is_four_player:
@@ -241,11 +287,13 @@ def _opening_neutral_targets(world, targets: Iterable[object]) -> List[object]:
 def _candidate_metadata(world, focus_enemy_id: Optional[int], anchor, **extra: float) -> Dict[str, float]:
     active_fronts = float(_active_front_count(world, focus_enemy_id))
     front_budget = _front_budget_for_world(world)
+    front_mass = _main_front_metrics(world, focus_enemy_id, anchor)
     meta: Dict[str, float] = {
         "active_fronts": active_fronts,
         "front_phase_budget": front_budget,
         "front_pressure": max(0.0, active_fronts - front_budget),
         "front_room": max(0.0, front_budget - active_fronts),
+        **front_mass,
     }
     if focus_enemy_id is not None:
         meta["focus_enemy_id"] = float(focus_enemy_id)
@@ -348,6 +396,17 @@ def _shot_option(
             score *= 0.72
     if family in CAPTURE_PUNCH_FAMILIES and send >= max(int(floor), int(needed)):
         score *= 1.06
+    if _in_concentration_phase(builder.world) and target.owner != builder.world.player:
+        focus = _focus_enemy_id(builder.world, getattr(params, "focus_enemy_id", None))
+        anchor = _frontier_anchor(builder.world, focus, getattr(params, "front_anchor_id", None))
+        metrics = _main_front_metrics(builder.world, focus, anchor)
+        target_share = float(getattr(params, "target_main_front_ship_share_4p", 0.42))
+        if anchor is not None and metrics["main_front_ship_share"] < target_share:
+            target_far = _dist(anchor, target) > 50.0 + float(anchor.radius) + float(target.radius)
+            off_focus = focus is not None and target.owner >= 0 and int(target.owner) != int(focus)
+            if target_far or off_focus:
+                shortage = (target_share - metrics["main_front_ship_share"]) / max(0.05, target_share)
+                score *= max(0.35, 1.0 - float(params.scatter_penalty_weight_4p) * (1.0 + shortage))
     return {
         "score": score,
         "src": src,
@@ -634,6 +693,9 @@ class V9Planner:
         focus = _focus_enemy_id(world, self.params.focus_enemy_id)
         active_fronts = float(_active_front_count(world, focus))
         front_budget = float(_front_budget_for_world(world))
+        main_front = _main_front_metrics(world, focus, _frontier_anchor(world, focus, self.params.front_anchor_id))
+        if _in_concentration_phase(world) and main_front["main_front_ship_share"] < float(self.params.target_main_front_ship_share_4p):
+            return True
         if active_fronts <= front_budget + 0.05:
             return False
         # Apply only once we leave very-early opening and before pure endgame.
@@ -788,19 +850,22 @@ class V9Planner:
         active_fronts = _active_front_count(world, focus)
         front_budget = _front_budget_for_world(world)
         front_pressure = max(0.0, active_fronts - front_budget)
+        main_front = _main_front_metrics(world, focus, anchor)
+        mass_short = max(0.0, float(self.params.target_main_front_ship_share_4p) - main_front["main_front_ship_share"])
         b = MoveBuilder(world, reserve_scale=1.06, max_moves=self.params.max_moves_per_plan)
         score = _stage_to_front(
             b,
-            ratio=0.80,
+            ratio=0.90 if mass_short > 0.0 and _in_concentration_phase(world) else 0.80,
             min_send=max(6, self.params.min_source_ships - 1),
             focus_enemy_id=focus,
             preferred_anchor_id=self.params.front_anchor_id,
-            max_transfers=9,
+            max_transfers=10 if mass_short > 0.0 else 9,
         )
         if not b.moves:
             return None
         threshold_gap = max(0, 13 - len(world.my_planets))
         score += 13.0 + 1.4 * threshold_gap + 2.0 * active_fronts - 0.7 * front_pressure
+        score += 18.0 * mass_short
         score += float(self.params.front_close_bonus_weight) * max(0.0, front_budget - active_fronts)
         return PlanCandidate(
             "v9_4p_backbone",
@@ -826,13 +891,15 @@ class V9Planner:
         front_budget = _front_budget_for_world(world)
         front_pressure = max(0.0, active_fronts - front_budget)
         under_threshold = len(world.my_planets) < 15 and world.step < 140
+        main_front = _main_front_metrics(world, focus, anchor)
+        mass_short = max(0.0, float(self.params.target_main_front_ship_share_4p) - main_front["main_front_ship_share"])
         if active_fronts <= 1 and not world.threatened_candidates and not world.doomed_candidates and not under_threshold:
             return None
         b = MoveBuilder(world, reserve_scale=0.78, max_moves=self.params.max_moves_per_plan)
         score = _commit_reinforcements(b, force=True)
         score += _stage_to_front(
             b,
-            ratio=min(0.72, 0.48 + 0.06 * front_pressure),
+            ratio=min(0.82, 0.52 + 0.06 * front_pressure + 0.20 * mass_short),
             min_send=max(5, self.params.min_source_ships - 2),
             focus_enemy_id=focus,
             preferred_anchor_id=self.params.front_anchor_id,
@@ -840,7 +907,7 @@ class V9Planner:
         )
         if not b.moves:
             return None
-        score += 5.0 + 2.0 * active_fronts + 4.0 * front_pressure + (6.0 if under_threshold else 0.0)
+        score += 5.0 + 2.0 * active_fronts + 4.0 * front_pressure + (6.0 if under_threshold else 0.0) + 12.0 * mass_short
         score += float(self.params.front_close_bonus_weight) * max(0.0, front_budget - active_fronts)
         return PlanCandidate(
             "v9_front_lock_consolidation",

@@ -14,7 +14,7 @@ from war_orbit.training.v10_trainer import V10Trainer
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run V10 4p-first self-improving training and evaluation.")
     parser.add_argument("--minutes", type=float, default=30.0)
-    parser.add_argument("--hard-timeout-minutes", type=float, default=30.0)
+    parser.add_argument("--hard-timeout-minutes", type=float, default=None)
     parser.add_argument("--pairs", type=int, default=8)
     parser.add_argument("--games-per-eval", type=int, default=4)
     parser.add_argument("--eval-games", type=int, default=32)
@@ -106,9 +106,10 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    hard_timeout_minutes = args.hard_timeout_minutes if args.hard_timeout_minutes is not None else args.minutes
     config = V10Config(
         minutes=args.minutes,
-        hard_timeout_minutes=args.hard_timeout_minutes,
+        hard_timeout_minutes=hard_timeout_minutes,
         pairs=args.pairs,
         games_per_eval=args.games_per_eval,
         eval_games=args.eval_games,

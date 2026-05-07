@@ -55,6 +55,12 @@ class V10Config:
     front_overlap_penalty_weight: float = 0.20
     opening_close_neutral_bonus_4p: float = 0.08
     opening_low_prod_bonus_4p: float = 0.06
+    main_front_radius_4p: float = 46.0
+    target_main_front_ship_share_4p: float = 0.42
+    main_front_mass_bonus: float = 0.22
+    scatter_penalty_weight_4p: float = 0.18
+    concentration_phase_start_4p: int = 45
+    concentration_phase_end_4p: int = 125
     seed: int = 9009
 
     # Training schedule.
@@ -105,6 +111,20 @@ class V10Config:
     reset_fraction: float = 0.18
     target_winrate_low: float = 0.60
     target_winrate_high: float = 0.70
+
+    # --- Bayesian progress monitor + Thompson controller (V10.5+) ---
+    progress_monitor_enabled: bool = True
+    thompson_enabled: bool = True
+    sprt_promo_enabled: bool = True
+    sprt_delta: float = 0.04
+    sprt_alpha: float = 0.05
+    sprt_beta: float = 0.10
+    holdout_eval_games_train_only: int = 16
+    train_only_benchmark_every: int = 5
+    train_only_benchmark_games: int = 32
+    train_bb_floor: float = 0.10  # Was hard 0.12 → relaxed; gate via SPRT preferred
+    progress_monitor_log: str = "evaluations/v10_progress_monitor.jsonl"
+    thompson_log: str = "evaluations/v10_thompson.jsonl"
 
     # Opponents and persistence.
     opponent_pool_limit: int = 15
@@ -197,6 +217,12 @@ class V10Config:
             "front_overlap_penalty_weight",
             "opening_close_neutral_bonus_4p",
             "opening_low_prod_bonus_4p",
+            "main_front_radius_4p",
+            "target_main_front_ship_share_4p",
+            "main_front_mass_bonus",
+            "scatter_penalty_weight_4p",
+            "concentration_phase_start_4p",
+            "concentration_phase_end_4p",
             "guardian_enabled",
             "guardian_min_benchmark_4p",
             "guardian_min_benchmark_backbone",
