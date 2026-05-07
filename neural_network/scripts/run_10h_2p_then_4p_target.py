@@ -437,7 +437,7 @@ def _run_stage(
     log_path: Path,
     jsonl_path: Path,
     started_at: float,
-    deadline_epoch: float,
+    deadline_epoch: float | None,
 ) -> Dict[str, Any]:
     stage_dir = run_dir / stage
     checkpoint_dir = stage_dir / "checkpoints"
@@ -456,11 +456,16 @@ def _run_stage(
     parameter_count = count_parameters(NeuralNetworkModel(ModelConfig(input_dim=_infer_input_dim(cfg), hidden_dim=int(cfg.get("hidden_dim", 320)))))
     _log(log_path, f"{stage} start n_players={n_players} target_winrate={target_winrate:.3f} pool={list(pool)} base={base or ''}")
 
-    while time.time() < deadline_epoch:
-        remaining_minutes = (deadline_epoch - time.time()) / 60.0
-        if remaining_minutes < float(cfg.get("min_generation_remaining_minutes", 8.0)):
-            _log(log_path, f"{stage} stop: remaining={remaining_minutes:.1f}m below min_generation_remaining")
-            break
+    while True:
+        if deadline_epoch is not None:
+            now = time.time()
+            remaining_minutes = (deadline_epoch - now) / 60.0
+            if remaining_minutes <= 0.0:
+                _log(log_path, f"{stage} stop: deadline reached")
+                break
+            if remaining_minutes < float(cfg.get("min_generation_remaining_minutes", 8.0)):
+                _log(log_path, f"{stage} stop: remaining={remaining_minutes:.1f}m below min_generation_remaining")
+                break
         base_str = str(base) if base and base.exists() else None
         elapsed = (time.time() - started_at) / 60.0
         _log(
@@ -480,7 +485,7 @@ def _run_stage(
                 "checkpoint_path": base_str,
                 "train_games": train_games_per_worker,
                 "progress": min(1.0, elapsed / max(1.0, float(cfg.get("duration_minutes", 600.0)))),
-                "deadline_epoch": deadline_epoch,
+                "deadline_epoch": deadline_epoch or 0.0,
             }
             for worker_id in range(workers)
         ]
@@ -533,7 +538,7 @@ def _run_stage(
             or best_winrate < 0.0
         )
         promoted = False
-        if should_confirm and time.time() < deadline_epoch:
+        if should_confirm and (deadline_epoch is None or time.time() < deadline_epoch):
             confirmed = _evaluate_state(
                 generation_best["state"],
                 cfg,
@@ -592,7 +597,7 @@ def _run_stage(
 def _prepare_config(cfg: Dict[str, Any], args: argparse.Namespace, run_name: str) -> Dict[str, Any]:
     cfg = dict(cfg)
     cfg["run_name"] = run_name
-    cfg["duration_minutes"] = min(float(args.duration_minutes), MAX_DURATION_MINUTES)
+    cfg["duration_minutes"] = float(args.duration_minutes)
     cfg["workers"] = max(1, int(args.workers))
     cfg["hidden_dim"] = max(320, int(cfg.get("hidden_dim", 320)))
     cfg["learning_rate"] = min(float(cfg.get("learning_rate", 0.00025)), 0.0002)
@@ -634,7 +639,7 @@ def _prepare_config(cfg: Dict[str, Any], args: argparse.Namespace, run_name: str
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run official_fast 2p pretrain then 4p target training without changing the game engine.")
     parser.add_argument("--config", default=None)
-    parser.add_argument("--duration-minutes", type=float, default=600.0)
+    parser.add_argument("--duration-minutes", type=float, default=0.0)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--stage1-target", type=float, default=0.85)
     parser.add_argument("--stage2-target", type=float, default=0.70)
@@ -659,7 +664,7 @@ def main() -> None:
     save_json(manifest_path, cfg)
     configure_run_logging(log_path)
     started_at = time.time()
-    deadline_epoch = started_at + float(cfg["duration_minutes"]) * 60.0
+    deadline_epoch = None if float(cfg["duration_minutes"]) <= 0.0 else started_at + float(cfg["duration_minutes"]) * 60.0
     _log(log_path, f"run_start run_name={run_name} host={socket.gethostname()} workers={cfg['workers']} manifest={manifest_path}")
 
     base_checkpoint = Path(args.resume_checkpoint) if args.resume_checkpoint else None
@@ -704,7 +709,7 @@ def main() -> None:
             "stage": "stage2_4p",
             "target_reached": False,
             "skipped": True,
-            "reason": "stage1 target not reached before deadline",
+            "reason": "stage1 target not reached yet",
         }
 
     result = {
