@@ -1,0 +1,285 @@
+[2026-05-07 12:35:22 UTC] run_start run_name=run_10h_2p4p_20260507_123522 host=bigmama workers=4 manifest=/home/ubuntu/warorbit/neural_network/runs/run_10h_2p4p_20260507_123522/run_manifest.json
+[2026-05-07 12:35:22 UTC] stage1_2p start n_players=2 target_winrate=0.850 pool=['random', 'greedy', 'starter', 'distance'] base=
+[2026-05-07 12:35:22 UTC] stage1_2p generation 0 start elapsed=0.0m best_winrate=-1.000 workers=4 train_games=48 eval=24
+[2026-05-07 13:15:57 UTC] stage1_2p generation 0 train done 1/4 elapsed=40.6m
+[2026-05-07 13:17:07 UTC] stage1_2p generation 0 train done 2/4 elapsed=41.8m
+[2026-05-07 13:20:16 UTC] stage1_2p generation 0 train done 3/4 elapsed=44.9m
+[2026-05-07 13:21:49 UTC] stage1_2p generation 0 train done 4/4 elapsed=46.5m
+[2026-05-07 13:25:48 UTC] stage1_2p generation 0 eval done 1/4 elapsed=50.4m
+[2026-05-07 13:25:55 UTC] stage1_2p generation 0 eval done 2/4 elapsed=50.6m
+[2026-05-07 13:26:00 UTC] stage1_2p generation 0 eval done 3/4 elapsed=50.6m
+[2026-05-07 13:33:00 UTC] stage1_2p generation 0 eval done 4/4 elapsed=57.6m
+[2026-05-07 13:38:57 UTC] stage1_2p generation 0 candidate_winrate=0.875 rank=1.12 noop=0.99 promoted=1 best_winrate=0.875 target=0.850 games=288
+[2026-05-07 13:38:57 UTC] stage1_2p target_reached best_winrate=0.875 checkpoint=/home/ubuntu/warorbit/neural_network/runs/run_10h_2p4p_20260507_123522/stage1_2p/checkpoints/best.npz
+[2026-05-07 13:38:57 UTC] stage2_4p start n_players=4 target_winrate=0.700 pool=['random', 'greedy', 'starter'] base=/home/ubuntu/warorbit/neural_network/runs/run_10h_2p4p_20260507_123522/stage1_2p/checkpoints/best.npz
+[2026-05-07 13:38:57 UTC] stage2_4p generation 0 start elapsed=63.6m best_winrate=-1.000 workers=4 train_games=32 eval=24
+[2026-05-07 14:07:24 UTC] stage2_4p generation 0 train done 1/4 elapsed=92.0m
+[2026-05-07 14:07:55 UTC] stage2_4p generation 0 train done 2/4 elapsed=92.6m
+[2026-05-07 14:08:05 UTC] stage2_4p generation 0 train done 3/4 elapsed=92.7m
+[2026-05-07 14:09:58 UTC] stage2_4p generation 0 train done 4/4 elapsed=94.6m
+[2026-05-07 14:16:17 UTC] stage2_4p generation 0 eval done 1/4 elapsed=100.9m
+[2026-05-07 14:16:31 UTC] stage2_4p generation 0 eval done 2/4 elapsed=101.2m
+[2026-05-07 14:18:44 UTC] stage2_4p generation 0 eval done 3/4 elapsed=103.4m
+[2026-05-07 14:19:09 UTC] stage2_4p generation 0 eval done 4/4 elapsed=103.8m
+[2026-05-07 14:37:34 UTC] stage2_4p generation 0 candidate_winrate=0.281 rank=1.98 noop=0.75 promoted=1 best_winrate=0.281 target=0.700 games=224
+[2026-05-07 14:37:34 UTC] stage2_4p generation 1 start elapsed=122.2m best_winrate=0.281 workers=4 train_games=32 eval=24
+[2026-05-07 14:57:07 UTC] stage2_4p generation 1 train done 1/4 elapsed=141.8m
+[2026-05-07 15:00:17 UTC] stage2_4p generation 1 train done 2/4 elapsed=144.9m
+[2026-05-07 15:00:54 UTC] stage2_4p generation 1 train done 3/4 elapsed=145.5m
+[2026-05-07 15:01:21 UTC] stage2_4p generation 1 train done 4/4 elapsed=146.0m
+[2026-05-07 15:05:26 UTC] stage2_4p generation 1 eval done 1/4 elapsed=150.1m
+[2026-05-07 15:07:17 UTC] stage2_4p generation 1 eval done 2/4 elapsed=151.9m
+[2026-05-07 15:07:27 UTC] stage2_4p generation 1 eval done 3/4 elapsed=152.1m
+[2026-05-07 15:08:24 UTC] stage2_4p generation 1 eval done 4/4 elapsed=153.0m
+[2026-05-07 15:08:26 UTC] stage2_4p generation 1 candidate_winrate=0.417 rank=1.75 noop=1.00 promoted=1 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 15:08:26 UTC] stage2_4p generation 2 start elapsed=153.1m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 15:32:25 UTC] stage2_4p generation 2 train done 1/4 elapsed=177.1m
+[2026-05-07 15:32:32 UTC] stage2_4p generation 2 train done 2/4 elapsed=177.2m
+[2026-05-07 15:35:23 UTC] stage2_4p generation 2 train done 3/4 elapsed=180.0m
+[2026-05-07 15:36:33 UTC] stage2_4p generation 2 train done 4/4 elapsed=181.2m
+[2026-05-07 15:40:44 UTC] stage2_4p generation 2 eval done 1/4 elapsed=185.4m
+[2026-05-07 15:40:56 UTC] stage2_4p generation 2 eval done 2/4 elapsed=185.6m
+[2026-05-07 15:43:41 UTC] stage2_4p generation 2 eval done 3/4 elapsed=188.3m
+[2026-05-07 15:44:25 UTC] stage2_4p generation 2 eval done 4/4 elapsed=189.1m
+[2026-05-07 15:44:26 UTC] stage2_4p generation 2 candidate_winrate=0.333 rank=1.71 noop=1.00 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 15:44:26 UTC] stage2_4p generation 3 start elapsed=189.1m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 16:10:17 UTC] stage2_4p generation 3 train done 1/4 elapsed=214.9m
+[2026-05-07 16:10:21 UTC] stage2_4p generation 3 train done 2/4 elapsed=215.0m
+[2026-05-07 16:11:06 UTC] stage2_4p generation 3 train done 3/4 elapsed=215.7m
+[2026-05-07 16:11:54 UTC] stage2_4p generation 3 train done 4/4 elapsed=216.5m
+[2026-05-07 16:16:38 UTC] stage2_4p generation 3 eval done 1/4 elapsed=221.3m
+[2026-05-07 16:16:40 UTC] stage2_4p generation 3 eval done 2/4 elapsed=221.3m
+[2026-05-07 16:16:48 UTC] stage2_4p generation 3 eval done 3/4 elapsed=221.4m
+[2026-05-07 16:18:42 UTC] stage2_4p generation 3 eval done 4/4 elapsed=223.3m
+[2026-05-07 16:18:43 UTC] stage2_4p generation 3 candidate_winrate=0.250 rank=2.12 noop=0.95 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 16:18:43 UTC] stage2_4p generation 4 start elapsed=223.4m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 16:43:57 UTC] stage2_4p generation 4 train done 1/4 elapsed=248.6m
+[2026-05-07 16:44:53 UTC] stage2_4p generation 4 train done 2/4 elapsed=249.5m
+[2026-05-07 16:45:48 UTC] stage2_4p generation 4 train done 3/4 elapsed=250.4m
+[2026-05-07 16:48:08 UTC] stage2_4p generation 4 train done 4/4 elapsed=252.8m
+[2026-05-07 16:54:20 UTC] stage2_4p generation 4 eval done 1/4 elapsed=259.0m
+[2026-05-07 16:55:04 UTC] stage2_4p generation 4 eval done 2/4 elapsed=259.7m
+[2026-05-07 16:55:46 UTC] stage2_4p generation 4 eval done 3/4 elapsed=260.4m
+[2026-05-07 16:58:20 UTC] stage2_4p generation 4 eval done 4/4 elapsed=263.0m
+[2026-05-07 16:58:21 UTC] stage2_4p generation 4 candidate_winrate=0.417 rank=1.96 noop=0.81 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 16:58:21 UTC] stage2_4p generation 5 start elapsed=263.0m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 17:24:27 UTC] stage2_4p generation 5 train done 1/4 elapsed=289.1m
+[2026-05-07 17:24:55 UTC] stage2_4p generation 5 train done 2/4 elapsed=289.6m
+[2026-05-07 17:25:50 UTC] stage2_4p generation 5 train done 3/4 elapsed=290.5m
+[2026-05-07 17:25:53 UTC] stage2_4p generation 5 train done 4/4 elapsed=290.5m
+[2026-05-07 17:32:05 UTC] stage2_4p generation 5 eval done 1/4 elapsed=296.7m
+[2026-05-07 17:32:21 UTC] stage2_4p generation 5 eval done 2/4 elapsed=297.0m
+[2026-05-07 17:32:25 UTC] stage2_4p generation 5 eval done 3/4 elapsed=297.1m
+[2026-05-07 17:36:05 UTC] stage2_4p generation 5 eval done 4/4 elapsed=300.7m
+[2026-05-07 17:36:06 UTC] stage2_4p generation 5 candidate_winrate=0.375 rank=2.00 noop=0.87 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 17:36:06 UTC] stage2_4p generation 6 start elapsed=300.7m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 18:02:17 UTC] stage2_4p generation 6 train done 1/4 elapsed=326.9m
+[2026-05-07 18:03:09 UTC] stage2_4p generation 6 train done 2/4 elapsed=327.8m
+[2026-05-07 18:04:00 UTC] stage2_4p generation 6 train done 3/4 elapsed=328.6m
+[2026-05-07 18:06:10 UTC] stage2_4p generation 6 train done 4/4 elapsed=330.8m
+[2026-05-07 18:10:57 UTC] stage2_4p generation 6 eval done 1/4 elapsed=335.6m
+[2026-05-07 18:11:37 UTC] stage2_4p generation 6 eval done 2/4 elapsed=336.3m
+[2026-05-07 18:14:54 UTC] stage2_4p generation 6 eval done 3/4 elapsed=339.5m
+[2026-05-07 18:15:43 UTC] stage2_4p generation 6 eval done 4/4 elapsed=340.4m
+[2026-05-07 18:15:44 UTC] stage2_4p generation 6 candidate_winrate=0.292 rank=2.29 noop=0.83 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 18:15:44 UTC] stage2_4p generation 7 start elapsed=340.4m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 18:35:52 UTC] stage2_4p generation 7 train done 1/4 elapsed=360.5m
+[2026-05-07 18:38:30 UTC] stage2_4p generation 7 train done 2/4 elapsed=363.1m
+[2026-05-07 18:38:53 UTC] stage2_4p generation 7 train done 3/4 elapsed=363.5m
+[2026-05-07 18:39:16 UTC] stage2_4p generation 7 train done 4/4 elapsed=363.9m
+[2026-05-07 18:43:53 UTC] stage2_4p generation 7 eval done 1/4 elapsed=368.5m
+[2026-05-07 18:46:06 UTC] stage2_4p generation 7 eval done 2/4 elapsed=370.7m
+[2026-05-07 18:46:27 UTC] stage2_4p generation 7 eval done 3/4 elapsed=371.1m
+[2026-05-07 18:46:40 UTC] stage2_4p generation 7 eval done 4/4 elapsed=371.3m
+[2026-05-07 18:46:41 UTC] stage2_4p generation 7 candidate_winrate=0.250 rank=2.67 noop=0.72 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 18:46:41 UTC] stage2_4p generation 8 start elapsed=371.3m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 19:11:20 UTC] stage2_4p generation 8 train done 1/4 elapsed=396.0m
+[2026-05-07 19:12:00 UTC] stage2_4p generation 8 train done 2/4 elapsed=396.6m
+[2026-05-07 19:12:26 UTC] stage2_4p generation 8 train done 3/4 elapsed=397.1m
+[2026-05-07 19:15:01 UTC] stage2_4p generation 8 train done 4/4 elapsed=399.7m
+[2026-05-07 19:22:06 UTC] stage2_4p generation 8 eval done 1/4 elapsed=406.7m
+[2026-05-07 19:23:04 UTC] stage2_4p generation 8 eval done 2/4 elapsed=407.7m
+[2026-05-07 19:23:26 UTC] stage2_4p generation 8 eval done 3/4 elapsed=408.1m
+[2026-05-07 19:27:34 UTC] stage2_4p generation 8 eval done 4/4 elapsed=412.2m
+[2026-05-07 19:27:35 UTC] stage2_4p generation 8 candidate_winrate=0.083 rank=2.92 noop=0.69 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 19:27:35 UTC] stage2_4p generation 9 start elapsed=412.2m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 19:50:59 UTC] stage2_4p generation 9 train done 1/4 elapsed=435.6m
+[2026-05-07 19:51:00 UTC] stage2_4p generation 9 train done 2/4 elapsed=435.6m
+[2026-05-07 19:52:32 UTC] stage2_4p generation 9 train done 3/4 elapsed=437.2m
+[2026-05-07 19:52:59 UTC] stage2_4p generation 9 train done 4/4 elapsed=437.6m
+[2026-05-07 20:00:20 UTC] stage2_4p generation 9 eval done 1/4 elapsed=445.0m
+[2026-05-07 20:01:03 UTC] stage2_4p generation 9 eval done 2/4 elapsed=445.7m
+[2026-05-07 20:01:06 UTC] stage2_4p generation 9 eval done 3/4 elapsed=445.7m
+[2026-05-07 20:02:40 UTC] stage2_4p generation 9 eval done 4/4 elapsed=447.3m
+[2026-05-07 20:02:41 UTC] stage2_4p generation 9 candidate_winrate=0.125 rank=3.00 noop=0.60 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 20:02:41 UTC] stage2_4p generation 10 start elapsed=447.3m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 20:24:08 UTC] stage2_4p generation 10 train done 1/4 elapsed=468.8m
+[2026-05-07 20:25:24 UTC] stage2_4p generation 10 train done 2/4 elapsed=470.0m
+[2026-05-07 20:26:37 UTC] stage2_4p generation 10 train done 3/4 elapsed=471.3m
+[2026-05-07 20:27:34 UTC] stage2_4p generation 10 train done 4/4 elapsed=472.2m
+[2026-05-07 20:35:47 UTC] stage2_4p generation 10 eval done 1/4 elapsed=480.4m
+[2026-05-07 20:35:55 UTC] stage2_4p generation 10 eval done 2/4 elapsed=480.6m
+[2026-05-07 20:36:16 UTC] stage2_4p generation 10 eval done 3/4 elapsed=480.9m
+[2026-05-07 20:39:00 UTC] stage2_4p generation 10 eval done 4/4 elapsed=483.6m
+[2026-05-07 20:39:01 UTC] stage2_4p generation 10 candidate_winrate=0.042 rank=3.04 noop=0.53 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 20:39:01 UTC] stage2_4p generation 11 start elapsed=483.7m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 21:02:42 UTC] stage2_4p generation 11 train done 1/4 elapsed=507.3m
+[2026-05-07 21:03:07 UTC] stage2_4p generation 11 train done 2/4 elapsed=507.8m
+[2026-05-07 21:03:44 UTC] stage2_4p generation 11 train done 3/4 elapsed=508.4m
+[2026-05-07 21:03:55 UTC] stage2_4p generation 11 train done 4/4 elapsed=508.6m
+[2026-05-07 21:12:37 UTC] stage2_4p generation 11 eval done 1/4 elapsed=517.3m
+[2026-05-07 21:13:34 UTC] stage2_4p generation 11 eval done 2/4 elapsed=518.2m
+[2026-05-07 21:14:48 UTC] stage2_4p generation 11 eval done 3/4 elapsed=519.4m
+[2026-05-07 21:17:26 UTC] stage2_4p generation 11 eval done 4/4 elapsed=522.1m
+[2026-05-07 21:17:27 UTC] stage2_4p generation 11 candidate_winrate=0.042 rank=3.29 noop=0.54 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 21:17:27 UTC] stage2_4p generation 12 start elapsed=522.1m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 21:40:36 UTC] stage2_4p generation 12 train done 1/4 elapsed=545.2m
+[2026-05-07 21:41:51 UTC] stage2_4p generation 12 train done 2/4 elapsed=546.5m
+[2026-05-07 21:41:59 UTC] stage2_4p generation 12 train done 3/4 elapsed=546.6m
+[2026-05-07 21:42:25 UTC] stage2_4p generation 12 train done 4/4 elapsed=547.1m
+[2026-05-07 21:51:32 UTC] stage2_4p generation 12 eval done 1/4 elapsed=556.2m
+[2026-05-07 21:51:54 UTC] stage2_4p generation 12 eval done 2/4 elapsed=556.5m
+[2026-05-07 21:52:55 UTC] stage2_4p generation 12 eval done 3/4 elapsed=557.6m
+[2026-05-07 21:52:56 UTC] stage2_4p generation 12 eval done 4/4 elapsed=557.6m
+[2026-05-07 21:52:57 UTC] stage2_4p generation 12 candidate_winrate=0.042 rank=3.25 noop=0.55 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 21:52:57 UTC] stage2_4p generation 13 start elapsed=557.6m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 22:17:55 UTC] stage2_4p generation 13 train done 1/4 elapsed=582.6m
+[2026-05-07 22:18:10 UTC] stage2_4p generation 13 train done 2/4 elapsed=582.8m
+[2026-05-07 22:19:16 UTC] stage2_4p generation 13 train done 3/4 elapsed=583.9m
+[2026-05-07 22:22:00 UTC] stage2_4p generation 13 train done 4/4 elapsed=586.6m
+[2026-05-07 22:29:32 UTC] stage2_4p generation 13 eval done 1/4 elapsed=594.2m
+[2026-05-07 22:30:19 UTC] stage2_4p generation 13 eval done 2/4 elapsed=595.0m
+[2026-05-07 22:32:01 UTC] stage2_4p generation 13 eval done 3/4 elapsed=596.7m
+[2026-05-07 22:32:10 UTC] stage2_4p generation 13 eval done 4/4 elapsed=596.8m
+[2026-05-07 22:32:11 UTC] stage2_4p generation 13 candidate_winrate=0.083 rank=3.29 noop=0.51 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 22:32:11 UTC] stage2_4p generation 14 start elapsed=596.8m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 22:52:24 UTC] stage2_4p generation 14 train done 1/4 elapsed=617.0m
+[2026-05-07 22:54:33 UTC] stage2_4p generation 14 train done 2/4 elapsed=619.2m
+[2026-05-07 22:54:55 UTC] stage2_4p generation 14 train done 3/4 elapsed=619.6m
+[2026-05-07 22:55:37 UTC] stage2_4p generation 14 train done 4/4 elapsed=620.3m
+[2026-05-07 23:03:48 UTC] stage2_4p generation 14 eval done 1/4 elapsed=628.4m
+[2026-05-07 23:05:10 UTC] stage2_4p generation 14 eval done 2/4 elapsed=629.8m
+[2026-05-07 23:06:10 UTC] stage2_4p generation 14 eval done 3/4 elapsed=630.8m
+[2026-05-07 23:06:18 UTC] stage2_4p generation 14 eval done 4/4 elapsed=630.9m
+[2026-05-07 23:06:19 UTC] stage2_4p generation 14 candidate_winrate=0.083 rank=3.46 noop=0.58 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 23:06:19 UTC] stage2_4p generation 15 start elapsed=631.0m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-07 23:29:34 UTC] stage2_4p generation 15 train done 1/4 elapsed=654.2m
+[2026-05-07 23:29:38 UTC] stage2_4p generation 15 train done 2/4 elapsed=654.3m
+[2026-05-07 23:30:22 UTC] stage2_4p generation 15 train done 3/4 elapsed=655.0m
+[2026-05-07 23:31:54 UTC] stage2_4p generation 15 train done 4/4 elapsed=656.5m
+[2026-05-07 23:39:33 UTC] stage2_4p generation 15 eval done 1/4 elapsed=664.2m
+[2026-05-07 23:39:52 UTC] stage2_4p generation 15 eval done 2/4 elapsed=664.5m
+[2026-05-07 23:40:13 UTC] stage2_4p generation 15 eval done 3/4 elapsed=664.9m
+[2026-05-07 23:42:55 UTC] stage2_4p generation 15 eval done 4/4 elapsed=667.6m
+[2026-05-07 23:42:56 UTC] stage2_4p generation 15 candidate_winrate=0.042 rank=3.29 noop=0.46 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-07 23:42:56 UTC] stage2_4p generation 16 start elapsed=667.6m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 00:08:14 UTC] stage2_4p generation 16 train done 1/4 elapsed=692.9m
+[2026-05-08 00:08:15 UTC] stage2_4p generation 16 train done 2/4 elapsed=692.9m
+[2026-05-08 00:09:02 UTC] stage2_4p generation 16 train done 3/4 elapsed=693.7m
+[2026-05-08 00:09:46 UTC] stage2_4p generation 16 train done 4/4 elapsed=694.4m
+[2026-05-08 00:18:27 UTC] stage2_4p generation 16 eval done 1/4 elapsed=703.1m
+[2026-05-08 00:18:27 UTC] stage2_4p generation 16 eval done 2/4 elapsed=703.1m
+[2026-05-08 00:18:27 UTC] stage2_4p generation 16 eval done 3/4 elapsed=703.1m
+[2026-05-08 00:21:23 UTC] stage2_4p generation 16 eval done 4/4 elapsed=706.0m
+[2026-05-08 00:21:24 UTC] stage2_4p generation 16 candidate_winrate=0.083 rank=3.08 noop=0.52 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 00:21:24 UTC] stage2_4p generation 17 start elapsed=706.0m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 00:45:03 UTC] stage2_4p generation 17 train done 1/4 elapsed=729.7m
+[2026-05-08 00:46:38 UTC] stage2_4p generation 17 train done 2/4 elapsed=731.3m
+[2026-05-08 00:49:09 UTC] stage2_4p generation 17 train done 3/4 elapsed=733.8m
+[2026-05-08 00:49:25 UTC] stage2_4p generation 17 train done 4/4 elapsed=734.1m
+[2026-05-08 00:58:03 UTC] stage2_4p generation 17 eval done 1/4 elapsed=742.7m
+[2026-05-08 00:58:55 UTC] stage2_4p generation 17 eval done 2/4 elapsed=743.6m
+[2026-05-08 00:59:23 UTC] stage2_4p generation 17 eval done 3/4 elapsed=744.0m
+[2026-05-08 00:59:57 UTC] stage2_4p generation 17 eval done 4/4 elapsed=744.6m
+[2026-05-08 00:59:58 UTC] stage2_4p generation 17 candidate_winrate=0.083 rank=3.08 noop=0.45 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 00:59:58 UTC] stage2_4p generation 18 start elapsed=744.6m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 01:23:39 UTC] stage2_4p generation 18 train done 1/4 elapsed=768.3m
+[2026-05-08 01:24:14 UTC] stage2_4p generation 18 train done 2/4 elapsed=768.9m
+[2026-05-08 01:26:27 UTC] stage2_4p generation 18 train done 3/4 elapsed=771.1m
+[2026-05-08 01:27:42 UTC] stage2_4p generation 18 train done 4/4 elapsed=772.3m
+[2026-05-08 01:34:25 UTC] stage2_4p generation 18 eval done 1/4 elapsed=779.1m
+[2026-05-08 01:35:29 UTC] stage2_4p generation 18 eval done 2/4 elapsed=780.1m
+[2026-05-08 01:37:10 UTC] stage2_4p generation 18 eval done 3/4 elapsed=781.8m
+[2026-05-08 01:38:26 UTC] stage2_4p generation 18 eval done 4/4 elapsed=783.1m
+[2026-05-08 01:38:27 UTC] stage2_4p generation 18 candidate_winrate=0.083 rank=3.29 noop=0.45 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 01:38:27 UTC] stage2_4p generation 19 start elapsed=783.1m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 02:02:58 UTC] stage2_4p generation 19 train done 1/4 elapsed=807.6m
+[2026-05-08 02:03:23 UTC] stage2_4p generation 19 train done 2/4 elapsed=808.0m
+[2026-05-08 02:04:03 UTC] stage2_4p generation 19 train done 3/4 elapsed=808.7m
+[2026-05-08 02:04:54 UTC] stage2_4p generation 19 train done 4/4 elapsed=809.5m
+[2026-05-08 02:12:35 UTC] stage2_4p generation 19 eval done 1/4 elapsed=817.2m
+[2026-05-08 02:13:56 UTC] stage2_4p generation 19 eval done 2/4 elapsed=818.6m
+[2026-05-08 02:14:34 UTC] stage2_4p generation 19 eval done 3/4 elapsed=819.2m
+[2026-05-08 02:14:47 UTC] stage2_4p generation 19 eval done 4/4 elapsed=819.4m
+[2026-05-08 02:14:48 UTC] stage2_4p generation 19 candidate_winrate=0.083 rank=3.42 noop=0.55 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 02:14:48 UTC] stage2_4p generation 20 start elapsed=819.4m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 02:36:19 UTC] stage2_4p generation 20 train done 1/4 elapsed=841.0m
+[2026-05-08 02:36:20 UTC] stage2_4p generation 20 train done 2/4 elapsed=841.0m
+[2026-05-08 02:36:51 UTC] stage2_4p generation 20 train done 3/4 elapsed=841.5m
+[2026-05-08 02:40:43 UTC] stage2_4p generation 20 train done 4/4 elapsed=845.4m
+[2026-05-08 02:50:07 UTC] stage2_4p generation 20 eval done 1/4 elapsed=854.8m
+[2026-05-08 02:51:22 UTC] stage2_4p generation 20 eval done 2/4 elapsed=856.0m
+[2026-05-08 02:51:26 UTC] stage2_4p generation 20 eval done 3/4 elapsed=856.1m
+[2026-05-08 02:51:48 UTC] stage2_4p generation 20 eval done 4/4 elapsed=856.4m
+[2026-05-08 02:51:49 UTC] stage2_4p generation 20 candidate_winrate=0.083 rank=3.38 noop=0.49 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 02:51:49 UTC] stage2_4p generation 21 start elapsed=856.5m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 03:13:26 UTC] stage2_4p generation 21 train done 1/4 elapsed=878.1m
+[2026-05-08 03:14:26 UTC] stage2_4p generation 21 train done 2/4 elapsed=879.1m
+[2026-05-08 03:14:40 UTC] stage2_4p generation 21 train done 3/4 elapsed=879.3m
+[2026-05-08 03:16:16 UTC] stage2_4p generation 21 train done 4/4 elapsed=880.9m
+[2026-05-08 03:24:52 UTC] stage2_4p generation 21 eval done 1/4 elapsed=889.5m
+[2026-05-08 03:25:40 UTC] stage2_4p generation 21 eval done 2/4 elapsed=890.3m
+[2026-05-08 03:25:41 UTC] stage2_4p generation 21 eval done 3/4 elapsed=890.3m
+[2026-05-08 03:26:07 UTC] stage2_4p generation 21 eval done 4/4 elapsed=890.8m
+[2026-05-08 03:26:08 UTC] stage2_4p generation 21 candidate_winrate=0.083 rank=3.46 noop=0.51 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 03:26:08 UTC] stage2_4p generation 22 start elapsed=890.8m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 03:48:44 UTC] stage2_4p generation 22 train done 1/4 elapsed=913.4m
+[2026-05-08 03:49:05 UTC] stage2_4p generation 22 train done 2/4 elapsed=913.7m
+[2026-05-08 03:49:37 UTC] stage2_4p generation 22 train done 3/4 elapsed=914.3m
+[2026-05-08 03:50:28 UTC] stage2_4p generation 22 train done 4/4 elapsed=915.1m
+[2026-05-08 03:58:38 UTC] stage2_4p generation 22 eval done 1/4 elapsed=923.3m
+[2026-05-08 03:58:45 UTC] stage2_4p generation 22 eval done 2/4 elapsed=923.4m
+[2026-05-08 04:00:18 UTC] stage2_4p generation 22 eval done 3/4 elapsed=924.9m
+[2026-05-08 04:00:45 UTC] stage2_4p generation 22 eval done 4/4 elapsed=925.4m
+[2026-05-08 04:00:46 UTC] stage2_4p generation 22 candidate_winrate=0.000 rank=3.42 noop=0.50 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 04:00:46 UTC] stage2_4p generation 23 start elapsed=925.4m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 04:22:52 UTC] stage2_4p generation 23 train done 1/4 elapsed=947.5m
+[2026-05-08 04:23:20 UTC] stage2_4p generation 23 train done 2/4 elapsed=948.0m
+[2026-05-08 04:24:16 UTC] stage2_4p generation 23 train done 3/4 elapsed=948.9m
+[2026-05-08 04:24:52 UTC] stage2_4p generation 23 train done 4/4 elapsed=949.5m
+[2026-05-08 04:32:27 UTC] stage2_4p generation 23 eval done 1/4 elapsed=957.1m
+[2026-05-08 04:33:31 UTC] stage2_4p generation 23 eval done 2/4 elapsed=958.2m
+[2026-05-08 04:34:42 UTC] stage2_4p generation 23 eval done 3/4 elapsed=959.3m
+[2026-05-08 04:35:53 UTC] stage2_4p generation 23 eval done 4/4 elapsed=960.5m
+[2026-05-08 04:35:54 UTC] stage2_4p generation 23 candidate_winrate=0.167 rank=3.12 noop=0.46 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 04:35:54 UTC] stage2_4p generation 24 start elapsed=960.5m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 05:00:48 UTC] stage2_4p generation 24 train done 1/4 elapsed=985.4m
+[2026-05-08 05:01:07 UTC] stage2_4p generation 24 train done 2/4 elapsed=985.8m
+[2026-05-08 05:01:59 UTC] stage2_4p generation 24 train done 3/4 elapsed=986.6m
+[2026-05-08 05:03:03 UTC] stage2_4p generation 24 train done 4/4 elapsed=987.7m
+[2026-05-08 05:11:25 UTC] stage2_4p generation 24 eval done 1/4 elapsed=996.1m
+[2026-05-08 05:11:40 UTC] stage2_4p generation 24 eval done 2/4 elapsed=996.3m
+[2026-05-08 05:12:27 UTC] stage2_4p generation 24 eval done 3/4 elapsed=997.1m
+[2026-05-08 05:14:51 UTC] stage2_4p generation 24 eval done 4/4 elapsed=999.5m
+[2026-05-08 05:14:52 UTC] stage2_4p generation 24 candidate_winrate=0.042 rank=3.33 noop=0.50 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 05:14:52 UTC] stage2_4p generation 25 start elapsed=999.5m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 05:37:03 UTC] stage2_4p generation 25 train done 1/4 elapsed=1021.7m
+[2026-05-08 05:38:14 UTC] stage2_4p generation 25 train done 2/4 elapsed=1022.9m
+[2026-05-08 05:38:33 UTC] stage2_4p generation 25 train done 3/4 elapsed=1023.2m
+[2026-05-08 05:39:04 UTC] stage2_4p generation 25 train done 4/4 elapsed=1023.7m
+[2026-05-08 05:48:17 UTC] stage2_4p generation 25 eval done 1/4 elapsed=1032.9m
+[2026-05-08 05:48:18 UTC] stage2_4p generation 25 eval done 2/4 elapsed=1032.9m
+[2026-05-08 05:48:53 UTC] stage2_4p generation 25 eval done 3/4 elapsed=1033.5m
+[2026-05-08 05:49:09 UTC] stage2_4p generation 25 eval done 4/4 elapsed=1033.8m
+[2026-05-08 05:49:10 UTC] stage2_4p generation 25 candidate_winrate=0.042 rank=3.04 noop=0.55 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 05:49:10 UTC] stage2_4p generation 26 start elapsed=1033.8m best_winrate=0.417 workers=4 train_games=32 eval=24
+[2026-05-08 06:11:21 UTC] stage2_4p generation 26 train done 1/4 elapsed=1056.0m
+[2026-05-08 06:11:51 UTC] stage2_4p generation 26 train done 2/4 elapsed=1056.5m
+[2026-05-08 06:12:52 UTC] stage2_4p generation 26 train done 3/4 elapsed=1057.5m
+[2026-05-08 06:14:07 UTC] stage2_4p generation 26 train done 4/4 elapsed=1058.8m
+[2026-05-08 06:22:12 UTC] stage2_4p generation 26 eval done 1/4 elapsed=1066.8m
+[2026-05-08 06:23:07 UTC] stage2_4p generation 26 eval done 2/4 elapsed=1067.8m
+[2026-05-08 06:23:16 UTC] stage2_4p generation 26 eval done 3/4 elapsed=1067.9m
+[2026-05-08 06:25:38 UTC] stage2_4p generation 26 eval done 4/4 elapsed=1070.3m
+[2026-05-08 06:25:39 UTC] stage2_4p generation 26 candidate_winrate=0.042 rank=3.38 noop=0.49 promoted=0 best_winrate=0.417 target=0.700 games=224
+[2026-05-08 06:25:39 UTC] stage2_4p generation 27 start elapsed=1070.3m best_winrate=0.417 workers=4 train_games=32 eval=24

@@ -95,7 +95,8 @@
       "Bash(PYTHONIOENCODING=utf-8 python *)",
       "Bash(cat C:\\\\\\\\Users\\\\\\\\Capitaine\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\claude\\\\\\\\C--Users-Capitaine-Documents-GitHub-warorbit\\\\\\\\d8b678b4-2157-490d-91fb-99168f40ab65\\\\\\\\tasks\\\\\\\\bomflxbov.output)",
       "Bash(npx @playwright/mcp install-browser chrome-for-testing)",
-      "Bash(python3 -m json.tool /home/jason/Documents/warorbit/.claude/settings.local.json)"
+      "Bash(python3 -m json.tool /home/jason/Documents/warorbit/.claude/settings.local.json)",
+      "Bash(git add *)"
     ]
   }
 }

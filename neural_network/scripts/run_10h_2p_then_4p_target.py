@@ -530,11 +530,21 @@ def _run_stage(
         generation_best = evaluated[0]
         save_checkpoint(candidate_path, generation_best["state"], generation_best["record"])
         save_checkpoint(latest_path, generation_best["state"], generation_best["record"])
-        base = latest_path
+        # Keep base anchored on best checkpoint (avoid drifting onto failed candidates).
+        # Previously: base = latest_path (regardless of promotion) -> caused stage2 collapse
+        # when generations got worse (each gen trained from previous failed candidate).
+        if best_path.exists():
+            base = best_path
+        else:
+            base = latest_path
 
         best_candidate_record = dict(generation_best["record"])
+        # Loosen confirm gate: any candidate within striking distance of best gets a confirm
+        # eval (reduces 24-episode promotion variance ~half).
+        candidate_winrate_raw = float(best_candidate_record.get("winrate", 0.0))
+        confirm_floor = max(0.0, best_winrate - float(cfg.get("promotion_margin", 0.01)))
         should_confirm = (
-            float(best_candidate_record.get("winrate", 0.0)) >= max(target_winrate * 0.80, best_winrate + float(cfg.get("promotion_margin", 0.01)))
+            candidate_winrate_raw >= confirm_floor
             or best_winrate < 0.0
         )
         promoted = False
@@ -651,6 +661,13 @@ def main() -> None:
     parser.add_argument("--stage2-confirm-episodes", type=int, default=160)
     parser.add_argument("--run-name", default=None)
     parser.add_argument("--resume-checkpoint", default="")
+    # Resume directly from a stage1 best checkpoint, skipping stage1 entirely.
+    parser.add_argument("--resume-stage1-best", default="", help="Path to best_stage1_2p.npz (or equivalent) — skip stage1 if provided")
+    # Resume stage2 from an in-progress best_stage2_4p.npz (e.g. continuing the VPS run locally).
+    parser.add_argument("--resume-stage2-best", default="", help="Path to best_stage2_4p.npz to resume stage2 best from")
+    parser.add_argument("--stage2-lr-scale", type=float, default=0.5, help="LR multiplier applied at stage2 start to slow forgetting")
+    parser.add_argument("--stage2-entropy-start", type=float, default=0.040, help="Higher entropy at stage2 start to escape noop attractor")
+    parser.add_argument("--stage2-entropy-end", type=float, default=0.010)
     args = parser.parse_args()
 
     run_name = args.run_name or _run_tag()
@@ -668,27 +685,79 @@ def main() -> None:
     _log(log_path, f"run_start run_name={run_name} host={socket.gethostname()} workers={cfg['workers']} manifest={manifest_path}")
 
     base_checkpoint = Path(args.resume_checkpoint) if args.resume_checkpoint else None
-    stage1 = _run_stage(
-        cfg,
-        stage="stage1_2p",
-        n_players=2,
-        pool=cfg["stage1_pool"],
-        target_winrate=float(cfg["stage1_target_winrate"]),
-        train_games_per_worker=int(args.stage1_train_games),
-        eval_episodes=int(args.stage1_eval_episodes),
-        confirm_episodes=int(args.stage1_confirm_episodes),
-        workers=int(cfg["workers"]),
-        base_checkpoint=base_checkpoint,
-        run_dir=run_dir,
-        log_path=log_path,
-        jsonl_path=jsonl_path,
-        started_at=started_at,
-        deadline_epoch=deadline_epoch,
-    )
+    cfg["stage2_lr_scale"] = float(args.stage2_lr_scale)
+    cfg["stage2_entropy_start"] = float(args.stage2_entropy_start)
+    cfg["stage2_entropy_end"] = float(args.stage2_entropy_end)
+
+    # Skip stage1 if a stage1 best checkpoint is supplied (e.g. resume from VPS run).
+    if args.resume_stage1_best:
+        prebuilt_stage1_best = Path(args.resume_stage1_best)
+        if not prebuilt_stage1_best.exists():
+            raise FileNotFoundError(f"--resume-stage1-best path not found: {prebuilt_stage1_best}")
+        # Copy into expected stage1 layout so downstream code finds it.
+        stage1_dir = run_dir / "stage1_2p" / "checkpoints"
+        ensure_dir(stage1_dir)
+        stage1_best_path = stage1_dir / "best.npz"
+        from neural_network.src.storage import load_checkpoint as _ldc, save_checkpoint as _svc
+        st, meta = _ldc(str(prebuilt_stage1_best))
+        _svc(stage1_best_path, st, meta if isinstance(meta, dict) else {})
+        _svc(run_dir / "best_stage1_2p.npz", st, meta if isinstance(meta, dict) else {})
+        _log(log_path, f"stage1_2p resumed from {prebuilt_stage1_best} -> {stage1_best_path}")
+        stage1 = {
+            "stage": "stage1_2p",
+            "n_players": 2,
+            "target_winrate": float(cfg["stage1_target_winrate"]),
+            "best_winrate": float((meta or {}).get("winrate", cfg["stage1_target_winrate"])) if isinstance(meta, dict) else float(cfg["stage1_target_winrate"]),
+            "best_checkpoint": str(stage1_best_path),
+            "stage_best_checkpoint": str(run_dir / "best_stage1_2p.npz"),
+            "best_record": meta if isinstance(meta, dict) else {},
+            "target_reached": True,
+        }
+    else:
+        stage1 = _run_stage(
+            cfg,
+            stage="stage1_2p",
+            n_players=2,
+            pool=cfg["stage1_pool"],
+            target_winrate=float(cfg["stage1_target_winrate"]),
+            train_games_per_worker=int(args.stage1_train_games),
+            eval_episodes=int(args.stage1_eval_episodes),
+            confirm_episodes=int(args.stage1_confirm_episodes),
+            workers=int(cfg["workers"]),
+            base_checkpoint=base_checkpoint,
+            run_dir=run_dir,
+            log_path=log_path,
+            jsonl_path=jsonl_path,
+            started_at=started_at,
+            deadline_epoch=deadline_epoch,
+        )
     if stage1["target_reached"]:
         stage2_base = Path(stage1["best_checkpoint"])
+        # If user supplied an in-progress stage2 best, seed stage2 best.npz so resume picks it up.
+        if args.resume_stage2_best:
+            prebuilt_stage2_best = Path(args.resume_stage2_best)
+            if not prebuilt_stage2_best.exists():
+                raise FileNotFoundError(f"--resume-stage2-best path not found: {prebuilt_stage2_best}")
+            stage2_dir = run_dir / "stage2_4p" / "checkpoints"
+            ensure_dir(stage2_dir)
+            from neural_network.src.storage import load_checkpoint as _ldc2, save_checkpoint as _svc2
+            st2, meta2 = _ldc2(str(prebuilt_stage2_best))
+            _svc2(stage2_dir / "best.npz", st2, meta2 if isinstance(meta2, dict) else {})
+            _svc2(run_dir / "best_stage2_4p.npz", st2, meta2 if isinstance(meta2, dict) else {})
+            stage2_base = stage2_dir / "best.npz"
+            _log(log_path, f"stage2_4p resumed best from {prebuilt_stage2_best}")
+        # Stage2 specific overrides: lower LR + higher entropy to mitigate
+        # catastrophic forgetting when transferring from passive 2p winner.
+        cfg_stage2 = dict(cfg)
+        cfg_stage2["learning_rate"] = float(cfg.get("learning_rate", 0.0002)) * float(cfg.get("stage2_lr_scale", 0.5))
+        cfg_stage2["entropy_coef_start"] = float(cfg.get("stage2_entropy_start", 0.040))
+        cfg_stage2["entropy_coef_end"] = float(cfg.get("stage2_entropy_end", 0.010))
+        # Lower noop target so penalty is gentler — model trained as noop in stage1
+        # gets crushed if penalty is too aggressive at transfer.
+        cfg_stage2["train_noop_penalty_coef"] = float(cfg.get("train_noop_penalty_coef", 0.45)) * 0.5
+        cfg_stage2["promotion_margin"] = float(cfg.get("promotion_margin", 0.01))
         stage2 = _run_stage(
-            cfg,
+            cfg_stage2,
             stage="stage2_4p",
             n_players=4,
             pool=cfg["stage2_pool"],
