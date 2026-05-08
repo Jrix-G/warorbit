@@ -81,8 +81,7 @@ def _prepare_config(
     cfg["notebook_pool_limit"] = 0
     cfg["notebook_pool_limit_max"] = 0
     cfg["train_notebook_opponents"] = 3
-    cfg["game_engine"] = "official_fast"
-    cfg["official_fast_c_accel"] = bool(cfg.get("official_fast_c_accel", True))
+    cfg["game_engine"] = "cgame"
     cfg["train_stop_on_elimination"] = True
     cfg["max_actions_per_turn"] = 4
     cfg["max_turns"] = min(100, int(cfg.get("max_turns", 100)))
@@ -96,7 +95,7 @@ def _prepare_config(
     cfg["dense_ship_share_coef"] = 0.14
     cfg["dense_score_coef"] = 0.10
     cfg["dense_survival_coef"] = 0.05
-    cfg["dense_reward_clip"] = 0.30
+    cfg["dense_reward_clip"] = 0.25
     cfg["train_target_do_nothing_rate"] = 0.48
     cfg["train_noop_penalty_coef"] = 0.45
     cfg["train_action_bonus_coef"] = 0.09

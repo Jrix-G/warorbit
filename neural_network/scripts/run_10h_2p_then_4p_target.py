@@ -37,6 +37,7 @@ from neural_network.src.population_4p_training import (
     _strategic_dense_reward,
     configure_run_logging,
 )
+from neural_network.src.orbit_wars_adapter import obs_to_game_dict
 from neural_network.src.storage import append_jsonl, load_checkpoint, save_checkpoint
 from neural_network.src.torch_compat import ensure_torch_dynamo_stub
 from neural_network.src.utils import ensure_dir, load_json, save_json
@@ -118,6 +119,81 @@ def _rank_from_scores(scores: Sequence[float], our_index: int, default: int) -> 
     return next((rank for rank, (_, idx) in enumerate(ordered, start=1) if idx == our_index), default)
 
 
+def _final_player_snapshots(result: Dict[str, Any], n_players: int) -> Dict[str, Dict[str, float]]:
+    final_obs = result.get("final_state")
+    if final_obs is None:
+        return {}
+    game = obs_to_game_dict(final_obs)
+    planets = game.get("planets", [])
+    fleets = game.get("fleets", [])
+    scores = [float(value) for value in result.get("scores", [])]
+    total_ships = sum(float(p.get("ships", 0.0)) for p in planets) + sum(float(f.get("ships", 0.0)) for f in fleets)
+    snapshots: Dict[str, Dict[str, float]] = {}
+    for player_id in range(max(1, int(n_players))):
+        player_planets = [p for p in planets if int(p.get("owner", -1)) == player_id]
+        player_fleets = [f for f in fleets if int(f.get("owner", -1)) == player_id]
+        planet_ships = sum(float(p.get("ships", 0.0)) for p in player_planets)
+        fleet_ships = sum(float(f.get("ships", 0.0)) for f in player_fleets)
+        ships = planet_ships + fleet_ships
+        snapshots[f"p{player_id}"] = {
+            "alive": 1.0 if player_planets or player_fleets else 0.0,
+            "planets": float(len(player_planets)),
+            "fleets": float(len(player_fleets)),
+            "production": float(sum(float(p.get("production", 0.0)) for p in player_planets)),
+            "ships": float(ships),
+            "ship_share": float(ships / max(1.0, total_ships)),
+            "score": float(scores[player_id]) if len(scores) > player_id else 0.0,
+        }
+    return snapshots
+
+
+def _result_diagnostics(result: Dict[str, Any], our_index: int, n_players: int, rank: int) -> Dict[str, Any]:
+    winner = int(result.get("winner", -1))
+    snapshots = _final_player_snapshots(result, n_players)
+    our_snapshot = snapshots.get(f"p{int(our_index)}", {})
+    eliminated = bool(snapshots) and float(our_snapshot.get("alive", 0.0)) <= 0.0
+    scores = [float(value) for value in result.get("scores", [])]
+    our_score = scores[our_index] if len(scores) > our_index else 0.0
+    winner_score = max(scores) if scores else 0.0
+    if winner == int(our_index):
+        cause = "win"
+    elif eliminated:
+        cause = "eliminated"
+    else:
+        cause = "score_loss"
+    rank_reward = _rank_reward(int(rank))
+    final_strength = _final_strength(our_snapshot, float(our_score - winner_score))
+    return {
+        "final_cause": cause,
+        "final_eliminated": float(eliminated),
+        "final_score": float(our_score),
+        "final_score_margin_to_winner": float(our_score - winner_score),
+        "final_rank": int(rank),
+        "final_rank_reward": float(rank_reward),
+        "final_strength": float(final_strength),
+        "final_player_snapshots": snapshots,
+    }
+
+
+def _rank_reward(rank: int) -> float:
+    if rank <= 0:
+        return 0.0
+    return {1: 0.0, 2: 0.12, 3: 0.03, 4: -0.06}.get(int(rank), 0.0)
+
+
+def _final_strength(snapshot: Dict[str, float], score_margin_to_winner: float) -> float:
+    ship_share = float(snapshot.get("ship_share", 0.0))
+    production = float(snapshot.get("production", 0.0))
+    planets = float(snapshot.get("planets", 0.0))
+    score_component = max(-1.0, min(1.0, score_margin_to_winner / 250.0))
+    return (
+        0.45 * max(-1.0, min(1.0, ship_share * 2.0 - 1.0))
+        + 0.30 * max(-1.0, min(1.0, production / 10.0))
+        + 0.15 * max(-1.0, min(1.0, planets / 10.0))
+        + 0.10 * score_component
+    )
+
+
 def _play_train_episode(
     model: NeuralNetworkModel,
     optimizer: torch.optim.Optimizer,
@@ -152,8 +228,7 @@ def _play_train_episode(
         n_players=n_players,
         max_steps=int(config.get("max_turns", 100)),
         stop_player=our_index if bool(config.get("train_stop_on_elimination", True)) else None,
-        game_engine=str(config.get("game_engine", "official_fast")),
-        use_c_accel=bool(config.get("official_fast_c_accel", True)),
+        game_engine=str(config.get("game_engine", "cgame")),
     )
     terminal_reward = 1.0 if int(result.get("winner", -1)) == int(our_index) else -1.0
     dense_reward = _strategic_dense_reward(result, our_index, config) if bool(config.get("dense_reward_enabled", True)) else 0.0
@@ -188,6 +263,7 @@ def _play_train_episode(
         "dense_reward": dense_reward,
         "activity_reward": activity_reward,
         "opponents": list(opp_names),
+        **_result_diagnostics(result, our_index, n_players, rank),
         **action_metrics,
         **train_metrics,
     }
@@ -295,13 +371,13 @@ def _evaluate_state(
             agents,
             seed=seed,
             n_players=n_players,
-            max_steps=int(config.get("max_turns", 100)),
-            stop_player=our_index,
-            game_engine=str(config.get("game_engine", "official_fast")),
-            use_c_accel=bool(config.get("official_fast_c_accel", True)),
-        )
+                max_steps=int(config.get("max_turns", 100)),
+                stop_player=our_index,
+                game_engine=str(config.get("game_engine", "cgame")),
+            )
         scores = result.get("scores", [])
         rank = _rank_from_scores(scores, our_index, n_players)
+        diagnostics = _result_diagnostics(result, our_index, n_players, rank)
         rows.append(
             {
                 "winner": int(result.get("winner", -1)),
@@ -311,6 +387,7 @@ def _evaluate_state(
                 "scores": scores,
                 "steps": int(result.get("steps", 0)),
                 "opponents": list(opp_names),
+                **diagnostics,
                 **_action_summary(action_records),
             }
         )
@@ -330,6 +407,10 @@ def _evaluate_state(
         f"p{pos}": float(np.mean([row["win"] for row in rows if row["our_index"] == pos]) if any(row["our_index"] == pos for row in rows) else 0.0)
         for pos in range(n_players)
     }
+    final_cause_counts = {
+        cause: int(sum(1 for row in rows if row.get("final_cause") == cause))
+        for cause in sorted({str(row.get("final_cause", "unknown")) for row in rows})
+    }
     record = {
         "stage": stage,
         "n_players": n_players,
@@ -341,6 +422,11 @@ def _evaluate_state(
         "eval_action_count": float(np.mean([row["action_count"] for row in rows]) if rows else 0.0),
         "eval_do_nothing_rate": float(np.mean([row["do_nothing_rate"] for row in rows]) if rows else 1.0),
         "eval_avg_ships_sent": float(np.mean([row["avg_ships_sent"] for row in rows]) if rows else 0.0),
+        "eval_elimination_rate": float(np.mean([row["final_eliminated"] for row in rows]) if rows else 0.0),
+        "eval_score_margin_to_winner": float(np.mean([row["final_score_margin_to_winner"] for row in rows]) if rows else 0.0),
+        "eval_rank_reward_mean": float(np.mean([row["final_rank_reward"] for row in rows]) if rows else 0.0),
+        "eval_final_strength_mean": float(np.mean([row["final_strength"] for row in rows]) if rows else 0.0),
+        "eval_final_cause_counts": final_cause_counts,
         "winrate_by_position": by_position,
         "eval_by_opponent": eval_by_opponent,
         "seeds": [seed_offset + i for i in range(len(rows))],
@@ -611,8 +697,7 @@ def _prepare_config(cfg: Dict[str, Any], args: argparse.Namespace, run_name: str
     cfg["workers"] = max(1, int(args.workers))
     cfg["hidden_dim"] = max(320, int(cfg.get("hidden_dim", 320)))
     cfg["learning_rate"] = min(float(cfg.get("learning_rate", 0.00025)), 0.0002)
-    cfg["game_engine"] = "official_fast"
-    cfg["official_fast_c_accel"] = True
+    cfg["game_engine"] = "cgame"
     cfg["train_stop_on_elimination"] = True
     cfg["max_turns"] = min(100, int(cfg.get("max_turns", 100)))
     cfg["max_actions_per_turn"] = 4
@@ -626,7 +711,7 @@ def _prepare_config(cfg: Dict[str, Any], args: argparse.Namespace, run_name: str
     cfg["dense_ship_share_coef"] = 0.14
     cfg["dense_score_coef"] = 0.10
     cfg["dense_survival_coef"] = 0.05
-    cfg["dense_reward_clip"] = 0.30
+    cfg["dense_reward_clip"] = 0.25
     cfg["train_target_do_nothing_rate"] = 0.48
     cfg["train_noop_penalty_coef"] = 0.45
     cfg["train_action_bonus_coef"] = 0.09
@@ -647,7 +732,7 @@ def _prepare_config(cfg: Dict[str, Any], args: argparse.Namespace, run_name: str
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run official_fast 2p pretrain then 4p target training without changing the game engine.")
+    parser = argparse.ArgumentParser(description="Run cgame 2p pretrain then 4p target training.")
     parser.add_argument("--config", default=None)
     parser.add_argument("--duration-minutes", type=float, default=0.0)
     parser.add_argument("--workers", type=int, default=4)

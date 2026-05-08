@@ -1,9 +1,9 @@
 """
 train_v13.py — REINFORCE training for V13 hybrid bot
 
-Uses local_simulator.official_fast.OfficialFastGame to step through games,
-recording (features, selected_idx) at each turn, then applying REINFORCE
-gradient update on the MLP scorer.
+Uses c_engine.CGame to step through games, recording
+(features, selected_idx) at each turn, then applying REINFORCE gradient
+update on the MLP scorer.
 
 Pool: strong notebooks from opponents.ZOO.
 """
@@ -14,6 +14,7 @@ import argparse
 import math
 import random
 import time
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -21,7 +22,7 @@ from typing import Any, Callable
 import numpy as np
 
 import bot_v13
-from local_simulator.official_fast import OfficialFastGame
+from c_engine import CGame
 from opponents import ZOO
 
 
@@ -91,6 +92,24 @@ class Trajectory:
     steps: list[StepRecord] = field(default_factory=list)
     final_reward: float = 0.0
     won: bool = False
+
+
+def _agent_obs(obs: Any) -> dict[str, Any]:
+    """Normalize CGame observations for legacy agents expecting dict.get()."""
+    if isinstance(obs, dict):
+        return obs
+    data = vars(obs).copy()
+    data.setdefault("remainingOverageTime", 60.0)
+    return data
+
+
+def _call_agent(agent_fn: Callable, obs: Any, config: Any) -> list:
+    agent_input = _agent_obs(obs)
+    try:
+        move = agent_fn(agent_input, config)
+    except TypeError:
+        move = agent_fn(agent_input)
+    return move if isinstance(move, list) else []
 
 
 def make_training_agent(mlp: bot_v13.MLPScorer,
@@ -172,23 +191,18 @@ def play_episode(mlp: bot_v13.MLPScorer,
     agents = list(opponents)
     agents.insert(my_slot, trainee)
 
-    game = OfficialFastGame(
+    game = CGame(
         n_players=n_players,
         seed=seed,
         episode_steps=max_steps,
-        use_c_accel=use_c_accel,
     )
 
-    callables = [game._resolve_agent(a) for a in agents]
+    callables = list(agents)
     while not game.done:
         actions = []
         for player, agent_fn in enumerate(callables):
             obs = game.observation(player)
-            try:
-                move = agent_fn(obs, game.configuration)
-            except TypeError:
-                move = agent_fn(obs)
-            actions.append(move if isinstance(move, list) else [])
+            actions.append(_call_agent(agent_fn, obs, game.configuration))
         game.step(actions)
 
     scores = game.scores()
@@ -210,6 +224,21 @@ def play_episode(mlp: bot_v13.MLPScorer,
         traj.final_reward += 0.3 * margin
 
     return traj
+
+
+def _play_episode_worker(task: tuple[dict, str, int, int, int, float, int]) -> Trajectory:
+    weights, opp_name, slot, seed, max_steps, epsilon, rng_seed = task
+    mlp = bot_v13.MLPScorer(weights=weights)
+    rng = np.random.default_rng(rng_seed)
+    return play_episode(
+        mlp,
+        [ZOO[opp_name]],
+        my_slot=slot,
+        seed=seed,
+        max_steps=max_steps,
+        rng=rng,
+        epsilon=epsilon,
+    )
 
 
 # ═════════════════════════════ REINFORCE UPDATE ═══════════════════════════════
@@ -310,20 +339,17 @@ def evaluate(mlp: bot_v13.MLPScorer,
             seed = seed_base + i * 17
             n_players = 2
             agents = [bot_v13.agent if p == slot else opp for p in range(n_players)]
-            game = OfficialFastGame(
-                n_players=n_players, seed=seed,
-                episode_steps=max_steps, use_c_accel=use_c_accel,
+            game = CGame(
+                n_players=n_players,
+                seed=seed,
+                episode_steps=max_steps,
             )
-            callables = [game._resolve_agent(a) for a in agents]
+            callables = list(agents)
             while not game.done:
                 actions = []
                 for p, fn in enumerate(callables):
                     obs = game.observation(p)
-                    try:
-                        m = fn(obs, game.configuration)
-                    except TypeError:
-                        m = fn(obs)
-                    actions.append(m if isinstance(m, list) else [])
+                    actions.append(_call_agent(fn, obs, game.configuration))
                 game.step(actions)
             scores = game.scores()
             best_other = max(s for i2, s in enumerate(scores) if i2 != slot)
@@ -345,10 +371,15 @@ def parse_args():
     ap.add_argument('--max-steps', type=int, default=220)
     ap.add_argument('--eval-every', type=int, default=20, help='eval every N batches')
     ap.add_argument('--eval-games', type=int, default=6)
+    ap.add_argument('--workers', type=int, default=1, help='parallel episode workers')
     ap.add_argument('--out', type=str, default='evaluations/scorer_v13')
     ap.add_argument('--load', type=str, default=None)
     ap.add_argument('--seed', type=int, default=12345)
-    ap.add_argument('--no-c-accel', action='store_true')
+    ap.add_argument(
+        '--no-c-accel',
+        action='store_true',
+        help='Ignored; V13 now always uses c_engine.',
+    )
     return ap.parse_args()
 
 
@@ -366,12 +397,12 @@ def main():
     optimizer = Adam(mlp.to_dict(), lr=args.lr)
 
     # Pool: mix of weak (for warmup) + strong (for final policy)
-    pool_2p = [
-        ('greedy', ZOO['greedy']),
-        ('starter', ZOO.get('starter', ZOO['greedy'])),
-        ('notebook_distance_prioritized', ZOO['notebook_distance_prioritized']),
-        ('notebook_physics_accurate', ZOO['notebook_physics_accurate']),
-        ('notebook_orbitbotnext', ZOO['notebook_orbitbotnext']),
+    pool_2p_names = [
+        'greedy',
+        'starter',
+        'notebook_distance_prioritized',
+        'notebook_physics_accurate',
+        'notebook_orbitbotnext',
     ]
 
     eval_pool = [
@@ -391,48 +422,66 @@ def main():
     batch_idx = 0
     best_avg_wr = -1.0
 
-    print(f'Training for {args.minutes:.1f} min. Pool: {len(pool_2p)} opponents.')
+    workers = max(1, int(args.workers))
+    print(
+        f'Training for {args.minutes:.1f} min. '
+        f'Pool: {len(pool_2p_names)} opponents. Workers: {workers}.'
+    )
 
-    while time.time() < deadline:
-        # Collect a batch of trajectories
-        trajectories = []
-        for _ in range(args.batch_size):
-            opp_name, opp_fn = pool_2p[int(rng.integers(0, len(pool_2p)))]
-            slot = int(rng.integers(0, 2))
-            seed = int(rng.integers(0, 1_000_000))
-            traj = play_episode(
-                mlp, [opp_fn], my_slot=slot, seed=seed,
-                max_steps=args.max_steps, use_c_accel=use_c_accel,
-                rng=rng, epsilon=args.epsilon,
-            )
-            trajectories.append(traj)
+    executor = ProcessPoolExecutor(max_workers=workers) if workers > 1 else None
+    try:
+        while time.time() < deadline:
+            weights = mlp.to_dict()
+            tasks = []
+            for _ in range(args.batch_size):
+                opp_name = pool_2p_names[int(rng.integers(0, len(pool_2p_names)))]
+                slot = int(rng.integers(0, 2))
+                seed = int(rng.integers(0, 1_000_000))
+                rng_seed = int(rng.integers(0, 1_000_000_000))
+                tasks.append((
+                    weights,
+                    opp_name,
+                    slot,
+                    seed,
+                    args.max_steps,
+                    args.epsilon,
+                    rng_seed,
+                ))
 
-        loss, entropy = reinforce_update(
-            mlp, optimizer, trajectories, entropy_bonus=args.entropy)
+            if executor is None:
+                trajectories = [_play_episode_worker(task) for task in tasks]
+            else:
+                trajectories = list(executor.map(_play_episode_worker, tasks))
 
-        wins = sum(1 for t in trajectories if t.won)
-        elapsed = time.time() - (deadline - args.minutes * 60.0)
-        print(f'[{elapsed:6.0f}s b{batch_idx:4d}] '
-              f'wr={wins}/{len(trajectories)} loss={loss:+.3f} ent={entropy:.3f}')
+            loss, entropy = reinforce_update(
+                mlp, optimizer, trajectories, entropy_bonus=args.entropy)
 
-        # Save last
-        np.savez(last_path, **mlp.to_dict())
+            wins = sum(1 for t in trajectories if t.won)
+            elapsed = time.time() - (deadline - args.minutes * 60.0)
+            print(f'[{elapsed:6.0f}s b{batch_idx:4d}] '
+                  f'wr={wins}/{len(trajectories)} loss={loss:+.3f} ent={entropy:.3f}')
 
-        # Eval periodically
-        if (batch_idx + 1) % args.eval_every == 0:
-            print('  Evaluating...')
-            results = evaluate(mlp, eval_pool, games_per_opp=args.eval_games,
-                               max_steps=args.max_steps, use_c_accel=use_c_accel)
-            avg_wr = sum(results.values()) / len(results)
-            for name, wr in results.items():
-                print(f'    {name}: {wr:.2%}')
-            print(f'    avg: {avg_wr:.2%}')
-            if avg_wr > best_avg_wr:
-                best_avg_wr = avg_wr
-                np.savez(best_path, **mlp.to_dict())
-                print(f'    → new best, saved {best_path}')
+            # Save last
+            np.savez(last_path, **mlp.to_dict())
 
-        batch_idx += 1
+            # Eval periodically
+            if (batch_idx + 1) % args.eval_every == 0:
+                print('  Evaluating...')
+                results = evaluate(mlp, eval_pool, games_per_opp=args.eval_games,
+                                   max_steps=args.max_steps, use_c_accel=use_c_accel)
+                avg_wr = sum(results.values()) / len(results)
+                for name, wr in results.items():
+                    print(f'    {name}: {wr:.2%}')
+                print(f'    avg: {avg_wr:.2%}')
+                if avg_wr > best_avg_wr:
+                    best_avg_wr = avg_wr
+                    np.savez(best_path, **mlp.to_dict())
+                    print(f'    → new best, saved {best_path}')
+
+            batch_idx += 1
+    finally:
+        if executor is not None:
+            executor.shutdown()
 
     # Final eval
     print('Final eval:')

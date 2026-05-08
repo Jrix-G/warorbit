@@ -294,7 +294,82 @@ int gs_step(GameState* gs,
     static PlanetCombatList combat_lists[MAX_PLANETS];
     for (int i = 0; i < gs->num_planets; ++i) combat_lists[i].n = 0;
 
-    /* 2. Fleet Movement (Python lines 495-533) */
+    /* ── NEW PyPI ORDER ───────────────────────────────────────────────────
+     * 2. Compute every planet's old/new positions FIRST.
+     * 3. Fleet movement uses swept_pair_hit (continuous fleet+planet motion).
+     * 4. Apply planet positions. Comet expiration after combat.
+     */
+
+    /* planet_paths[pi] = (old, new, check). Indexed by current planet idx. */
+    static double path_old_x[MAX_PLANETS], path_old_y[MAX_PLANETS];
+    static double path_new_x[MAX_PLANETS], path_new_y[MAX_PLANETS];
+    static int   path_check[MAX_PLANETS];
+    static int   path_valid[MAX_PLANETS];
+    for (int i = 0; i < gs->num_planets; ++i) path_valid[i] = 0;
+
+    int step_for_rotation = gs->step;
+    double av = gs->angular_velocity;
+
+    /* Non-comet planets: rotation */
+    for (int pi = 0; pi < gs->num_planets; ++pi) {
+        Planet* planet = &gs->planets[pi];
+        if (!planet->active) continue;
+        if (planet->is_comet) continue;
+        double old_x = planet->x;
+        double old_y = planet->y;
+        double new_x = old_x;
+        double new_y = old_y;
+        double dx = planet->init_x - CENTER;
+        double dy = planet->init_y - CENTER;
+        double r = sqrt(dx * dx + dy * dy);
+        if (r + planet->radius < ROTATION_RADIUS_LIMIT) {
+            double initial_angle = atan2(dy, dx);
+            double current_angle = initial_angle + av * step_for_rotation;
+            new_x = CENTER + r * cos(current_angle);
+            new_y = CENTER + r * sin(current_angle);
+        }
+        path_old_x[pi] = old_x; path_old_y[pi] = old_y;
+        path_new_x[pi] = new_x; path_new_y[pi] = new_y;
+        path_check[pi] = 1;
+        path_valid[pi] = 1;
+    }
+
+    /* Comet groups: increment path_index, fill paths.
+     * Expired comets: stay at old_pos (new=old), check=True, removed post-combat. */
+    for (int g = 0; g < gs->num_comet_groups; ++g) {
+        CometGroup* group = &gs->comets[g];
+        if (!group->active) continue;
+        group->path_index += 1;
+        int idx = group->path_index;
+        for (int k = 0; k < group->n_paths; ++k) {
+            int pid = group->planet_ids[k];
+            if (pid < 0) continue;
+            int p_idx = find_planet_by_id(gs, pid);
+            if (p_idx < 0) continue;
+            Planet* planet = &gs->planets[p_idx];
+            int plen = group->path_lengths[k];
+            double old_x = planet->x;
+            double old_y = planet->y;
+            if (idx >= plen) {
+                /* Expired: stays put for collision this tick, removed after */
+                path_old_x[p_idx] = old_x; path_old_y[p_idx] = old_y;
+                path_new_x[p_idx] = old_x; path_new_y[p_idx] = old_y;
+                path_check[p_idx] = 1;
+                path_valid[p_idx] = 1;
+            } else {
+                double new_x = group->paths_x[k][idx];
+                double new_y = group->paths_y[k][idx];
+                /* First placement: old_pos is off-board placeholder (-99) */
+                int check = (old_x >= 0.0) ? 1 : 0;
+                path_old_x[p_idx] = old_x; path_old_y[p_idx] = old_y;
+                path_new_x[p_idx] = new_x; path_new_y[p_idx] = new_y;
+                path_check[p_idx] = check;
+                path_valid[p_idx] = 1;
+            }
+        }
+    }
+
+    /* 3. Fleet Movement with swept_pair_hit */
     double max_speed = gs->ship_speed;
     double log1000 = log(1000.0);
 
@@ -313,14 +388,19 @@ int gs_step(GameState* gs,
         double new_x = fleet->x;
         double new_y = fleet->y;
 
-        /* Continuous collision: check planets first (Python line 514-523) */
+        /* Out of bounds (Python order: BEFORE planet collision in new layout?
+         * Re-check Python: planets check first, then OOB, then sun. We match.) */
+        /* Continuous collision against every planet's swept path */
         int hit_planet = 0;
         for (int pi = 0; pi < gs->num_planets; ++pi) {
             Planet* planet = &gs->planets[pi];
             if (!planet->active) continue;
-            double d = geom_point_to_segment_distance(
-                planet->x, planet->y, old_x, old_y, new_x, new_y);
-            if (d < planet->radius) {
+            if (!path_valid[pi] || !path_check[pi]) continue;
+            if (geom_swept_pair_hit(
+                    old_x, old_y, new_x, new_y,
+                    path_old_x[pi], path_old_y[pi],
+                    path_new_x[pi], path_new_y[pi],
+                    planet->radius)) {
                 if (combat_lists[pi].n < MAX_FLEETS) {
                     combat_lists[pi].fleet_indices[combat_lists[pi].n++] = fi;
                 }
@@ -331,14 +411,14 @@ int gs_step(GameState* gs,
         }
         if (hit_planet) continue;
 
-        /* Out of bounds (Python line 526-528) */
+        /* Out of bounds */
         if (!(fleet->x >= 0.0 && fleet->x <= BOARD_SIZE &&
               fleet->y >= 0.0 && fleet->y <= BOARD_SIZE)) {
             fleet->active = 0;
             continue;
         }
 
-        /* Sun collision (Python line 531-533) */
+        /* Sun collision */
         double sd = geom_point_to_segment_distance(
             CENTER, CENTER, old_x, old_y, new_x, new_y);
         if (sd < SUN_RADIUS) {
@@ -347,119 +427,11 @@ int gs_step(GameState* gs,
         }
     }
 
-    /* 3. Planet Movement & Sweep (Python lines 535-572)
-     *
-     * Python uses: initial_angle = atan2(dy, dx) where dx,dy = init_p[2]-CENTER
-     *              current_angle = initial_angle + angular_velocity * step
-     * We use init_x, init_y stored per planet. NOTE: Python references step
-     * = obs0.step, which is the CURRENT step BEFORE the interpreter increments
-     * it. Looking at Python: obs0.step is set after interpreter via core.py
-     * (each step appends new state). When interpreter() reads `step = get(obs0, "step", 1)`
-     * here, it reads the value set BEFORE this interpreter call.
-     *
-     * In our C, gs->step represents the same "current step". Python's
-     * `obs0.step` is incremented by the wrapper outside the interpreter.
-     * We mirror by reading gs->step (which the wrapper sets to t+1 before
-     * calling step? No — match Python behavior: read current step here).
-     *
-     * Actually Python's behavior:
-     *   - obs0.step starts at 0
-     *   - interpreter is called; it reads step = obs0.step (e.g. 0)
-     *   - planet rotation uses angular_velocity * step (= 0)
-     *   - At end of interpreter, core.py sets new_state[0].observation.step = len(steps)
-     *   - So next call's step is 1, etc.
-     *
-     * For OfficialFastGame the step is set in _set_step() AFTER interpreter
-     * returns. So when interpreter runs at index 0, step is 0; at index 1,
-     * step is 1; ... at index 220, step is 220.
-     *
-     * In our C wrapper: caller increments gs->step AFTER gs_step() returns.
-     * That means inside gs_step(), gs->step holds the value as Python sees it.
-     */
-    int step_for_rotation = gs->step;
-    double av = gs->angular_velocity;
-
+    /* 4. Apply planet movement (collisions resolved above) */
     for (int pi = 0; pi < gs->num_planets; ++pi) {
-        Planet* planet = &gs->planets[pi];
-        if (!planet->active) continue;
-        if (planet->is_comet) continue;  /* Python: skip comets here (line 556) */
-
-        double dx = planet->init_x - CENTER;
-        double dy = planet->init_y - CENTER;
-        double r = sqrt(dx * dx + dy * dy);
-        double old_x = planet->x;
-        double old_y = planet->y;
-
-        if (r + planet->radius < ROTATION_RADIUS_LIMIT) {
-            double initial_angle = atan2(dy, dx);
-            double current_angle = initial_angle + av * step_for_rotation;
-            planet->x = CENTER + r * cos(current_angle);
-            planet->y = CENTER + r * sin(current_angle);
-        }
-
-        /* sweep_fleets — Python line 541-552 */
-        double new_x = planet->x;
-        double new_y = planet->y;
-        if (old_x != new_x || old_y != new_y) {
-            for (int fi = 0; fi < gs->num_fleets; ++fi) {
-                Fleet* fleet = &gs->fleets[fi];
-                if (!fleet->active) continue;
-                double sd = geom_point_to_segment_distance(
-                    fleet->x, fleet->y, old_x, old_y, new_x, new_y);
-                if (sd < planet->radius) {
-                    if (combat_lists[pi].n < MAX_FLEETS) {
-                        combat_lists[pi].fleet_indices[combat_lists[pi].n++] = fi;
-                    }
-                    fleet->active = 0;
-                }
-            }
-        }
-    }
-
-    /* Comet movement (Python lines 574-592) */
-    for (int g = 0; g < gs->num_comet_groups; ++g) {
-        CometGroup* group = &gs->comets[g];
-        if (!group->active) continue;
-        group->path_index += 1;
-        int idx = group->path_index;
-        for (int k = 0; k < group->n_paths; ++k) {
-            int pid = group->planet_ids[k];
-            if (pid < 0) continue;
-            int p_idx = find_planet_by_id(gs, pid);
-            if (p_idx < 0) continue;
-            Planet* planet = &gs->planets[p_idx];
-            int plen = group->path_lengths[k];
-            if (idx >= plen) {
-                /* Mark for expiration; Python defers actual removal */
-                /* We delay the deactivation until after sweep to match order */
-                /* Actually Python adds to expired_comet_pids and removes after */
-                /* Apply now (matches Python order: removal between movement+sweep block and combat) */
-                continue;  /* will be handled below */
-            }
-            double old_x = planet->x;
-            double old_y = planet->y;
-            planet->x = group->paths_x[k][idx];
-            planet->y = group->paths_y[k][idx];
-            if (old_x >= 0.0) {  /* skip first placement (Python line 591) */
-                double new_x = planet->x;
-                double new_y = planet->y;
-                if (old_x != new_x || old_y != new_y) {
-                    for (int fi = 0; fi < gs->num_fleets; ++fi) {
-                        Fleet* fleet = &gs->fleets[fi];
-                        if (!fleet->active) continue;
-                        double sd = geom_point_to_segment_distance(
-                            fleet->x, fleet->y, old_x, old_y, new_x, new_y);
-                        if (sd < planet->radius) {
-                            if (combat_lists[p_idx].n < MAX_FLEETS) {
-                                combat_lists[p_idx].fleet_indices[
-                                    combat_lists[p_idx].n++] = fi;
-                            }
-                            fleet->active = 0;
-                        }
-                    }
-                }
-            }
-        }
+        if (!path_valid[pi]) continue;
+        gs->planets[pi].x = path_new_x[pi];
+        gs->planets[pi].y = path_new_y[pi];
     }
 
     /* Now apply post-advancement comet expirations (Python lines 594-608) */
@@ -675,4 +647,29 @@ int gs_copy_comet_planet_ids(const GameState* gs, int* out_buf) {
         if (p->is_comet) out_buf[n++] = p->id;
     }
     return n;
+}
+
+int gs_get_done(const GameState* gs) { return gs->done; }
+int gs_get_next_fleet_id(const GameState* gs) { return gs->next_fleet_id; }
+int gs_get_step(const GameState* gs) { return gs->step; }
+
+int gs_is_terminated(const GameState* gs) {
+    /* Single-survivor check — count distinct active owners across planets+fleets. */
+    int seen[MAX_AGENTS] = {0};
+    int n_alive = 0;
+    for (int i = 0; i < gs->num_planets; ++i) {
+        const Planet* p = &gs->planets[i];
+        if (!p->active) continue;
+        if (p->owner >= 0 && p->owner < gs->num_agents && !seen[p->owner]) {
+            seen[p->owner] = 1; n_alive++;
+        }
+    }
+    for (int i = 0; i < gs->num_fleets; ++i) {
+        const Fleet* f = &gs->fleets[i];
+        if (!f->active) continue;
+        if (f->owner >= 0 && f->owner < gs->num_agents && !seen[f->owner]) {
+            seen[f->owner] = 1; n_alive++;
+        }
+    }
+    return (n_alive <= 1) ? 1 : 0;
 }

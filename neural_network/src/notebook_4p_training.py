@@ -4,14 +4,13 @@ import math
 import random
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Sequence, Tuple
 
 import numpy as np
 import torch
 from torch.nn.utils import clip_grad_norm_
-
-from SimGame import SimGame
 
 from .encoder import encode_game_state
 from .model import ModelConfig, NeuralNetworkModel, load_compatible_state_dict
@@ -315,15 +314,69 @@ def _combine_terminal_dense_reward(terminal_reward: float, dense_reward: float) 
     return float(terminal_reward)
 
 
-def _official_fast_runner():
+def _player_alive(obs: Any, player: int) -> bool:
+    planets = _obs_planets(obs)
+    fleets = list(getattr(obs, "fleets", []) if not isinstance(obs, dict) else obs.get("fleets", []) or [])
+    return any(int(planet[1]) == int(player) for planet in planets) or any(int(fleet[1]) == int(player) for fleet in fleets)
+
+
+def _cgame_runner():
     try:
-        from local_simulator.official_fast import run_fast_game
+        from c_engine import CGame
     except ModuleNotFoundError:
         root = Path(__file__).resolve().parents[2]
         if str(root) not in sys.path:
             sys.path.insert(0, str(root))
-        from local_simulator.official_fast import run_fast_game
-    return run_fast_game
+        from c_engine import CGame
+
+    return CGame
+
+
+def _run_cgame(
+    agents,
+    *,
+    n_players: int,
+    seed: int | None,
+    max_steps: int,
+    tracked_player: int,
+    stop_player: int | None,
+    overage_time: float,
+) -> Dict[str, Any]:
+    game = _cgame_runner()(
+        n_players,
+        seed=seed,
+        episode_steps=max_steps,
+        remaining_overage_time=overage_time,
+    )
+    started = time.perf_counter()
+    stop_player = None if stop_player is None else int(stop_player)
+    tracked_player = int(tracked_player)
+    initial_player = stop_player if stop_player is not None else tracked_player
+    initial_state = game.observation(initial_player)
+    callables = list(agents)
+    while not game.done:
+        actions = []
+        for player, agent in enumerate(callables):
+            obs = game.observation(player)
+            try:
+                move = agent(obs, game.configuration)
+            except TypeError:
+                move = agent(obs)
+            actions.append(move if isinstance(move, list) else [])
+        game.step(actions)
+        if stop_player is not None and not _player_alive(game.observation(stop_player), stop_player):
+            break
+    elapsed = time.perf_counter() - started
+    steps = int(getattr(game, "_step", max_steps))
+    return {
+        "winner": game.winner(),
+        "scores": game.scores(),
+        "steps": steps,
+        "seconds": elapsed,
+        "steps_per_second": steps / max(elapsed, 1e-9),
+        "initial_state": initial_state,
+        "final_state": game.observation(initial_player),
+    }
 
 
 def run_match(
@@ -334,60 +387,25 @@ def run_match(
     max_steps: int = 100,
     overage_time: float = 60.0,
     stop_player: int | None = None,
-    game_engine: str = "simgame",
-    use_c_accel: bool = True,
+    game_engine: str = "cgame",
 ) -> Dict[str, Any]:
-    """Run a local SimGame match and stop early if `stop_player` is eliminated."""
+    """Run a local cgame match and stop early if `stop_player` is eliminated."""
     players = int(n_players or len(agents))
     if len(agents) != players:
         raise ValueError(f"agent count ({len(agents)}) must match n_players ({players})")
-    if str(game_engine).lower() in {"official_fast", "local_fast", "kaggle_fast"}:
-        tracked_player = stop_player if stop_player is not None else 0
-        return _official_fast_runner()(
-            agents,
-            n_players=players,
-            seed=seed,
-            max_steps=max_steps,
-            tracked_player=int(tracked_player),
-            stop_player=stop_player,
-            overage_time=overage_time,
-            use_c_accel=use_c_accel,
-        )
-
-    game = SimGame.random_game(
-        seed=seed,
+    engine = str(game_engine).lower()
+    if engine != "cgame":
+        raise ValueError(f"Unsupported game_engine={game_engine!r}; this training path requires 'cgame'")
+    tracked_player = stop_player if stop_player is not None else 0
+    return _run_cgame(
+        agents,
         n_players=players,
-        neutral_pairs=neutral_pairs,
+        seed=seed,
         max_steps=max_steps,
+        tracked_player=int(tracked_player),
+        stop_player=stop_player,
         overage_time=overage_time,
     )
-    started = time.perf_counter()
-    stop_player = None if stop_player is None else int(stop_player)
-    initial_state = game.observation(stop_player if stop_player is not None else 0)
-
-    while not game.is_terminal():
-        actions = {}
-        for player, agent in enumerate(agents):
-            obs = game.observation(player)
-            try:
-                move = agent(obs, None)
-            except TypeError:
-                move = agent(obs)
-            actions[player] = move if isinstance(move, list) else []
-        game.step(actions)
-        if stop_player is not None and stop_player not in game.alive_players():
-            break
-
-    elapsed = time.perf_counter() - started
-    return {
-        "winner": game.winner(),
-        "scores": game.scores(),
-        "steps": int(game.state.step),
-        "seconds": elapsed,
-        "steps_per_second": game.state.step / max(elapsed, 1e-9),
-        "initial_state": initial_state,
-        "final_state": game.observation(stop_player if stop_player is not None else 0),
-    }
 
 
 def _run_match_compat(
@@ -406,8 +424,7 @@ def _run_match_compat(
             n_players=n_players,
             max_steps=max_steps,
             stop_player=stop_player,
-            game_engine=str(config.get("game_engine", config.get("match_runner", "simgame"))),
-            use_c_accel=bool(config.get("official_fast_c_accel", True)),
+            game_engine=str(config.get("game_engine", config.get("match_runner", "cgame"))),
         )
     except TypeError as exc:
         if "stop_player" not in str(exc):
@@ -418,11 +435,10 @@ def _run_match_compat(
                 seed=seed,
                 n_players=n_players,
                 max_steps=max_steps,
-                game_engine=str(config.get("game_engine", config.get("match_runner", "simgame"))),
-                use_c_accel=bool(config.get("official_fast_c_accel", True)),
+                game_engine=str(config.get("game_engine", config.get("match_runner", "cgame"))),
             )
         except TypeError as fallback_exc:
-            if "game_engine" not in str(fallback_exc) and "use_c_accel" not in str(fallback_exc):
+            if "game_engine" not in str(fallback_exc):
                 raise
             return run_match(agents, seed=seed, n_players=n_players, max_steps=max_steps)
 
@@ -503,11 +519,17 @@ def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     action_count = len(action_records)
     real_actions = [a for a in action_records if a.get("mission") != "do_nothing" and int(a.get("ships", 0)) > 0]
     ships_sent = [int(a.get("ships", 0)) for a in real_actions]
+    missions = Counter(str(a.get("mission", "unknown")) for a in action_records)
     return {
         "action_count": action_count,
         "real_action_count": len(real_actions),
         "do_nothing_rate": float(1.0 - (len(real_actions) / action_count)) if action_count else 1.0,
         "avg_ships_sent": float(np.mean(ships_sent) if ships_sent else 0.0),
+        "mission_counts": dict(missions),
+        "mission_expand_count": int(missions.get("expand", 0)),
+        "mission_attack_count": int(missions.get("attack", 0)),
+        "mission_support_count": int(missions.get("support", 0)),
+        "mission_do_nothing_count": int(missions.get("do_nothing", 0)),
     }
 
 

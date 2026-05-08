@@ -89,6 +89,13 @@ _lib.gs_copy_initial_planets.restype = None
 _lib.gs_copy_comet_planet_ids.argtypes = [ct.c_void_p, ct.POINTER(ct.c_int)]
 _lib.gs_copy_comet_planet_ids.restype = ct.c_int
 
+_lib.gs_get_done.argtypes = [ct.c_void_p]
+_lib.gs_get_done.restype = ct.c_int
+_lib.gs_get_next_fleet_id.argtypes = [ct.c_void_p]
+_lib.gs_get_next_fleet_id.restype = ct.c_int
+_lib.gs_is_terminated.argtypes = [ct.c_void_p]
+_lib.gs_is_terminated.restype = ct.c_int
+
 
 # ── Direct field access via Structure mirror ─────────────────────────────
 # We expose state via accessor functions; reading scalar fields is also
@@ -173,6 +180,13 @@ class CGame:
         self._initial_planets = initial_planets_snapshot
         # Comet bookkeeping (Python-side; C also tracks)
         self._comet_planet_ids: list[int] = []
+        # ── Performance caches (logic-neutral) ────────────────────────────
+        self._p_buf = (ct.c_double * (_MAX_PLANETS * 7))()
+        self._f_buf = (ct.c_double * (_MAX_FLEETS * 7))()
+        self._ids_buf = (ct.c_int * _MAX_PLANETS)()
+        self._obs_cache: list = [None] * self.n_players
+        self._obs_shared: tuple | None = None
+        self._initial_planets_cache: list | None = None
         # The configuration mirror
         self.configuration = FastConfig(
             episodeSteps=episode_steps,
@@ -195,57 +209,63 @@ class CGame:
 
     def _build_observation(self, player_id: int) -> SimpleNamespace:
         """Construct the per-player observation Struct."""
-        n_p = _lib.gs_count_active_planets(self._handle)
-        n_f = _lib.gs_count_active_fleets(self._handle)
+        # Per-player obs cache — same step, same player → already built
+        cached = self._obs_cache[player_id]
+        if cached is not None:
+            return cached
+        # Cross-player shared marshalling — C state common to both players
+        shared = self._obs_shared
+        if shared is None:
+            n_p = _lib.gs_count_active_planets(self._handle)
+            n_f = _lib.gs_count_active_fleets(self._handle)
 
-        p_buf = (ct.c_double * (n_p * 7))()
-        if n_p > 0:
-            _lib.gs_copy_planets(self._handle, p_buf)
-        planets = []
-        for i in range(n_p):
-            o = i * 7
-            planets.append([
-                int(p_buf[o + 0]),  # id
-                int(p_buf[o + 1]),  # owner
-                float(p_buf[o + 2]),  # x
-                float(p_buf[o + 3]),  # y
-                float(p_buf[o + 4]),  # radius
-                int(p_buf[o + 5]),  # ships
-                int(p_buf[o + 6]),  # production
-            ])
+            if n_p > 0:
+                _lib.gs_copy_planets(self._handle, self._p_buf)
+                p_buf = self._p_buf
+                planets = []
+                for i in range(n_p):
+                    o = i * 7
+                    planets.append([
+                        int(p_buf[o + 0]), int(p_buf[o + 1]),
+                        float(p_buf[o + 2]), float(p_buf[o + 3]),
+                        float(p_buf[o + 4]),
+                        int(p_buf[o + 5]), int(p_buf[o + 6])])
+            else:
+                planets = []
 
-        f_buf = (ct.c_double * (n_f * 7))()
-        if n_f > 0:
-            _lib.gs_copy_fleets(self._handle, f_buf)
-        fleets = []
-        for i in range(n_f):
-            o = i * 7
-            fleets.append([
-                int(f_buf[o + 0]),  # id
-                int(f_buf[o + 1]),  # owner
-                float(f_buf[o + 2]),  # x
-                float(f_buf[o + 3]),  # y
-                float(f_buf[o + 4]),  # angle
-                int(f_buf[o + 5]),  # from_planet_id
-                int(f_buf[o + 6]),  # ships
-            ])
+            if n_f > 0:
+                _lib.gs_copy_fleets(self._handle, self._f_buf)
+                f_buf = self._f_buf
+                fleets = []
+                for i in range(n_f):
+                    o = i * 7
+                    fleets.append([
+                        int(f_buf[o + 0]), int(f_buf[o + 1]),
+                        float(f_buf[o + 2]), float(f_buf[o + 3]),
+                        float(f_buf[o + 4]),
+                        int(f_buf[o + 5]), int(f_buf[o + 6])])
+            else:
+                fleets = []
 
-        # Comet IDs from C
-        ids_buf = (ct.c_int * _MAX_PLANETS)()
-        n_ids = _lib.gs_copy_comet_planet_ids(self._handle, ids_buf)
-        comet_ids = [int(ids_buf[i]) for i in range(n_ids)]
+            n_ids = _lib.gs_copy_comet_planet_ids(self._handle, self._ids_buf)
+            comet_ids = [int(self._ids_buf[i]) for i in range(n_ids)]
 
-        # Build initial_planets as Python expects: list of full records.
-        # We need to include any comet planets that have been added.
-        initial = [list(p) for p in self._initial_planets]
-        for cg in self._injected_comets():
-            for entry in cg:
-                initial.append(entry)
+            # initial_planets list — cached, rebuilt only on comet inject
+            if self._initial_planets_cache is None:
+                initial = [list(p) for p in self._initial_planets]
+                self._initial_planets_cache = initial
+            else:
+                initial = self._initial_planets_cache
+
+            shared = (planets, fleets, comet_ids, initial)
+            self._obs_shared = shared
+        else:
+            planets, fleets, comet_ids, initial = shared
 
         # MATCH PYTHON BUG: OfficialFastGame._set_step only updates state[0],
         # so player>0 always observes step=0. Reproduce that behavior here.
         observed_step = self._step if player_id == 0 else 0
-        return SimpleNamespace(
+        ns = SimpleNamespace(
             player=player_id,
             step=observed_step,
             planets=planets,
@@ -257,6 +277,8 @@ class CGame:
             comet_planet_ids=comet_ids,
             comets=[],
         )
+        self._obs_cache[player_id] = ns
+        return ns
 
     def observation(self, player_id: int) -> SimpleNamespace:
         return self._build_observation(int(player_id))
@@ -274,9 +296,9 @@ class CGame:
         comet_rng = random.Random(
             f"orbit_wars-comet-{self._episode_seed}-{self._step + 1}")
 
-        # Build the initial_planets structure including previously-injected
-        # comets (Python keeps them in initial_planets too).
-        ip = self._build_observation(0).initial_planets
+        # Build the initial_planets list directly (avoid triggering obs cache
+        # mid-step — _build_observation would cache a pre-step snapshot).
+        ip = [list(p) for p in self._initial_planets]
 
         comet_paths = orbit_wars_py.generate_comet_paths(
             ip,
@@ -289,15 +311,18 @@ class CGame:
         if not comet_paths:
             return
 
-        # Get current max planet id from C
+        # Get current max planet id from C (reuse shared buffer)
         n_p = _lib.gs_count_active_planets(self._handle)
-        p_buf = (ct.c_double * (n_p * 7))()
-        _lib.gs_copy_planets(self._handle, p_buf)
-        max_id = -1
-        for i in range(n_p):
-            pid = int(p_buf[i * 7])
-            if pid > max_id:
-                max_id = pid
+        if n_p > 0:
+            _lib.gs_copy_planets(self._handle, self._p_buf)
+            max_id = -1
+            p_buf = self._p_buf
+            for i in range(n_p):
+                pid = int(p_buf[i * 7])
+                if pid > max_id:
+                    max_id = pid
+        else:
+            max_id = -1
         next_id = max_id + 1
 
         comet_ships = min(
@@ -337,6 +362,7 @@ class CGame:
                             orbit_wars_py.COMET_RADIUS, comet_ships,
                             orbit_wars_py.COMET_PRODUCTION])
         self._initial_planets.extend(records)
+        self._initial_planets_cache = None
 
     # ── Step ────────────────────────────────────────────────────────────
 
@@ -344,6 +370,9 @@ class CGame:
         """actions_per_player[p] = list of [from_id, angle, ships] triples."""
         if self._done:
             raise RuntimeError("Game done")
+        # Invalidate observation caches — state about to change
+        self._obs_cache = [None] * self.n_players
+        self._obs_shared = None
         # Comet injection happens BEFORE the C interpreter (matches Python order)
         self._maybe_inject_comets()
 
@@ -376,22 +405,8 @@ class CGame:
         if rc != 0:
             raise RuntimeError(f"gs_step failed rc={rc}")
 
-        # Read back next_fleet_id & done by computing from buffers; we don't
-        # have direct accessors, so we compute next_fleet_id as max(fleet_id)+1
-        # OR by tracking action contributions. Use a fresh accessor next.
-        n_f = _lib.gs_count_active_fleets(self._handle)
-        if n_f > 0:
-            f_buf = (ct.c_double * (n_f * 7))()
-            _lib.gs_copy_fleets(self._handle, f_buf)
-            max_fid = -1
-            for i in range(n_f):
-                fid = int(f_buf[i * 7])
-                if fid > max_fid:
-                    max_fid = fid
-            self._next_fleet_id = max(self._next_fleet_id, max_fid + 1)
-        # Add this turn's launched fleets count to next_fleet_id
-        self._next_fleet_id += sum(counts)
-        # ^ Conservative — actual ids are managed by C. Keep mirror loose for now.
+        # next_fleet_id from C (single scalar call, no buffer copy)
+        self._next_fleet_id = _lib.gs_get_next_fleet_id(self._handle)
 
         # Increment step (matches OfficialFastGame._set_step)
         self._step += 1
@@ -399,30 +414,17 @@ class CGame:
         # Done detection (match interpreter logic): we mirror via direct check
         self._update_done_flag()
 
+        # Defensive: invalidate caches after step in case any internal path
+        # repopulated them between gs_step and now.
+        self._obs_cache = [None] * self.n_players
+        self._obs_shared = None
+
     def _update_done_flag(self):
-        """Detect terminal state from C state. Conservative: treat last step
-        and single-survivor as done."""
+        """Detect terminal state via C accessor (avoids buffer copy)."""
         if self._step >= self.episode_steps - 1:
             self._done = True
             return
-
-        # Single-survivor check
-        n_p = _lib.gs_count_active_planets(self._handle)
-        n_f = _lib.gs_count_active_fleets(self._handle)
-        owners = set()
-        if n_p > 0:
-            p_buf = (ct.c_double * (n_p * 7))()
-            _lib.gs_copy_planets(self._handle, p_buf)
-            for i in range(n_p):
-                o = int(p_buf[i * 7 + 1])
-                if o != -1:
-                    owners.add(o)
-        if n_f > 0:
-            f_buf = (ct.c_double * (n_f * 7))()
-            _lib.gs_copy_fleets(self._handle, f_buf)
-            for i in range(n_f):
-                owners.add(int(f_buf[i * 7 + 1]))
-        if len(owners) <= 1:
+        if _lib.gs_is_terminated(self._handle):
             self._done = True
 
     def scores(self) -> list[int]:
@@ -430,15 +432,15 @@ class CGame:
         n_f = _lib.gs_count_active_fleets(self._handle)
         scores = [0] * self.n_players
         if n_p > 0:
-            p_buf = (ct.c_double * (n_p * 7))()
-            _lib.gs_copy_planets(self._handle, p_buf)
+            _lib.gs_copy_planets(self._handle, self._p_buf)
+            p_buf = self._p_buf
             for i in range(n_p):
                 o = int(p_buf[i * 7 + 1])
                 if 0 <= o < self.n_players:
                     scores[o] += int(p_buf[i * 7 + 5])
         if n_f > 0:
-            f_buf = (ct.c_double * (n_f * 7))()
-            _lib.gs_copy_fleets(self._handle, f_buf)
+            _lib.gs_copy_fleets(self._handle, self._f_buf)
+            f_buf = self._f_buf
             for i in range(n_f):
                 o = int(f_buf[i * 7 + 1])
                 if 0 <= o < self.n_players:

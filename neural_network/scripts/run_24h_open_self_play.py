@@ -76,8 +76,7 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
     cfg["notebook_pool_limit_max"] = 0
     cfg["train_notebook_opponents"] = 3
     cfg["train_stop_on_elimination"] = bool(cfg.get("train_stop_on_elimination", True))
-    cfg["game_engine"] = "official_fast"
-    cfg["official_fast_c_accel"] = bool(cfg.get("official_fast_c_accel", True))
+    cfg["game_engine"] = "cgame"
     cfg["max_actions_per_turn"] = 4
     cfg["min_expand_attack_ships"] = max(4, int(cfg.get("min_expand_attack_ships", 4)))
     cfg["value_loss_coef"] = float(cfg.get("value_loss_coef", 0.25))
@@ -87,7 +86,7 @@ def _prepare_config(cfg: dict, duration_minutes: float, workers: int, eval_episo
     cfg["dense_ship_share_coef"] = 0.12
     cfg["dense_score_coef"] = 0.08
     cfg["dense_survival_coef"] = 0.05
-    cfg["dense_reward_clip"] = 0.30
+    cfg["dense_reward_clip"] = 0.25
     cfg["train_target_do_nothing_rate"] = 0.55
     cfg["train_noop_penalty_coef"] = 0.35
     cfg["train_action_bonus_coef"] = 0.08

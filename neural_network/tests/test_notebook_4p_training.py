@@ -8,6 +8,7 @@ from neural_network.src.population_4p_training import (
     _activity_shaping_reward,
     _composite_score,
     _fallback_base_checkpoint,
+    _strategic_dense_reward,
     _load_curriculum_state,
     _maybe_advance_curriculum,
     _next_base_checkpoint,
@@ -17,7 +18,7 @@ from neural_network.src.population_4p_training import (
     _training_base_checkpoint,
     DEFAULT_CURRICULUM_TIERS,
 )
-from neural_network.src.notebook_4p_training import _build_agents, _combine_terminal_dense_reward, _episode_reward
+from neural_network.src.notebook_4p_training import _action_summary, _build_agents, _combine_terminal_dense_reward, _episode_reward
 from neural_network.src.trajectory import safe_plan_shot
 
 
@@ -47,7 +48,7 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     assert out["policy_prior_strength"] >= 1.2
     assert out["imitation_warmstart_steps"] >= 256
     assert out["dense_reward_enabled"] is True
-    assert out["game_engine"] == "official_fast"
+    assert out["game_engine"] == "cgame"
     assert out["eval_episodes"] >= 32
     assert out["candidate_eval_episodes"] >= 32
     assert out["candidate_eval_episodes"] <= out["eval_episodes"]
@@ -115,6 +116,23 @@ def test_terminal_reward_is_not_shaped_by_dense_bonus():
     assert _combine_terminal_dense_reward(1.0, 0.35) == 1.0
 
 
+def test_action_summary_counts_missions():
+    summary = _action_summary(
+        [
+            {"mission": "expand", "ships": 10},
+            {"mission": "attack", "ships": 8},
+            {"mission": "support", "ships": 4},
+            {"mission": "do_nothing", "ships": 0},
+        ]
+    )
+    assert summary["mission_counts"] == {"expand": 1, "attack": 1, "support": 1, "do_nothing": 1}
+    assert summary["mission_expand_count"] == 1
+    assert summary["mission_attack_count"] == 1
+    assert summary["mission_support_count"] == 1
+    assert summary["mission_do_nothing_count"] == 1
+    assert summary["real_action_count"] == 3
+
+
 def test_population_uses_tier_checkpoint_when_available(tmp_path):
     checkpoint_dir = tmp_path / "checkpoints"
     tier_dir = tmp_path / "tiers"
@@ -178,6 +196,46 @@ def test_population_activity_shaping_penalizes_passive_policy():
     }
     assert _activity_shaping_reward(passive, cfg) < 0.0
     assert _activity_shaping_reward(active, cfg) > _activity_shaping_reward(passive, cfg)
+
+
+def test_population_dense_reward_reacts_to_rank_and_strength():
+    result_good = {
+        "initial_state": {
+            "my_id": 0,
+            "planets": [{"id": 0, "owner": 0, "ships": 20, "x": 0.0, "y": 0.0, "radius": 1.0, "production": 2.0}],
+            "fleets": [],
+        },
+        "final_state": {
+            "my_id": 0,
+            "planets": [{"id": 0, "owner": 0, "ships": 40, "x": 0.0, "y": 0.0, "radius": 1.0, "production": 4.0}],
+            "fleets": [],
+        },
+        "scores": [200.0, 100.0, 90.0, 80.0],
+        "rank": 1,
+    }
+    result_bad = {
+        "initial_state": {
+            "my_id": 0,
+            "planets": [{"id": 0, "owner": 0, "ships": 20, "x": 0.0, "y": 0.0, "radius": 1.0, "production": 2.0}],
+            "fleets": [],
+        },
+        "final_state": {
+            "my_id": 0,
+            "planets": [{"id": 0, "owner": 0, "ships": 5, "x": 0.0, "y": 0.0, "radius": 1.0, "production": 1.0}],
+            "fleets": [],
+        },
+        "scores": [80.0, 100.0, 120.0, 140.0],
+        "rank": 4,
+    }
+    cfg = {
+        "dense_planet_coef": 0.04,
+        "dense_production_coef": 0.03,
+        "dense_ship_share_coef": 0.12,
+        "dense_score_coef": 0.08,
+        "dense_survival_coef": 0.05,
+        "dense_reward_clip": 0.50,
+    }
+    assert _strategic_dense_reward(result_good, 0, cfg) > _strategic_dense_reward(result_bad, 0, cfg)
 
 
 def test_safe_planner_rejects_sun_crossing_shot():

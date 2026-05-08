@@ -156,6 +156,14 @@ void gs_copy_initial_planets(const GameState* gs, double* out_buf);
 /* Copy comet planet IDs (active ones). out_buf must have capacity. */
 int gs_copy_comet_planet_ids(const GameState* gs, int* out_buf);
 
+/* Scalar accessors — avoid full buffer copy when caller only needs a hint. */
+int gs_get_done(const GameState* gs);
+int gs_get_next_fleet_id(const GameState* gs);
+int gs_get_step(const GameState* gs);
+
+/* Single-survivor / done check exposed for the Python wrapper. */
+int gs_is_terminated(const GameState* gs);
+
 #ifdef __cplusplus
 }
 #endif

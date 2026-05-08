@@ -12,8 +12,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from SimGame import SimGame
-
 from .encoder import encode_game_state
 from .model import ModelConfig, NeuralNetworkModel, count_parameters, load_compatible_state_dict
 from .notebook_4p_training import (
@@ -21,6 +19,7 @@ from .notebook_4p_training import (
     _agent_for_name,
     _build_agents,
     _candidate_move,
+    _cgame_runner,
     _combine_terminal_dense_reward,
     _copy_planning_game,
     _episode_reward,
@@ -304,15 +303,30 @@ def _strategic_dense_reward(result: Dict[str, Any], our_index: int, config: Dict
     scores = [float(v) for v in result.get("scores", [])]
     our_score = scores[our_index] if len(scores) > our_index else 0.0
     other_scores = [score for idx, score in enumerate(scores) if idx != our_index]
+    rank = int(result.get("rank", 0)) if "rank" in result else None
     score_advantage = (our_score - float(np.mean(other_scores) if other_scores else 0.0)) / 1000.0
+    rank_bonus = 0.0
+    if rank is not None and rank > 0:
+        # Keep this small. Win is still the main signal; this just separates
+        # "barely alive" from "strong but not winning yet".
+        rank_bonus_map = {1: 0.0, 2: 0.12, 3: 0.03, 4: -0.06}
+        rank_bonus = float(rank_bonus_map.get(int(rank), 0.0))
+    final_strength = (
+        0.45 * max(-1.0, min(1.0, end["ship_share"] * 2.0 - 1.0))
+        + 0.30 * max(-1.0, min(1.0, end["production"] / 10.0))
+        + 0.15 * max(-1.0, min(1.0, end["planets"] / 10.0))
+        + 0.10 * max(-1.0, min(1.0, score_advantage * 4.0))
+    )
     reward = (
         float(config.get("dense_planet_coef", 0.04)) * (end["planets"] - start["planets"])
         + float(config.get("dense_production_coef", 0.03)) * (end["production"] - start["production"])
         + float(config.get("dense_ship_share_coef", 0.12)) * (end["ship_share"] - start["ship_share"])
         + float(config.get("dense_score_coef", 0.08)) * max(-1.0, min(1.0, score_advantage))
         + float(config.get("dense_survival_coef", 0.05)) * (2.0 * end["alive"] - 1.0)
+        + 0.07 * rank_bonus
+        + 0.06 * final_strength
     )
-    limit = float(config.get("dense_reward_clip", 0.35))
+    limit = float(config.get("dense_reward_clip", 0.25))
     return float(max(-limit, min(limit, reward)))
 
 
@@ -414,12 +428,11 @@ def _run_imitation_warmstart(
         teacher_name = teacher_pool[idx % len(teacher_pool)] if teacher_pool else "greedy"
         teacher = _agent_for_name(teacher_name)
         player = idx % 4
-        game = SimGame.random_game(
+        game = _cgame_runner()(
+            4,
             seed=seed + idx * 7919,
-            n_players=4,
-            neutral_pairs=8,
-            max_steps=int(config.get("max_turns", 100)),
-            overage_time=60.0,
+            episode_steps=int(config.get("max_turns", 100)),
+            remaining_overage_time=60.0,
         )
         obs = game.observation(player)
         try:
@@ -694,8 +707,7 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
             n_players=4,
             max_steps=int(config.get("max_turns", 100)),
             stop_player=stop_player,
-            game_engine=str(config.get("game_engine", config.get("match_runner", "simgame"))),
-            use_c_accel=bool(config.get("official_fast_c_accel", True)),
+            game_engine=str(config.get("game_engine", config.get("match_runner", "cgame"))),
         )
         terminal_reward = _episode_reward(result, our_index)
         dense_reward = 0.0

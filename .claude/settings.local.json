@@ -99,7 +99,8 @@
       "Bash(git add *)",
       "Bash(git push *)",
       "Bash(make clean *)",
-      "Bash(make)"
+      "Bash(make)",
+      "Bash(wsl *)"
     ]
   }
 }
