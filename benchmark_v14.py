@@ -14,8 +14,8 @@ import bot_v7
 import bot_v12
 import bot_v13
 import bot_v14
-from c_engine import CGame
 from opponents import ZOO
+from local_simulator.official_fast import OfficialFastGame
 import v14_core
 
 
@@ -89,7 +89,12 @@ def _play_task(task: tuple[str, tuple[str, ...], int, int, int, str, str]) -> tu
     bot_name, opponents, n_players, seed, max_steps, v13_weights, v14_weights = task
     start = time.time()
     agents, our_idx = _lineup(bot_name, opponents, n_players, seed, v13_weights, v14_weights)
-    game = CGame(n_players=n_players, seed=seed, episode_steps=max_steps)
+    game = OfficialFastGame(
+        n_players=n_players,
+        seed=seed,
+        episode_steps=max_steps,
+        use_c_accel=True,
+    )
     while not game.done:
         actions = [
             _call_agent(agent_fn, game.observation(player), game.configuration)

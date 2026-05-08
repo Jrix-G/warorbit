@@ -58,7 +58,8 @@ def _prepare_config(cfg: dict, workers: int, eval_episodes: int) -> dict:
     cfg["notebook_pool_limit_max"] = 15
     cfg["train_notebook_opponents"] = 3
     cfg["train_stop_on_elimination"] = bool(cfg.get("train_stop_on_elimination", True))
-    cfg["game_engine"] = "cgame"
+    cfg["game_engine"] = "official_fast"
+    cfg["official_fast_c_accel"] = True
     cfg["max_actions_per_turn"] = 4
     cfg["min_expand_attack_ships"] = max(6, int(cfg.get("min_expand_attack_ships", 6)))
     cfg["dense_reward_enabled"] = bool(cfg.get("dense_reward_enabled", True))

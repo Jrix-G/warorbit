@@ -35,7 +35,8 @@ def main() -> None:
     cfg = _prepare_config(_load_config(args.config), argparse.Namespace(duration_minutes=600, workers=4, stage1_target=0.85, stage2_target=0.70), args.run_name)
     # Keep validation detached from training behavior, but reuse the same game setup.
     cfg["dense_reward_enabled"] = True
-    cfg["game_engine"] = "cgame"
+    cfg["game_engine"] = "official_fast"
+    cfg["official_fast_c_accel"] = True
     model = _load_model(Path(args.checkpoint), cfg)
     record = _evaluate_state(
         model.state_dict(),

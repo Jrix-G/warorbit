@@ -228,7 +228,8 @@ def _play_train_episode(
         n_players=n_players,
         max_steps=int(config.get("max_turns", 100)),
         stop_player=our_index if bool(config.get("train_stop_on_elimination", True)) else None,
-        game_engine=str(config.get("game_engine", "cgame")),
+        game_engine=str(config.get("game_engine", "official_fast")),
+        use_c_accel=bool(config.get("official_fast_c_accel", True)),
     )
     terminal_reward = 1.0 if int(result.get("winner", -1)) == int(our_index) else -1.0
     dense_reward = _strategic_dense_reward(result, our_index, config) if bool(config.get("dense_reward_enabled", True)) else 0.0
@@ -371,10 +372,11 @@ def _evaluate_state(
             agents,
             seed=seed,
             n_players=n_players,
-                max_steps=int(config.get("max_turns", 100)),
-                stop_player=our_index,
-                game_engine=str(config.get("game_engine", "cgame")),
-            )
+            max_steps=int(config.get("max_turns", 100)),
+            stop_player=our_index,
+            game_engine=str(config.get("game_engine", "official_fast")),
+            use_c_accel=bool(config.get("official_fast_c_accel", True)),
+        )
         scores = result.get("scores", [])
         rank = _rank_from_scores(scores, our_index, n_players)
         diagnostics = _result_diagnostics(result, our_index, n_players, rank)
@@ -697,7 +699,8 @@ def _prepare_config(cfg: Dict[str, Any], args: argparse.Namespace, run_name: str
     cfg["workers"] = max(1, int(args.workers))
     cfg["hidden_dim"] = max(320, int(cfg.get("hidden_dim", 320)))
     cfg["learning_rate"] = min(float(cfg.get("learning_rate", 0.00025)), 0.0002)
-    cfg["game_engine"] = "cgame"
+    cfg["game_engine"] = "official_fast"
+    cfg["official_fast_c_accel"] = True
     cfg["train_stop_on_elimination"] = True
     cfg["max_turns"] = min(100, int(cfg.get("max_turns", 100)))
     cfg["max_actions_per_turn"] = 4
@@ -732,7 +735,7 @@ def _prepare_config(cfg: Dict[str, Any], args: argparse.Namespace, run_name: str
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run cgame 2p pretrain then 4p target training.")
+    parser = argparse.ArgumentParser(description="Run local_simulator 2p pretrain then 4p target training.")
     parser.add_argument("--config", default=None)
     parser.add_argument("--duration-minutes", type=float, default=0.0)
     parser.add_argument("--workers", type=int, default=4)

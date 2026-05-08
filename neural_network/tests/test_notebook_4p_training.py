@@ -48,7 +48,8 @@ def test_population_config_uses_six_workers_and_full_notebook_pool():
     assert out["policy_prior_strength"] >= 1.2
     assert out["imitation_warmstart_steps"] >= 256
     assert out["dense_reward_enabled"] is True
-    assert out["game_engine"] == "cgame"
+    assert out["game_engine"] == "official_fast"
+    assert out["official_fast_c_accel"] is True
     assert out["eval_episodes"] >= 32
     assert out["candidate_eval_episodes"] >= 32
     assert out["candidate_eval_episodes"] <= out["eval_episodes"]

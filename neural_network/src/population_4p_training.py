@@ -19,7 +19,6 @@ from .notebook_4p_training import (
     _agent_for_name,
     _build_agents,
     _candidate_move,
-    _cgame_runner,
     _combine_terminal_dense_reward,
     _copy_planning_game,
     _episode_reward,
@@ -27,6 +26,7 @@ from .notebook_4p_training import (
     _min_expand_attack_ships,
     _reserve_planned_ships,
     _send_ratios,
+    _official_fast_runner,
     _train_episode,
     evaluate_4p,
     run_match,
@@ -428,11 +428,13 @@ def _run_imitation_warmstart(
         teacher_name = teacher_pool[idx % len(teacher_pool)] if teacher_pool else "greedy"
         teacher = _agent_for_name(teacher_name)
         player = idx % 4
-        game = _cgame_runner()(
+        game_cls, _ = _official_fast_runner()
+        game = game_cls(
             4,
             seed=seed + idx * 7919,
             episode_steps=int(config.get("max_turns", 100)),
             remaining_overage_time=60.0,
+            use_c_accel=bool(config.get("official_fast_c_accel", True)),
         )
         obs = game.observation(player)
         try:
@@ -707,7 +709,8 @@ def _worker_train_candidate(task: Dict[str, Any]) -> Dict[str, Any]:
             n_players=4,
             max_steps=int(config.get("max_turns", 100)),
             stop_player=stop_player,
-            game_engine=str(config.get("game_engine", config.get("match_runner", "cgame"))),
+            game_engine=str(config.get("game_engine", config.get("match_runner", "official_fast"))),
+            use_c_accel=bool(config.get("official_fast_c_accel", True)),
         )
         terminal_reward = _episode_reward(result, our_index)
         dense_reward = 0.0

@@ -16,8 +16,8 @@ from typing import Callable
 import numpy as np
 
 import v14_core
-from c_engine import CGame
 from opponents import ZOO
+from local_simulator.official_fast import OfficialFastGame
 from train_v14_bc import Adam, _backward
 
 
@@ -53,7 +53,12 @@ def _play_episode_task(task: tuple[dict, int, int, int, tuple[str, ...], float])
     weights, seed, max_steps, n_players, opponent_names, temperature = task
     model = v14_core.V14Scorer(weights=weights)
     rng = np.random.default_rng(seed)
-    game = CGame(n_players=n_players, seed=seed, episode_steps=max_steps)
+    game = OfficialFastGame(
+        n_players=n_players,
+        seed=seed,
+        episode_steps=max_steps,
+        use_c_accel=True,
+    )
     my_slot = int(rng.integers(0, n_players))
     opponents = [ZOO[name] for name in opponent_names]
     lineup: list[Callable | None] = []

@@ -81,7 +81,8 @@ def _prepare_config(
     cfg["notebook_pool_limit"] = 0
     cfg["notebook_pool_limit_max"] = 0
     cfg["train_notebook_opponents"] = 3
-    cfg["game_engine"] = "cgame"
+    cfg["game_engine"] = "official_fast"
+    cfg["official_fast_c_accel"] = True
     cfg["train_stop_on_elimination"] = True
     cfg["max_actions_per_turn"] = 4
     cfg["max_turns"] = min(100, int(cfg.get("max_turns", 100)))
