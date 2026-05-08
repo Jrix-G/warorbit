@@ -23,11 +23,28 @@ KAGGLE_ENV_ROOT = ROOT / "github" / "kaggle-environments"
 if str(KAGGLE_ENV_ROOT) not in sys.path:
     sys.path.insert(0, str(KAGGLE_ENV_ROOT))
 
+_ORBIT_WARS_URL = (
+    "https://raw.githubusercontent.com/Kaggle/kaggle-environments"
+    "/main/kaggle_environments/envs/orbit_wars/orbit_wars.py"
+)
+
+
+def _fetch_orbit_wars_py(dest: Path) -> None:
+    import urllib.request
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    urllib.request.urlretrieve(_ORBIT_WARS_URL, dest)
+
+
 try:
     from kaggle_environments.envs.orbit_wars import orbit_wars  # noqa: E402
     from kaggle_environments.utils import Struct, structify  # noqa: E402
 except ModuleNotFoundError:
     orbit_wars_path = KAGGLE_ENV_ROOT / "kaggle_environments" / "envs" / "orbit_wars" / "orbit_wars.py"
+    if not orbit_wars_path.exists():
+        orbit_wars_path = Path(__file__).resolve().parent / "orbit_wars_official.py"
+    if not orbit_wars_path.exists():
+        orbit_wars_path = Path(__file__).resolve().parent / "_orbit_wars_downloaded.py"
+        _fetch_orbit_wars_py(orbit_wars_path)
     spec = importlib_util.spec_from_file_location("orbit_wars_official_fast", orbit_wars_path)
     if spec is None or spec.loader is None:
         raise
