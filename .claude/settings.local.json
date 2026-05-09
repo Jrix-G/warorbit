@@ -103,7 +103,18 @@
       "Bash(wsl *)",
       "Bash(ssh *)",
       "Read(///wsl.localhost/Ubuntu/home/jason/**)",
-      "Read(///wsl.localhost/Ubuntu//**)"
+      "Read(///wsl.localhost/Ubuntu//**)",
+      "Bash(cd \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\")",
+      "Bash(echo \"PID=$!\")",
+      "Bash(xargs grep -ln \"worker\\\\|32\")",
+      "Bash(ls \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\")",
+      "Bash(ls \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\\\\.codex\")",
+      "Bash(ls *)",
+      "Bash(grep -E \"wr4|4p\" \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\\\\imported_logs\\\\run_10h_2p4p_20260507_123522_direct.log\")",
+      "Bash(grep -E \"best_winrate|candidate_winrate|wr4|wr2|stage\" \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\\\\imported_logs\\\\run_10h_2p4p_20260507_123522_direct.log\")",
+      "Bash(grep -E \"stage2_4p|n_players=4|--opponents|stage\" \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\\\\imported_logs\\\\run_10h_2p4p_20260507_123522_run_manifest.json\")",
+      "Bash(cat \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\\\\runs\\\\gpu_20260509_135744\"/*.log)",
+      "Bash(grep -E \"\\\\.log$|v14\")"
     ]
   }
 }

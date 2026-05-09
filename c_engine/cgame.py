@@ -196,6 +196,61 @@ class CGame:
             remainingOverageTime=remaining_overage_time,
         )
 
+    @classmethod
+    def from_planets(
+        cls,
+        n_players: int,
+        planets: list,
+        angular_velocity: float,
+        initial_planets: list | None = None,
+        *,
+        episode_steps: int = 500,
+        ship_speed: float = 6.0,
+        comet_speed: float = 4.0,
+        remaining_overage_time: float = 60.0,
+    ) -> "CGame":
+        """Init from existing planet config (e.g. compact replay dataset)."""
+        obj = object.__new__(cls)
+        obj.n_players = int(n_players)
+        obj.seed = None
+        obj.episode_steps = int(episode_steps)
+        obj.ship_speed = float(ship_speed)
+        obj.comet_speed = float(comet_speed)
+        obj.remaining_overage_time = float(remaining_overage_time)
+        obj._episode_seed = 0
+        obj._handle = _lib.gs_create(
+            n_players, ship_speed, comet_speed, episode_steps, angular_velocity)
+        if not obj._handle:
+            raise RuntimeError("gs_create failed")
+        for p in planets:
+            rc = _lib.gs_add_planet(
+                obj._handle,
+                int(p[0]), int(p[1]),
+                float(p[2]), float(p[3]), float(p[4]),
+                int(p[5]), int(p[6]))
+            if rc != 0:
+                raise RuntimeError(f"gs_add_planet overflow at id={p[0]}")
+        obj._step = 0
+        obj._done = False
+        obj._angular_velocity = float(angular_velocity)
+        obj._next_fleet_id = 0
+        obj._initial_planets = [list(p) for p in (initial_planets if initial_planets is not None else planets)]
+        obj._comet_planet_ids = []
+        obj._p_buf = (ct.c_double * (_MAX_PLANETS * 7))()
+        obj._f_buf = (ct.c_double * (_MAX_FLEETS * 7))()
+        obj._ids_buf = (ct.c_int * _MAX_PLANETS)()
+        obj._obs_cache = [None] * obj.n_players
+        obj._obs_shared = None
+        obj._initial_planets_cache = None
+        obj.configuration = FastConfig(
+            episodeSteps=episode_steps,
+            shipSpeed=ship_speed,
+            cometSpeed=comet_speed,
+            seed=None,
+            remainingOverageTime=remaining_overage_time,
+        )
+        return obj
+
     def __del__(self):
         if getattr(self, '_handle', None):
             _lib.gs_destroy(self._handle)

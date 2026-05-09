@@ -1,0 +1,172 @@
+from __future__ import annotations
+
+import multiprocessing as mp
+import sys
+from pathlib import Path
+from typing import Any, Dict, List
+
+import numpy as np
+import torch
+
+ROOT = Path(__file__).resolve().parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from neural_network.src.encoder import encode_game_state
+from neural_network.src.orbit_wars_adapter import obs_to_game_dict
+from neural_network.src.policy import build_action_candidates, reconstruct_action
+from neural_network.src.notebook_4p_training import (
+    _agent_for_name,
+    _candidate_move,
+    _copy_planning_game,
+    _reserve_planned_ships,
+    _sample_opponents,
+    _send_ratios,
+    _min_expand_attack_ships,
+    run_match,
+)
+from neural_network.src.population_4p_training import _strategic_dense_reward
+from neural_network.src.notebook_4p_training import _action_summary
+
+
+def _make_gpu_agent(
+    worker_id: int,
+    obs_queue: mp.Queue,
+    action_queue: mp.Queue,
+    config: Dict[str, Any],
+    trajectory: List[Dict[str, Any]],
+):
+    ratios = _send_ratios(config)
+    min_ships = _min_expand_attack_ships(config)
+    max_actions = max(1, int(config.get("max_actions_per_turn", 4)))
+
+    def agent(obs, _config=None):
+        game = obs_to_game_dict(obs)
+        planning_game = _copy_planning_game(game)
+        moves: List = []
+
+        for _ in range(max_actions):
+            encoded = encode_game_state(planning_game, config)
+            candidates = build_action_candidates(
+                planning_game,
+                send_ratios=ratios,
+                min_expand_attack_ships=min_ships,
+            )
+            if not candidates:
+                break
+
+            state_features = np.array(encoded.features, dtype=np.float32)
+            cand_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
+
+            obs_queue.put({
+                "worker_id": worker_id,
+                "state": state_features,
+                "candidates": cand_features,
+                "n_candidates": len(candidates),
+            })
+
+            action_idx = action_queue.get()
+
+            if action_idx < 0 or action_idx >= len(candidates):
+                trajectory.append({
+                    "state": state_features,
+                    "candidates": cand_features,
+                    "action_idx": -1,
+                    "mission": "do_nothing",
+                    "ships": 0,
+                })
+                break
+
+            cand = candidates[action_idx]
+            action = reconstruct_action(cand, planning_game)
+            move = _candidate_move(planning_game, action)
+            executed_ships = int(move[0][2]) if move else 0
+
+            trajectory.append({
+                "state": state_features,
+                "candidates": cand_features,
+                "action_idx": action_idx,
+                "mission": cand.mission if move else "do_nothing",
+                "ships": executed_ships,
+            })
+
+            if not move:
+                break
+
+            moves.extend(move)
+            _reserve_planned_ships(planning_game, action[0], executed_ships)
+
+        return moves
+
+    return agent
+
+
+def worker_fn(
+    worker_id: int,
+    config: Dict[str, Any],
+    pool: List[str],
+    n_players: int,
+    obs_queue: mp.Queue,
+    action_queue: mp.Queue,
+    result_queue: mp.Queue,
+    stop_event: mp.Event,
+    base_seed: int,
+) -> None:
+    torch.set_num_threads(1)
+
+    episode = 0
+    while not stop_event.is_set():
+        seed = base_seed + worker_id * 99991 + episode * 9973
+        our_index = (worker_id + episode) % n_players
+        trajectory: List[Dict[str, Any]] = []
+
+        gpu_agent = _make_gpu_agent(worker_id, obs_queue, action_queue, config, trajectory)
+        opp_names = _sample_opponents(pool, seed, max(1, n_players - 1))
+        opp_iter = iter(opp_names)
+        agents = []
+        for slot in range(n_players):
+            if slot == our_index:
+                agents.append(gpu_agent)
+            else:
+                name = next(opp_iter, None) or "random"
+                agents.append(_agent_for_name(name))
+
+        try:
+            result = run_match(
+                agents,
+                seed=seed,
+                n_players=n_players,
+                max_steps=int(config.get("max_turns", 100)),
+                stop_player=our_index,
+                game_engine=str(config.get("game_engine", "official_fast")),
+                use_c_accel=bool(config.get("official_fast_c_accel", True)),
+            )
+        except Exception:
+            episode += 1
+            continue
+
+        if stop_event.is_set():
+            break
+
+        winner = int(result.get("winner", -1))
+        terminal_reward = 1.0 if winner == our_index else -1.0
+        dense_reward = (
+            _strategic_dense_reward(result, our_index, config)
+            if config.get("dense_reward_enabled", True)
+            else 0.0
+        )
+        action_records = [{"mission": s["mission"], "ships": s["ships"]} for s in trajectory]
+
+        result_queue.put({
+            "worker_id": worker_id,
+            "trajectory": trajectory,
+            "terminal_reward": terminal_reward,
+            "dense_reward": dense_reward,
+            "win": float(winner == our_index),
+            "opponents": list(opp_names),
+            "episode_length": int(result.get("steps", 0)),
+            "seed": seed,
+            "action_metrics": _action_summary(action_records),
+        })
+
+        episode += 1

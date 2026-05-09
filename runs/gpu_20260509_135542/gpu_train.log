@@ -1,0 +1,4 @@
+[2026-05-09 13:55:42 UTC] run_start name=gpu_20260509_135542 device=cuda workers=32 target=0.85
+[2026-05-09 13:55:43 UTC] params=1847362 lr=0.00012
+[2026-05-09 13:55:45 UTC] inference_server started
+[2026-05-09 13:55:46 UTC] 32 workers started

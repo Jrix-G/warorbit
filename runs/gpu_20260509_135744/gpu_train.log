@@ -1,0 +1,5 @@
+[2026-05-09 13:57:45 UTC] run_start name=gpu_20260509_135744 device=cuda workers=16 target=0.85
+[2026-05-09 13:57:46 UTC] params=1847362 lr=0.00012
+[2026-05-09 13:57:48 UTC] inference_server started
+[2026-05-09 13:57:48 UTC] 16 workers started
+[2026-05-09 14:01:29 UTC] train episodes=64 elapsed=3.7m winrate=0.078 policy_loss=-1.064 entropy=1.732 baseline=-0.678
