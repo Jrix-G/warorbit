@@ -1,4 +1,5 @@
 from pathlib import Path
+import math
 
 from neural_network.scripts.run_notebook_4p_training import _prepare_config
 from neural_network.scripts.run_90min_6agent_training import _prepare_config as _prepare_population_config
@@ -106,15 +107,15 @@ def test_population_promotion_requires_real_improvement():
 
 def test_rank_reward_prioritizes_wins_over_second_place():
     assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 0) == 1.0
-    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 1) == -1.0
-    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 2) == -1.0
-    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 3) == -1.0
+    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 1) == 0.28
+    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 2) == -0.08
+    assert _episode_reward({"scores": [100.0, 90.0, 80.0, 70.0]}, 3) == -0.30
 
 
-def test_terminal_reward_is_not_shaped_by_dense_bonus():
-    assert _combine_terminal_dense_reward(0.0, 0.35) == 0.0
-    assert _combine_terminal_dense_reward(-1.0, 0.35) == -1.0
-    assert _combine_terminal_dense_reward(1.0, 0.35) == 1.0
+def test_terminal_reward_keeps_dense_bonus_small():
+    assert math.isclose(_combine_terminal_dense_reward(0.0, 0.35), 0.0875)
+    assert math.isclose(_combine_terminal_dense_reward(-1.0, 0.35), -0.9125)
+    assert math.isclose(_combine_terminal_dense_reward(1.0, 0.35), 1.0)
 
 
 def test_action_summary_counts_missions():

@@ -309,8 +309,8 @@ def _strategic_dense_reward(result: Dict[str, Any], our_index: int, config: Dict
     if rank is not None and rank > 0:
         # Keep this small. Win is still the main signal; this just separates
         # "barely alive" from "strong but not winning yet".
-        rank_bonus_map = {1: 0.0, 2: 0.12, 3: 0.03, 4: -0.06}
-        rank_bonus = float(rank_bonus_map.get(int(rank), 0.0))
+        rank_bonus_map = {1: 1.0, 2: 0.28, 3: -0.08, 4: -0.30}
+        rank_bonus = float(rank_bonus_map.get(int(rank), -0.30))
     final_strength = (
         0.45 * max(-1.0, min(1.0, end["ship_share"] * 2.0 - 1.0))
         + 0.30 * max(-1.0, min(1.0, end["production"] / 10.0))

@@ -100,7 +100,10 @@
       "Bash(git push *)",
       "Bash(make clean *)",
       "Bash(make)",
-      "Bash(wsl *)"
+      "Bash(wsl *)",
+      "Bash(ssh *)",
+      "Read(///wsl.localhost/Ubuntu/home/jason/**)",
+      "Read(///wsl.localhost/Ubuntu//**)"
     ]
   }
 }

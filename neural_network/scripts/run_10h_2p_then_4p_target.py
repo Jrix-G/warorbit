@@ -178,7 +178,7 @@ def _result_diagnostics(result: Dict[str, Any], our_index: int, n_players: int, 
 def _rank_reward(rank: int) -> float:
     if rank <= 0:
         return 0.0
-    return {1: 0.0, 2: 0.12, 3: 0.03, 4: -0.06}.get(int(rank), 0.0)
+    return {1: 1.0, 2: 0.28, 3: -0.08, 4: -0.30}.get(int(rank), -0.30)
 
 
 def _final_strength(snapshot: Dict[str, float], score_margin_to_winner: float) -> float:

@@ -311,7 +311,9 @@ def _min_expand_attack_ships(config: Dict[str, Any]) -> int:
 
 
 def _combine_terminal_dense_reward(terminal_reward: float, dense_reward: float) -> float:
-    return float(terminal_reward)
+    # Keep the terminal outcome dominant while allowing a small progress signal.
+    reward = float(terminal_reward) + 0.25 * float(dense_reward)
+    return float(max(-1.0, min(1.0, reward)))
 
 
 def _player_alive(obs: Any, player: int) -> bool:
@@ -487,8 +489,8 @@ def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, 
 
 def _episode_reward(result: Dict[str, Any], our_index: int) -> float:
     """
-    Reward terminal binaire.
-    Victoire -> +1.0 | toute autre place -> -1.0.
+    Reward terminal with a small rank signal.
+    Victoire -> +1.0, 2nd -> positive shaping, 3rd/4th -> negative shaping.
     """
     scores = result.get("scores", [])
     ordered = sorted(
@@ -496,7 +498,11 @@ def _episode_reward(result: Dict[str, Any], our_index: int) -> float:
         reverse=True,
     )
     winner = ordered[0][1] if ordered else None
-    return 1.0 if winner == our_index else -1.0
+    rank = next((rank for rank, (_, idx) in enumerate(ordered, start=1) if idx == our_index), len(scores) or 4)
+    if winner == our_index:
+        return 1.0
+    rank_reward_map = {1: 0.0, 2: 0.28, 3: -0.08, 4: -0.30}
+    return float(rank_reward_map.get(int(rank), -0.30))
 
 
 def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
