@@ -1,0 +1,8 @@
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+V14 benchmark | games=2 modes=4p,2p bots=v14 opponents=4 workers=1 max_steps=80
+
+Mode 4p
+- v14  W/L/D=0/2/0 WR=0.000 seconds=32.3
+
+Mode 2p
+- v14  W/L/D=0/2/0 WR=0.000 seconds=19.7
