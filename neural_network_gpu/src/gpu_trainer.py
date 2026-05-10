@@ -34,6 +34,7 @@ def train_on_episodes(
     max_grad_norm = float(config.get("max_grad_norm", 1.0))
     ppo_clip_eps = float(config.get("ppo_clip_eps", 0.2))
     ppo_epochs = int(config.get("ppo_epochs", 3))
+    minibatch_size = max(1, int(config.get("ppo_minibatch_size", 512)))
     advantage_eps = 1e-6
 
     # Build per-step dataset across all episodes
@@ -96,64 +97,85 @@ def train_on_episodes(
     all_approx_kls: List[float] = []
     all_grad_norms: List[float] = []
     all_ratios: List[float] = []
+    minibatch_updates = 0
 
     model.train()
 
     for _epoch in range(max(1, ppo_epochs)):
         indices = np.random.permutation(len(dataset))
-        ep_policy_losses = []
-        ep_value_losses = []
-        ep_entropies = []
+        ep_policy_losses: List[float] = []
+        ep_value_losses: List[float] = []
+        ep_entropies: List[float] = []
         clipped = 0
 
-        for i in indices:
-            d = dataset[int(i)]
-            state_t = torch.as_tensor(d["state"], dtype=torch.float32, device=device).unsqueeze(0)
-            cand_t = torch.as_tensor(d["candidates"], dtype=torch.float32, device=device).unsqueeze(0)
+        for start in range(0, len(indices), minibatch_size):
+            batch_indices = indices[start:start + minibatch_size]
+            batch = [dataset[int(i)] for i in batch_indices]
+            n_cands = [int(d["candidates"].shape[0]) for d in batch]
+            max_n = max(n_cands)
+            cand_dim = int(batch[0]["candidates"].shape[-1])
+
+            states = np.stack([d["state"] for d in batch]).astype(np.float32, copy=False)
+            cands_padded = np.zeros((len(batch), max_n, cand_dim), dtype=np.float32)
+            mask = np.zeros((len(batch), max_n), dtype=bool)
+            for row, (d, n) in enumerate(zip(batch, n_cands)):
+                cands_padded[row, :n] = d["candidates"]
+                mask[row, :n] = True
+
+            state_t = torch.as_tensor(states, dtype=torch.float32, device=device)
+            cand_t = torch.as_tensor(cands_padded, dtype=torch.float32, device=device)
+            mask_t = torch.as_tensor(mask, dtype=torch.bool, device=device)
+            action_t = torch.as_tensor([d["action_idx"] for d in batch], dtype=torch.long, device=device)
+            old_lp_t = torch.as_tensor([d["old_log_prob"] for d in batch], dtype=torch.float32, device=device)
+            adv_t = torch.as_tensor(advantages_arr[batch_indices], dtype=torch.float32, device=device)
+            reward_t = torch.as_tensor([d["reward"] for d in batch], dtype=torch.float32, device=device)
+            weight_t = torch.as_tensor([d["step_weight"] for d in batch], dtype=torch.float32, device=device)
+            temp_t = torch.as_tensor(
+                [float(d.get("temperature") or 1.0) if float(d.get("temperature") or 0.0) > 0.0 else 1.0 for d in batch],
+                dtype=torch.float32,
+                device=device,
+            )
+
             outputs = model(state_t, cand_t)
-            logits = outputs["policy_logits"].squeeze(0)
-            value = outputs["value"].squeeze()
+            logits = outputs["policy_logits"].masked_fill(~mask_t, float("-inf"))
+            value = outputs["value"]
 
-            log_probs_all = torch.log_softmax(logits, dim=0)
+            action_logits = logits / temp_t.unsqueeze(-1)
+            log_probs_all = torch.log_softmax(action_logits, dim=-1)
             probs = log_probs_all.exp()
-            entropy = -(probs * log_probs_all).sum()
+            safe_log_probs = log_probs_all.masked_fill(~mask_t, 0.0)
+            entropy_terms = probs * safe_log_probs
+            entropy = -entropy_terms.sum(dim=-1)
 
-            action_idx = d["action_idx"]
-            if 0 <= action_idx < logits.shape[0]:
-                new_log_prob = log_probs_all[action_idx]
-            else:
-                new_log_prob = torch.zeros((), device=device)
+            new_log_prob = log_probs_all.gather(1, action_t.unsqueeze(-1)).squeeze(-1)
+            ratio = torch.exp(new_log_prob - old_lp_t)
+            unclipped = ratio * adv_t
+            clipped_obj = torch.clamp(ratio, 1.0 - ppo_clip_eps, 1.0 + ppo_clip_eps) * adv_t
+            policy_loss_vec = -torch.min(unclipped, clipped_obj) * weight_t
+            value_loss_vec = (value - reward_t).pow(2) * weight_t
+            entropy_loss_vec = entropy * weight_t
 
-            old_lp = float(d["old_log_prob"])
-            adv = float(advantages_arr[int(i)])
-            reward = float(d["reward"])
-            step_weight = float(d["step_weight"])
-
-            ratio = torch.exp(new_log_prob - old_lp)
-            unclipped = ratio * adv
-            clipped_obj = torch.clamp(ratio, 1.0 - ppo_clip_eps, 1.0 + ppo_clip_eps) * adv
-            policy_loss = -torch.min(unclipped, clipped_obj) * step_weight
-            value_loss = (value - torch.tensor(reward, device=device)) ** 2
-            value_loss = value_loss * step_weight
-
-            loss = policy_loss + value_coef * value_loss - entropy_coef * entropy * step_weight
+            policy_loss = policy_loss_vec.sum()
+            value_loss = value_loss_vec.sum()
+            entropy_loss = entropy_loss_vec.sum()
+            loss = policy_loss + value_coef * value_loss - entropy_coef * entropy_loss
 
             optimizer.zero_grad()
             loss.backward()
             grad_norm = clip_grad_norm_(model.parameters(), max_norm=max_grad_norm)
             optimizer.step()
+            minibatch_updates += 1
 
             ep_policy_losses.append(float(policy_loss.item()))
             ep_value_losses.append(float(value_loss.item()))
-            ep_entropies.append(float(entropy.item()))
+            ep_entropies.append(float(entropy.mean().item()))
             all_total_losses.append(float(loss.item()))
             all_grad_norms.append(float(grad_norm.item() if hasattr(grad_norm, "item") else grad_norm))
-            log_ratio = new_log_prob.detach() - torch.tensor(old_lp, device=device)
+            log_ratio = new_log_prob.detach() - old_lp_t
             approx_kl = (torch.exp(log_ratio) - 1.0 - log_ratio).detach()
-            all_approx_kls.append(float(approx_kl.item()))
-            all_ratios.append(float(ratio.item()))
-            if abs(float(ratio.item()) - 1.0) > ppo_clip_eps:
-                clipped += 1
+            all_approx_kls.extend(approx_kl.cpu().numpy().astype(float).tolist())
+            all_ratios.extend(ratio.detach().cpu().numpy().astype(float).tolist())
+            clipped += int((ratio.detach() - 1.0).abs().gt(ppo_clip_eps).sum().item())
 
         if ep_policy_losses:
             all_policy_losses.append(float(np.mean(ep_policy_losses)))
@@ -189,5 +211,8 @@ def train_on_episodes(
         "mean_sample_temperature": float(np.mean([d["temperature"] for d in dataset])) if dataset else 0.0,
         "mean_sample_entropy": float(np.mean([d["sample_entropy"] for d in dataset])) if dataset else 0.0,
         "policy_version": float(max(d["policy_version"] for d in dataset)) if dataset else 0.0,
+        "train_samples": float(len(dataset)),
+        "train_minibatches": float(minibatch_updates),
+        "ppo_minibatch_size": float(minibatch_size),
     }
     return baseline, metrics

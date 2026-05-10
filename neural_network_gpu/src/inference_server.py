@@ -110,7 +110,9 @@ def inference_server_fn(
                 action_idxs = logits.argmax(dim=-1)
             log_probs_all = torch.log_softmax(action_logits, dim=-1)
             probs_all = log_probs_all.exp()
-            entropies = -(probs_all * log_probs_all).sum(dim=-1)
+            safe_log_probs = log_probs_all.masked_fill(~mask_t, 0.0)
+            entropy_terms = probs_all * safe_log_probs
+            entropies = -entropy_terms.sum(dim=-1)
             selected_log_probs = log_probs_all.gather(1, action_idxs.unsqueeze(-1)).squeeze(-1)
 
         action_idxs_np = action_idxs.cpu().numpy()

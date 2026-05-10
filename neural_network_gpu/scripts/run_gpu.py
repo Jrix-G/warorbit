@@ -116,6 +116,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         # PPO
         "ppo_clip_eps": args.ppo_clip_eps,
         "ppo_epochs": args.ppo_epochs,
+        "ppo_minibatch_size": args.ppo_minibatch_size,
         # Activity shaping
         "dense_reward_enabled": True,
         "dense_planet_coef": 0.05,
@@ -149,6 +150,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "eval_every": args.eval_every,
         "eval_episodes": args.eval_episodes,
         "max_batch_size": args.batch_size,
+        "batch_timeout": args.batch_timeout,
         "device": args.device,
         # Run
         "duration_minutes": args.duration_minutes,
@@ -348,7 +350,9 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.00006)
     parser.add_argument("--ppo-clip-eps", type=float, default=0.2)
     parser.add_argument("--ppo-epochs", type=int, default=3)
-    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--ppo-minibatch-size", type=int, default=512)
+    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--batch-timeout", type=float, default=0.010)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--target-winrate", type=float, default=0.85)
     parser.add_argument("--n-players", type=int, default=2)
@@ -366,17 +370,22 @@ def main() -> None:
     parser.add_argument("--temperature-decay-updates", type=int, default=200)
     parser.add_argument("--resume-checkpoint", default="")
     parser.add_argument("--run-name", default=None)
+    parser.add_argument("--runs-root", default="", help="Override output directory for runs, useful on Kaggle")
     args = parser.parse_args()
 
     cfg = _build_config(args)
     device = torch.device(cfg["device"] if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.backends.cudnn.benchmark = True
+        torch.set_float32_matmul_precision("high")
     resume_meta: Dict[str, Any] = {}
     if args.resume_checkpoint and Path(args.resume_checkpoint).exists():
         _, resume_meta = load_checkpoint(args.resume_checkpoint)
 
     run_name = args.run_name or (Path(args.resume_checkpoint).resolve().parent.name if args.resume_checkpoint and Path(args.resume_checkpoint).exists() else _run_tag())
 
-    run_dir = PACKAGE_DIR / "runs" / run_name
+    runs_root = Path(args.runs_root).expanduser() if args.runs_root else PACKAGE_DIR / "runs"
+    run_dir = runs_root / run_name
     ensure_dir(run_dir)
     log_path = run_dir / "gpu_train.log"
     checkpoint_path = run_dir / "best.npz"
@@ -441,7 +450,11 @@ def main() -> None:
     inf_proc = mp.Process(
         target=inference_server_fn,
         args=(initial_state, cfg, obs_queue, action_queues, model_update_queue, stop_event),
-        kwargs={"device_str": str(device), "max_batch_size": cfg["max_batch_size"]},
+        kwargs={
+            "device_str": str(device),
+            "max_batch_size": cfg["max_batch_size"],
+            "batch_timeout": float(cfg["batch_timeout"]),
+        },
         daemon=True,
     )
     inf_proc.start()
@@ -491,13 +504,18 @@ def main() -> None:
 
             # Train every N episodes
             if len(pending_episodes) >= cfg["train_every"]:
+                train_started = time.time()
                 baseline, metrics = train_on_episodes(
                     model, optimizer, pending_episodes, cfg, device,
                     baseline, float(cfg["baseline_momentum"]),
                 )
+                train_seconds = max(1e-6, time.time() - train_started)
                 elapsed = (time.time() - started_at) / 60.0
+                episodes_per_hour = total_episodes / max(1e-6, (time.time() - started_at) / 3600.0)
                 wins = [ep["win"] for ep in pending_episodes]
                 last_train_metrics = dict(metrics)
+                last_train_metrics["train_seconds"] = float(train_seconds)
+                last_train_metrics["episodes_per_hour"] = float(episodes_per_hour)
                 policy_version += 1
                 mission_counts: Dict[str, int] = {}
                 for ep in pending_episodes:
@@ -506,6 +524,10 @@ def main() -> None:
                 _log(
                     log_path,
                     f"train episodes={total_episodes} elapsed={elapsed:.1f}m "
+                    f"eps_per_hour={episodes_per_hour:.1f} "
+                    f"train_s={train_seconds:.2f} "
+                    f"samples={metrics.get('train_samples', 0):.0f} "
+                    f"minibatches={metrics.get('train_minibatches', 0):.0f} "
                     f"winrate={np.mean(wins):.3f} "
                     f"policy_loss={metrics.get('policy_loss', 0):.3f} "
                     f"value_loss={metrics.get('value_loss', 0):.3f} "
