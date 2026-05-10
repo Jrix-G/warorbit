@@ -1,0 +1,61 @@
+[2026-05-09 18:05:03 UTC] run_start name=gpu_20260509_180503 device=cuda workers=16 target=0.85
+[2026-05-09 18:05:04 UTC] params=1847362 lr=0.00012
+[2026-05-09 18:05:06 UTC] inference_server started
+[2026-05-09 18:05:07 UTC] 16 workers started
+[2026-05-09 18:08:05 UTC] train episodes=64 elapsed=3.0m winrate=0.078 policy_loss=-1.030 entropy=1.708 baseline=-0.721
+[2026-05-09 18:10:08 UTC] train episodes=128 elapsed=5.0m winrate=0.156 policy_loss=0.965 entropy=2.196 baseline=-0.763
+[2026-05-09 18:11:57 UTC] train episodes=192 elapsed=6.8m winrate=0.125 policy_loss=0.718 entropy=2.024 baseline=-0.795
+[2026-05-09 18:13:43 UTC] train episodes=256 elapsed=8.6m winrate=0.203 policy_loss=1.116 entropy=1.895 baseline=-0.245
+[2026-05-09 18:18:34 UTC] run_start name=gpu_20260509_180503 device=cuda workers=16 target=0.85
+[2026-05-09 18:18:34 UTC] resumed from /home/jason/warorbit/runs/gpu_20260509_180503/latest.npz
+[2026-05-09 18:18:34 UTC] params=1847362 lr=0.00012
+[2026-05-09 18:18:36 UTC] inference_server started
+[2026-05-09 18:18:36 UTC] 16 workers started
+[2026-05-09 18:21:35 UTC] train episodes=64 elapsed=3.0m winrate=0.094 policy_loss=-1.026 entropy=1.632 baseline=-0.479
+[2026-05-09 18:23:40 UTC] train episodes=128 elapsed=5.1m winrate=0.109 policy_loss=0.188 entropy=2.104 baseline=-0.878
+[2026-05-09 18:25:32 UTC] train episodes=192 elapsed=6.9m winrate=0.094 policy_loss=0.615 entropy=1.891 baseline=-0.831
+[2026-05-09 18:27:19 UTC] train episodes=256 elapsed=8.7m winrate=0.172 policy_loss=1.057 entropy=2.002 baseline=-0.745
+[2026-05-09 18:37:34 UTC] run_start name=gpu_20260509_180503 device=cuda workers=16 target=0.85
+[2026-05-09 18:37:35 UTC] resumed from /home/jason/warorbit/runs/gpu_20260509_180503/latest.npz
+[2026-05-09 18:37:35 UTC] params=1847362 lr=0.00012
+[2026-05-09 18:37:37 UTC] inference_server started
+[2026-05-09 18:37:37 UTC] 16 workers started
+[2026-05-09 18:40:10 UTC] run_start name=gpu_20260509_180503 device=cuda workers=16 target=0.85
+[2026-05-09 18:40:10 UTC] resumed from /home/jason/warorbit/runs/gpu_20260509_180503/latest.npz
+[2026-05-09 18:40:10 UTC] params=1847362 lr=0.00012
+[2026-05-09 18:40:12 UTC] inference_server started
+[2026-05-09 18:40:12 UTC] 16 workers started
+[2026-05-09 18:43:59 UTC] eval episodes=257 elapsed=3.8m winrate=0.312 noop=0.731 best=-1.000 target=0.85
+[2026-05-09 18:43:59 UTC] new best winrate=0.3125 saved to /home/jason/warorbit/runs/gpu_20260509_180503/best.npz
+[2026-05-09 18:46:07 UTC] train episodes=320 elapsed=5.9m winrate=0.078 policy_loss=0.430 entropy=1.896 baseline=-0.645
+[2026-05-09 18:48:21 UTC] train episodes=384 elapsed=8.1m winrate=0.125 policy_loss=0.526 entropy=1.993 baseline=-0.452
+[2026-05-09 18:50:31 UTC] train episodes=448 elapsed=10.3m winrate=0.125 policy_loss=0.180 entropy=2.057 baseline=-0.657
+[2026-05-09 18:52:27 UTC] train episodes=512 elapsed=12.3m winrate=0.172 policy_loss=0.481 entropy=1.957 baseline=-0.472
+[2026-05-09 18:58:29 UTC] eval episodes=513 elapsed=18.3m winrate=0.188 noop=0.452 best=0.312 target=0.85
+[2026-05-09 19:00:28 UTC] train episodes=576 elapsed=20.3m winrate=0.094 policy_loss=-0.024 entropy=1.781 baseline=-0.746
+[2026-05-09 19:02:19 UTC] train episodes=640 elapsed=22.1m winrate=0.125 policy_loss=0.364 entropy=1.684 baseline=-0.912
+[2026-05-09 19:04:10 UTC] train episodes=704 elapsed=24.0m winrate=0.125 policy_loss=0.706 entropy=1.683 baseline=-0.776
+[2026-05-09 19:05:59 UTC] train episodes=768 elapsed=25.8m winrate=0.062 policy_loss=0.150 entropy=1.703 baseline=-0.907
+[2026-05-09 19:12:23 UTC] eval episodes=769 elapsed=32.2m winrate=0.297 noop=0.482 best=0.312 target=0.85
+[2026-05-09 19:14:25 UTC] train episodes=832 elapsed=34.2m winrate=0.125 policy_loss=0.799 entropy=1.702 baseline=-0.912
+[2026-05-09 19:16:36 UTC] train episodes=896 elapsed=36.4m winrate=0.078 policy_loss=0.735 entropy=2.083 baseline=-0.721
+[2026-05-09 19:18:32 UTC] train episodes=960 elapsed=38.3m winrate=0.188 policy_loss=0.758 entropy=1.841 baseline=-0.697
+[2026-05-09 19:20:43 UTC] train episodes=1024 elapsed=40.5m winrate=0.125 policy_loss=0.289 entropy=1.880 baseline=-1.053
+[2026-05-09 19:27:17 UTC] eval episodes=1025 elapsed=47.1m winrate=0.172 noop=0.325 best=0.312 target=0.85
+[2026-05-09 19:29:18 UTC] train episodes=1088 elapsed=49.1m winrate=0.109 policy_loss=1.223 entropy=1.983 baseline=-0.712
+[2026-05-09 19:31:13 UTC] train episodes=1152 elapsed=51.0m winrate=0.125 policy_loss=0.755 entropy=1.988 baseline=-0.692
+[2026-05-09 19:33:08 UTC] train episodes=1216 elapsed=52.9m winrate=0.156 policy_loss=0.537 entropy=1.765 baseline=-0.541
+[2026-05-09 19:35:03 UTC] train episodes=1280 elapsed=54.9m winrate=0.109 policy_loss=-0.115 entropy=1.672 baseline=-0.755
+[2026-05-09 19:36:40 UTC] eval episodes=1281 elapsed=56.5m winrate=0.547 noop=0.987 best=0.312 target=0.85
+[2026-05-09 19:36:40 UTC] new best winrate=0.5469 saved to /home/jason/warorbit/runs/gpu_20260509_180503/best.npz
+[2026-05-09 19:38:42 UTC] train episodes=1344 elapsed=58.5m winrate=0.172 policy_loss=0.970 entropy=2.079 baseline=-0.507
+[2026-05-09 19:40:33 UTC] train episodes=1408 elapsed=60.4m winrate=0.141 policy_loss=0.064 entropy=1.799 baseline=-0.351
+[2026-05-09 19:42:23 UTC] train episodes=1472 elapsed=62.2m winrate=0.109 policy_loss=-0.351 entropy=1.831 baseline=-1.127
+[2026-05-09 19:44:15 UTC] train episodes=1536 elapsed=64.0m winrate=0.141 policy_loss=1.290 entropy=1.842 baseline=-0.679
+[2026-05-09 19:48:14 UTC] eval episodes=1537 elapsed=68.0m winrate=0.078 noop=0.514 best=0.547 target=0.85
+[2026-05-09 19:50:02 UTC] train episodes=1600 elapsed=69.8m winrate=0.219 policy_loss=1.203 entropy=1.900 baseline=-0.466
+[2026-05-09 19:52:06 UTC] train episodes=1664 elapsed=71.9m winrate=0.078 policy_loss=-0.148 entropy=1.611 baseline=-0.786
+[2026-05-09 19:53:48 UTC] train episodes=1728 elapsed=73.6m winrate=0.078 policy_loss=0.275 entropy=1.444 baseline=-0.973
+[2026-05-09 19:55:02 UTC] train episodes=1792 elapsed=74.8m winrate=0.172 policy_loss=0.928 entropy=2.352 baseline=-1.095
+[2026-05-09 20:00:04 UTC] eval episodes=1793 elapsed=79.9m winrate=0.172 noop=0.469 best=0.547 target=0.85
+[2026-05-09 20:01:18 UTC] train episodes=1856 elapsed=81.1m winrate=0.562 policy_loss=3.542 entropy=3.851 baseline=-0.183

@@ -15,10 +15,14 @@ if str(ROOT) not in sys.path:
 from neural_network.src.encoder import encode_game_state
 from neural_network.src.orbit_wars_adapter import obs_to_game_dict
 from neural_network.src.policy import build_action_candidates, reconstruct_action
+from neural_network.src.model import ModelConfig, NeuralNetworkModel, load_compatible_state_dict
+from neural_network.src.storage import load_checkpoint
 from neural_network.src.notebook_4p_training import (
     _agent_for_name,
     _candidate_move,
     _copy_planning_game,
+    _infer_input_dim,
+    _make_model_agent,
     _reserve_planned_ships,
     _sample_opponents,
     _send_ratios,
@@ -27,6 +31,26 @@ from neural_network.src.notebook_4p_training import (
 )
 from neural_network.src.population_4p_training import _strategic_dense_reward
 from neural_network.src.notebook_4p_training import _action_summary
+
+
+def _agent_for_pool_name(name: str, config: Dict[str, Any], cache: Dict[str, Any]):
+    if isinstance(name, str) and name.startswith("checkpoint:"):
+        path = name.split(":", 1)[1]
+        if path not in cache:
+            checkpoint_path = Path(path)
+            if not checkpoint_path.exists():
+                cache[path] = _agent_for_name("random")
+            else:
+                model = NeuralNetworkModel(ModelConfig(
+                    input_dim=_infer_input_dim(config),
+                    hidden_dim=int(config.get("hidden_dim", 320)),
+                ))
+                state, _ = load_checkpoint(checkpoint_path)
+                load_compatible_state_dict(model, state)
+                model.eval()
+                cache[path] = _make_model_agent(model, config, temperature=0.0, explore=False)
+        return cache[path]
+    return _agent_for_name(name)
 
 
 def _make_gpu_agent(
@@ -65,7 +89,19 @@ def _make_gpu_agent(
                 "n_candidates": len(candidates),
             })
 
-            action_idx = action_queue.get()
+            action_msg = action_queue.get()
+            if isinstance(action_msg, dict):
+                action_idx = int(action_msg.get("action_idx", -1))
+                old_log_prob = action_msg.get("old_log_prob")
+                entropy = action_msg.get("entropy")
+                temperature = action_msg.get("temperature")
+                policy_version = action_msg.get("policy_version")
+            else:
+                action_idx = int(action_msg)
+                old_log_prob = None
+                entropy = None
+                temperature = None
+                policy_version = None
 
             if action_idx < 0 or action_idx >= len(candidates):
                 trajectory.append({
@@ -74,6 +110,10 @@ def _make_gpu_agent(
                     "action_idx": -1,
                     "mission": "do_nothing",
                     "ships": 0,
+                    "old_log_prob": old_log_prob,
+                    "entropy": entropy,
+                    "temperature": temperature,
+                    "policy_version": policy_version,
                 })
                 break
 
@@ -88,6 +128,10 @@ def _make_gpu_agent(
                 "action_idx": action_idx,
                 "mission": cand.mission if move else "do_nothing",
                 "ships": executed_ships,
+                "old_log_prob": old_log_prob,
+                "entropy": entropy,
+                "temperature": temperature,
+                "policy_version": policy_version,
             })
 
             if not move:
@@ -115,6 +159,7 @@ def worker_fn(
     torch.set_num_threads(1)
 
     episode = 0
+    checkpoint_agent_cache: Dict[str, Any] = {}
     while not stop_event.is_set():
         seed = base_seed + worker_id * 99991 + episode * 9973
         our_index = (worker_id + episode) % n_players
@@ -129,7 +174,7 @@ def worker_fn(
                 agents.append(gpu_agent)
             else:
                 name = next(opp_iter, None) or "random"
-                agents.append(_agent_for_name(name))
+                agents.append(_agent_for_pool_name(name, config, checkpoint_agent_cache))
 
         try:
             result = run_match(

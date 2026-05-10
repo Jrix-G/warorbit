@@ -4,6 +4,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict
 import json
+import os
+import tempfile
 import numpy as np
 import torch
 
@@ -11,8 +13,16 @@ import torch
 def save_checkpoint(path: str | Path, state: Dict[str, np.ndarray], metadata: Dict[str, Any]) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("wb") as f:
-        np.savez_compressed(f, **state, metadata=json.dumps(metadata))
+    fd, tmp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "wb") as f:
+            np.savez_compressed(f, **state, metadata=json.dumps(metadata))
+        Path(tmp_name).replace(path)
+    finally:
+        try:
+            Path(tmp_name).unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def load_checkpoint(path: str | Path) -> tuple[Dict[str, torch.Tensor], Dict[str, Any]]:

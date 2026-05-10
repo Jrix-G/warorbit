@@ -250,6 +250,7 @@ def _make_policy_agent(
 ):
     log_probs = log_probs if log_probs is not None else []
     action_records = action_records if action_records is not None else []
+    model_device = next(model.parameters()).device
 
     def agent(obs, _config=None):
         game = obs_to_game_dict(obs)
@@ -267,8 +268,8 @@ def _make_policy_agent(
             )
             candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
             outputs = model(
-                torch.tensor(encoded.features, dtype=torch.float32),
-                torch.tensor(candidate_features, dtype=torch.float32),
+                torch.tensor(encoded.features, dtype=torch.float32, device=model_device),
+                torch.tensor(candidate_features, dtype=torch.float32, device=model_device),
             )
             cand, log_prob, entropy = choose_action_from_candidates(
                 outputs,
@@ -458,14 +459,17 @@ def _sample_opponents(pool: Sequence[str], seed: int, count: int = 3) -> List[st
     return [names[i % len(names)] for i in range(max(1, count))]
 
 
-def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, our_index: int, temperature: float, pool: Sequence[str], explore: bool = True):
+def _build_agents(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, our_index: int, temperature: float, pool: Sequence[str], explore: bool = True, n_players: int = 4):
+    if our_index < 0 or our_index >= n_players:
+        raise ValueError(f"our_index ({our_index}) out of range for n_players ({n_players})")
     log_probs: List[torch.Tensor] = []
     action_records: List[Dict[str, Any]] = []
-    opp_names = _sample_opponents(pool, seed, int(config.get("train_notebook_opponents", 1)))
+    opp_count = int(config.get("train_notebook_opponents", 1))
+    opp_names = _sample_opponents(pool, seed, opp_count)
     opp_iter = iter(opp_names)
     agents = []
     our_agent = _make_our_agent(model, config, log_probs, action_records, temperature, explore=explore)
-    for slot in range(4):
+    for slot in range(n_players):
         if slot == our_index:
             agents.append(our_agent)
         else:

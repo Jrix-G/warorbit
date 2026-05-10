@@ -1,0 +1,15 @@
+[2026-05-10 09:39:46 UTC] run_start name=gpu_stability_120m_16w device=cuda workers=16 target=0.85
+[2026-05-10 09:39:46 UTC] policy_prior_strength=0.0 (external prior disabled; prior remains candidate feature)
+[2026-05-10 09:39:47 UTC] params=1847362 lr=3e-05
+[2026-05-10 09:39:48 UTC] curriculum_tier=basic train_pool=['random', 'greedy', 'checkpoint:/home/jason/warorbit/runs/gpu_stability_120m_16w/best_validated.npz']
+[2026-05-10 09:39:50 UTC] inference_server started
+[2026-05-10 09:39:50 UTC] 16 workers started
+[2026-05-10 09:46:14 UTC] train episodes=64 elapsed=6.4m winrate=0.188 policy_loss=0.001 value_loss=0.000 total_loss=-0.000 entropy=2.030 kl=0.0000 clip_frac=0.000 grad_norm=0.015 reward=-0.583 terminal=-0.625 dense=0.179 activity=0.301 temp=1.050 skipped_oldlp=0 missions={'expand': 2543, 'do_nothing': 5346, 'attack': 349, 'support': 4364} baseline=-0.550
+[2026-05-10 09:48:39 UTC] run_start name=gpu_stability_120m_16w device=cuda workers=16 target=0.85
+[2026-05-10 09:48:39 UTC] policy_prior_strength=0.0 (external prior disabled; prior remains candidate feature)
+[2026-05-10 09:48:40 UTC] params=1847362 lr=3e-05
+[2026-05-10 09:48:40 UTC] curriculum_tier=basic train_pool=['random', 'greedy', 'checkpoint:/home/jason/warorbit/runs/gpu_stability_120m_16w/best_validated.npz']
+[2026-05-10 09:48:42 UTC] inference_server started
+[2026-05-10 09:48:42 UTC] 16 workers started
+[2026-05-10 09:56:16 UTC] train episodes=64 elapsed=7.6m winrate=0.188 policy_loss=0.001 value_loss=0.000 total_loss=-0.000 entropy=2.142 kl=0.0000 clip_frac=0.000 grad_norm=0.013 reward=-0.580 terminal=-0.625 dense=0.200 activity=0.302 temp=1.050 skipped_oldlp=0 missions={'expand': 2719, 'do_nothing': 5264, 'attack': 341, 'support': 4506} baseline=-0.579
+[2026-05-10 10:30:07 UTC] train episodes=128 elapsed=41.4m winrate=0.391 policy_loss=0.000 value_loss=0.000 total_loss=-0.001 entropy=2.747 kl=0.0003 clip_frac=0.000 grad_norm=0.008 reward=-0.159 terminal=-0.219 dense=0.298 activity=0.301 temp=1.050 skipped_oldlp=0 missions={'expand': 3526, 'do_nothing': 4495, 'support': 7161, 'attack': 548} baseline=-0.258

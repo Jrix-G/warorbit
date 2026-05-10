@@ -3,3 +3,6 @@
 [2026-05-09 14:20:48 UTC] inference_server started
 [2026-05-09 14:20:48 UTC] 16 workers started
 [2026-05-09 14:23:48 UTC] train episodes=64 elapsed=3.0m winrate=0.062 policy_loss=-1.185 entropy=1.632 baseline=-0.862
+[2026-05-09 14:25:54 UTC] train episodes=128 elapsed=5.1m winrate=0.188 policy_loss=1.506 entropy=2.235 baseline=-0.405
+[2026-05-09 14:27:47 UTC] train episodes=192 elapsed=7.0m winrate=0.047 policy_loss=-0.452 entropy=2.021 baseline=-0.934
+[2026-05-09 14:29:40 UTC] train episodes=256 elapsed=8.9m winrate=0.141 policy_loss=1.078 entropy=1.932 baseline=-0.699

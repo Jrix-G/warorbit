@@ -81,7 +81,7 @@ def build_action_candidates(
     my_id = game.get("my_id", 0)
     candidates: List[ActionCandidate] = [ActionCandidate(-1, -1, 0, "do_nothing", np.zeros(16, dtype=np.float32))]
     my_planets = [p for p in planets if p["owner"] == my_id and float(p.get("ships", 0.0)) >= 2.0]
-    ratios = tuple(float(r) for r in (send_ratios or (0.5, 0.7, 0.9)) if 0.0 < float(r) < 1.0)
+    ratios = tuple(float(r) for r in (send_ratios or (0.25, 0.35, 0.5, 0.65, 0.8, 0.95)) if 0.0 < float(r) < 1.0)
     seen: set[tuple[int, int, int]] = set()
     for src in my_planets:
         for tgt in planets:

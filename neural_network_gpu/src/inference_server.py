@@ -18,6 +18,14 @@ from neural_network.src.model import ModelConfig, NeuralNetworkModel, load_compa
 from neural_network.src.notebook_4p_training import _infer_input_dim
 
 
+def _scheduled_temperature(config: Dict[str, Any], policy_version: int) -> float:
+    start = float(config.get("temperature_start", config.get("temperature_end", 0.18)))
+    end = float(config.get("temperature_end", 0.18))
+    decay_updates = max(1, int(config.get("temperature_decay_updates", 200)))
+    frac = min(1.0, max(0.0, float(policy_version) / float(decay_updates)))
+    return float(start + (end - start) * frac)
+
+
 def inference_server_fn(
     model_state: Dict[str, Any],
     config: Dict[str, Any],
@@ -38,6 +46,7 @@ def inference_server_fn(
     load_compatible_state_dict(model, {k: torch.as_tensor(v) for k, v in model_state.items()})
     model = model.to(device)
     model.eval()
+    policy_version = int(config.get("policy_version", 0))
 
     pending: List[Dict] = []
 
@@ -45,6 +54,11 @@ def inference_server_fn(
         # Check for model weight update from trainer
         try:
             new_state = model_update_queue.get_nowait()
+            if isinstance(new_state, dict) and "state" in new_state:
+                policy_version = int(new_state.get("policy_version", policy_version + 1))
+                new_state = new_state["state"]
+            else:
+                policy_version += 1
             load_compatible_state_dict(model, {k: torch.as_tensor(v) for k, v in new_state.items()})
             model.eval()
         except Empty:
@@ -85,16 +99,30 @@ def inference_server_fn(
             logits = outputs["policy_logits"]
             logits = logits.masked_fill(~mask_t, float("-inf"))
 
-            temp = float(config.get("temperature_end", 0.18))
+            temp = _scheduled_temperature(config, policy_version)
             if temp > 0.0:
-                probs = torch.softmax(logits / max(temp, 1e-6), dim=-1)
+                action_logits = logits / max(temp, 1e-6)
+                probs = torch.softmax(action_logits, dim=-1)
                 probs = probs.nan_to_num(0.0).clamp(min=1e-8)
                 action_idxs = torch.multinomial(probs, 1).squeeze(-1)
             else:
+                action_logits = logits
                 action_idxs = logits.argmax(dim=-1)
+            log_probs_all = torch.log_softmax(action_logits, dim=-1)
+            probs_all = log_probs_all.exp()
+            entropies = -(probs_all * log_probs_all).sum(dim=-1)
+            selected_log_probs = log_probs_all.gather(1, action_idxs.unsqueeze(-1)).squeeze(-1)
 
         action_idxs_np = action_idxs.cpu().numpy()
-        for msg, action_idx in zip(pending, action_idxs_np):
-            action_queues[msg["worker_id"]].put(int(action_idx))
+        log_probs_np = selected_log_probs.cpu().numpy()
+        entropies_np = entropies.cpu().numpy()
+        for msg, action_idx, old_log_prob, entropy in zip(pending, action_idxs_np, log_probs_np, entropies_np):
+            action_queues[msg["worker_id"]].put({
+                "action_idx": int(action_idx),
+                "old_log_prob": float(old_log_prob),
+                "entropy": float(entropy),
+                "temperature": float(temp),
+                "policy_version": int(policy_version),
+            })
 
         pending = []

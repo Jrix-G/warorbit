@@ -114,7 +114,15 @@
       "Bash(grep -E \"best_winrate|candidate_winrate|wr4|wr2|stage\" \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\\\\imported_logs\\\\run_10h_2p4p_20260507_123522_direct.log\")",
       "Bash(grep -E \"stage2_4p|n_players=4|--opponents|stage\" \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\\\\imported_logs\\\\run_10h_2p4p_20260507_123522_run_manifest.json\")",
       "Bash(cat \"\\\\\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\jason\\\\warorbit\\\\runs\\\\gpu_20260509_135744\"/*.log)",
-      "Bash(grep -E \"\\\\.log$|v14\")"
+      "Bash(grep -E \"\\\\.log$|v14\")",
+      "Bash(PYTHONPATH=/home/jason/warorbit python -c \"from neural_network.src.notebook_4p_training import _build_agents; import inspect; print\\(inspect.signature\\(_build_agents\\)\\)\")",
+      "PowerShell(wsl -d Ubuntu -- bash -lc \"cd /home/jason/warorbit && PYTHONPATH=/home/jason/warorbit /home/jason/warorbit/.venv/bin/python -c 'from neural_network.src.notebook_4p_training import _build_agents; import inspect; print\\(inspect.signature\\(_build_agents\\)\\)'\")",
+      "PowerShell(wsl -d Ubuntu -- bash -lc \"cd /home/jason/warorbit && PYTHONPATH=/home/jason/warorbit /home/jason/warorbit/.venv/bin/python neural_network_gpu/scripts/run_gpu.py --help 2>&1 | head -25\")",
+      "PowerShell(wsl -d Ubuntu -- bash -lc \"cd /home/jason/warorbit && PYTHONPATH=/home/jason/warorbit /home/jason/warorbit/.venv/bin/python -c 'from neural_network_gpu.src.gpu_trainer import train_on_episodes; print\\(\\\\\"ok\\\\\"\\)' 2>&1\")",
+      "PowerShell(wsl -d Ubuntu -- bash -lc 'cd /home/jason/warorbit && PYTHONPATH=/home/jason/warorbit /home/jason/warorbit/.venv/bin/python -c \"from neural_network_gpu.src.gpu_trainer import train_on_episodes; print\\(123\\)\"')",
+      "PowerShell(wsl -d Ubuntu --exec /home/jason/warorbit/.venv/bin/python -c \"import sys; sys.path.insert\\(0, '/home/jason/warorbit'\\); from neural_network_gpu.src.gpu_trainer import train_on_episodes; print\\('ok'\\)\")",
+      "PowerShell(wsl -d Ubuntu --exec /home/jason/warorbit/.venv/bin/python /home/jason/warorbit/neural_network_gpu/scripts/run_gpu.py --help 2>&1 | Select-Object -Last 25)",
+      "PowerShell(wsl -d Ubuntu -- env PYTHONPATH=/home/jason/warorbit /home/jason/warorbit/.venv/bin/python /home/jason/warorbit/neural_network_gpu/scripts/run_gpu.py --help 2>&1 | Select-Object -Last 30)"
     ]
   }
 }
