@@ -56,12 +56,17 @@ run_exp strict4p_nobc \
   --out evaluations/exp_v14_strict4p_nobc.npz \
   --out-critic evaluations/exp_v14_strict4p_nobc_critic.npz \
   --no-bc \
-  --lr 1e-4 \
+  --lr 2e-4 \
   --lr-min 5e-5 \
-  --temperature-start 1.2 \
-  --temperature-end 0.9 \
+  --temperature-start 1.25 \
+  --temperature-end 0.95 \
   --modes 4p 4p 4p 4p \
-  --rank-reward-4p 1.0 0.0 -0.5 -1.0
+  --rank-reward-4p 1.0 0.0 -0.5 -1.0 \
+  --value-coef 0.10 \
+  --entropy-beta 0.02 \
+  --grad-clip 2.0 \
+  --ppo-epochs 1 \
+  --advantage-scale 1.5
 
 "$PYTHON_BIN" scripts/v14_analyze_logs.py \
   runs/v14_base_mixed.log \

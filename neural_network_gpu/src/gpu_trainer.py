@@ -97,9 +97,11 @@ def train_on_episodes(
     all_approx_kls: List[float] = []
     all_grad_norms: List[float] = []
     all_ratios: List[float] = []
+    all_log_ratio_abs: List[float] = []
     minibatch_updates = 0
 
     model.train()
+    before_params = [p.detach().clone() for p in model.parameters() if p.requires_grad]
 
     for _epoch in range(max(1, ppo_epochs)):
         indices = np.random.permutation(len(dataset))
@@ -164,6 +166,8 @@ def train_on_episodes(
             loss.backward()
             grad_norm = clip_grad_norm_(model.parameters(), max_norm=max_grad_norm)
             optimizer.step()
+            if device.type == "cuda":
+                torch.cuda.empty_cache()
             minibatch_updates += 1
 
             ep_policy_losses.append(float(policy_loss.item()))
@@ -175,6 +179,7 @@ def train_on_episodes(
             approx_kl = (torch.exp(log_ratio) - 1.0 - log_ratio).detach()
             all_approx_kls.extend(approx_kl.cpu().numpy().astype(float).tolist())
             all_ratios.extend(ratio.detach().cpu().numpy().astype(float).tolist())
+            all_log_ratio_abs.extend(log_ratio.abs().cpu().numpy().astype(float).tolist())
             clipped += int((ratio.detach() - 1.0).abs().gt(ppo_clip_eps).sum().item())
 
         if ep_policy_losses:
@@ -184,6 +189,20 @@ def train_on_episodes(
             all_clip_fracs.append(clipped / max(1, len(indices)))
 
     model.eval()
+
+    delta_sq = 0.0
+    param_sq = 0.0
+    param_count = 0
+    with torch.no_grad():
+        for before, after in zip(before_params, (p for p in model.parameters() if p.requires_grad)):
+            before_cpu = before.detach().float().cpu()
+            after_cpu = after.detach().float().cpu()
+            diff = after_cpu - before_cpu
+            delta_sq += float(diff.pow(2).sum().item())
+            param_sq += float(before_cpu.pow(2).sum().item())
+            param_count += int(diff.numel())
+    param_delta_rms = float(np.sqrt(delta_sq / max(1, param_count)))
+    param_relative_delta = float(np.sqrt(delta_sq / max(1e-12, param_sq)))
 
     # Update baseline (running mean of episode rewards)
     for r in rewards:
@@ -199,6 +218,11 @@ def train_on_episodes(
         "grad_norm": float(np.mean(all_grad_norms)) if all_grad_norms else 0.0,
         "ratio_mean": float(np.mean(all_ratios)) if all_ratios else 0.0,
         "ratio_std": float(np.std(all_ratios)) if all_ratios else 0.0,
+        "ratio_min": float(np.min(all_ratios)) if all_ratios else 0.0,
+        "ratio_max": float(np.max(all_ratios)) if all_ratios else 0.0,
+        "log_ratio_abs_max": float(np.max(all_log_ratio_abs)) if all_log_ratio_abs else 0.0,
+        "param_delta_rms": param_delta_rms,
+        "param_relative_delta": param_relative_delta,
         "mean_reward": float(np.mean(rewards)) if rewards else 0.0,
         "median_reward": float(np.median(rewards)) if rewards else 0.0,
         "reward_std": float(np.std(rewards)) if rewards else 0.0,

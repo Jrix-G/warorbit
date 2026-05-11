@@ -300,7 +300,12 @@ def _play_episode_task(task: tuple):
 # ---------- training step ----------
 def _ppo_update(actor: v14_core.V14Scorer, critic: V14Critic,
                 triples: list[tuple[np.ndarray, int, float, float, np.ndarray, list, float]],
-                epochs: int) -> dict:
+                epochs: int,
+                entropy_beta: float,
+                value_coef: float,
+                grad_clip: float,
+                normalize_advantage: bool = True,
+                advantage_scale: float = 1.0) -> dict:
     """One PPO update. triples: list of (feats, idx, return, log_p_old, pooled, noop_idxs, temperature)."""
     if not triples:
         return {"pg_loss": 0.0, "v_loss": 0.0, "entropy": 0.0,
@@ -313,15 +318,19 @@ def _ppo_update(actor: v14_core.V14Scorer, critic: V14Critic,
     rets = np.array([t[2] for t in triples], dtype=np.float32)
     vals_old = np.array([critic.forward(t[4])[0] for t in triples], dtype=np.float32)
     advs = rets - vals_old
-    if advs.std() > 1e-6:
+    raw_adv_mean = float(advs.mean())
+    raw_adv_std = float(advs.std())
+    if normalize_advantage and advs.std() > 1e-6:
         advs = (advs - advs.mean()) / (advs.std() + 1e-6)
-    else:
+    elif normalize_advantage:
         advs = advs - advs.mean()
+    advs = advs * float(advantage_scale)
 
     metrics = {"pg_loss": 0.0, "v_loss": 0.0, "entropy": 0.0,
                "kl": 0.0, "grad_norm": 0.0, "actor_grad_norm": 0.0,
                "critic_grad_norm": 0.0, "clip_frac": 0.0,
                "adv_mean": float(advs.mean()), "adv_std": float(advs.std()),
+               "raw_adv_mean": raw_adv_mean, "raw_adv_std": raw_adv_std,
                "ret_mean": float(rets.mean()), "ret_std": float(rets.std()),
                "val_mean": float(vals_old.mean()), "ratio_std": 0.0}
     n = len(triples)
@@ -375,7 +384,7 @@ def _ppo_update(actor: v14_core.V14Scorer, critic: V14Critic,
             # Entropy bonus: loss_ent = -beta*H, dL/dlogit_j = beta * p_j * (log p_j + H)
             H = float(-np.sum(probs * np.log(probs + 1e-12)))
             ent_acc += H
-            ent_grad = _ENTROPY_BETA * probs * (np.log(probs + 1e-12) + H)
+            ent_grad = float(entropy_beta) * probs * (np.log(probs + 1e-12) + H)
             grad_logits = grad_logits + ent_grad
 
             # Convert logits grad to scores grad (logits = scores/temp → dScores = dLogits/temp)
@@ -394,7 +403,7 @@ def _ppo_update(actor: v14_core.V14Scorer, critic: V14Critic,
             v_cur, vcache = critic.forward(pooled)
             v_err = v_cur - float(ret)
             v_loss_acc += 0.5 * v_err * v_err
-            grad_v = _VALUE_COEF * v_err / max(1, n)
+            grad_v = float(value_coef) * v_err / max(1, n)
             critic_sample = critic.backward(vcache, float(grad_v))
             for k in critic_grads:
                 critic_grads[k] += critic_sample[k]
@@ -402,7 +411,7 @@ def _ppo_update(actor: v14_core.V14Scorer, critic: V14Critic,
         actor_norm = _global_grad_norm(actor_grads)
         critic_norm = _global_grad_norm(critic_grads)
         all_grads = {**actor_grads, **critic_grads}
-        gn = _clip_grads(all_grads, _GRAD_CLIP)
+        gn = _clip_grads(all_grads, float(grad_clip))
         metrics["grad_norm"] = float(gn)
         metrics["actor_grad_norm"] = float(actor_norm)
         metrics["critic_grad_norm"] = float(critic_norm)
@@ -483,6 +492,12 @@ def main() -> None:
     parser.add_argument("--rank-reward-4p", nargs=4, type=float,
                         default=[1.0, 0.3, -0.3, -0.8],
                         metavar=("R1", "R2", "R3", "R4"))
+    parser.add_argument("--value-coef", type=float, default=_VALUE_COEF)
+    parser.add_argument("--entropy-beta", type=float, default=_ENTROPY_BETA)
+    parser.add_argument("--grad-clip", type=float, default=_GRAD_CLIP)
+    parser.add_argument("--ppo-epochs", type=int, default=_PPO_EPOCHS)
+    parser.add_argument("--advantage-scale", type=float, default=1.0)
+    parser.add_argument("--no-adv-norm", action="store_true")
     parser.add_argument("--no-bc", action="store_true")
     parser.add_argument("--diagnostic-only", action="store_true")
     parser.add_argument("--opponents", nargs="*", default=[
@@ -606,7 +621,17 @@ def main() -> None:
                         rec["noop_bias_idx"], rec["temperature"],
                     ))
 
-            metrics = _ppo_update(actor, critic, triples, _PPO_EPOCHS)
+            metrics = _ppo_update(
+                actor,
+                critic,
+                triples,
+                max(1, int(args.ppo_epochs)),
+                entropy_beta=float(args.entropy_beta),
+                value_coef=float(args.value_coef),
+                grad_clip=float(args.grad_clip),
+                normalize_advantage=not bool(args.no_adv_norm),
+                advantage_scale=float(args.advantage_scale),
+            )
             actor_grads = metrics.pop("_actor_grads", None)
             critic_grads = metrics.pop("_critic_grads", None)
 
@@ -642,7 +667,7 @@ def main() -> None:
             # Apply optimizer step (grads were already global-norm-clipped on actor+critic together,
             # but BC was added after. Re-clip combined.)
             if actor_grads is not None:
-                _clip_grads(actor_grads, _GRAD_CLIP)
+                _clip_grads(actor_grads, float(args.grad_clip))
                 aparams = actor.to_dict()
                 if not args.diagnostic_only:
                     actor_opt.step(aparams, actor_grads)
@@ -650,7 +675,7 @@ def main() -> None:
                 actor.W2, actor.b2 = aparams["W2"], aparams["b2"]
                 actor.W3, actor.b3 = aparams["W3"], aparams["b3"]
             if critic_grads is not None:
-                _clip_grads(critic_grads, _GRAD_CLIP)
+                _clip_grads(critic_grads, float(args.grad_clip))
                 cparams = critic.to_dict()
                 if not args.diagnostic_only:
                     critic_opt.step(cparams, critic_grads)
@@ -703,6 +728,7 @@ def main() -> None:
                 f"clip={metrics['clip_frac']:.2f} gn={metrics['grad_norm']:.2f} "
                 f"agn={metrics['actor_grad_norm']:.2f} cgn={metrics['critic_grad_norm']:.2f} "
                 f"adv={metrics['adv_mean']:+.3f}/{metrics['adv_std']:.3f} "
+                f"rawadv={metrics.get('raw_adv_mean', 0.0):+.3f}/{metrics.get('raw_adv_std', 0.0):.3f} "
                 f"ret={metrics['ret_mean']:+.3f}/{metrics['ret_std']:.3f} "
                 f"bc={bc_w:.2f}/{(bc_loss_acc/max(1,bc_used)):.3f}/{(bc_correct/max(1,bc_used)):.2f} "
                 f"lr={lr_t:.1e} T={temp_t:.2f}",

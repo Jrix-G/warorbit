@@ -125,8 +125,8 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "dense_score_coef": 0.10,
         "dense_survival_coef": 0.05,
         "dense_reward_clip": 0.40,
-        "train_target_do_nothing_rate": 0.12,
-        "train_noop_penalty_coef": 0.0,
+        "train_target_do_nothing_rate": 0.20,
+        "train_noop_penalty_coef": 0.25,
         "train_action_bonus_coef": 0.28,
         "train_ships_sent_bonus_coef": 0.18,
         "train_activity_reward_clip": 0.55,
@@ -135,13 +135,12 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "temperature_end": 0.18,
         "temperature_decay_updates": args.temperature_decay_updates,
         # Pool
-        "stage1_pool": ["random", "greedy", "greedy", "starter", "starter", "starter", "starter", "distance", "distance"],
-        "eval_opponents": ["random", "greedy", "starter", "distance"],
+        "stage1_pool": ["random", "greedy", "starter"],
+        "eval_opponents": ["random", "greedy", "starter"],
+        "simple_2p_only": True,
         "league_archive_size": args.league_archive_size,
         "curriculum_tiers": [
-            {"name": "basic", "opponents": ["random", "greedy"]},
-            {"name": "starter_distance", "opponents": ["starter", "distance"]},
-            {"name": "mixed_heuristic", "opponents": ["random", "greedy", "starter", "distance"]},
+            {"name": "simple_2p", "opponents": ["random", "greedy", "starter"]},
         ],
         "curriculum_tier": 0,
         # GPU
@@ -437,13 +436,15 @@ def main() -> None:
     tiers = list(cfg.get("curriculum_tiers", []))
     tier_idx = max(0, min(int(cfg.get("curriculum_tier", 0)), len(tiers) - 1)) if tiers else 0
     pool = list(tiers[tier_idx].get("opponents", cfg["stage1_pool"])) if tiers else list(cfg["stage1_pool"])
-    if best_validated_path.exists():
-        pool.append(f"checkpoint:{best_validated_path}")
-    pool.extend(_checkpoint_opponent_paths(run_dir, int(cfg.get("league_archive_size", 0))))
-    _log(log_path, f"curriculum_tier={tiers[tier_idx].get('name', 'stage1') if tiers else 'stage1'} train_pool={pool}")
     n_players = int(cfg["n_players"])
     if n_players < 2:
         raise ValueError(f"n_players must be >= 2, got {n_players}")
+    use_simple_2p_only = bool(cfg.get("simple_2p_only", False)) and n_players == 2
+    if best_validated_path.exists() and not use_simple_2p_only:
+        pool.append(f"checkpoint:{best_validated_path}")
+    if not use_simple_2p_only:
+        pool.extend(_checkpoint_opponent_paths(run_dir, int(cfg.get("league_archive_size", 0))))
+    _log(log_path, f"curriculum_tier={tiers[tier_idx].get('name', 'stage1') if tiers else 'stage1'} train_pool={pool}")
 
     # Start inference server
     initial_state = {k: v.cpu().numpy() for k, v in model.state_dict().items()}
@@ -535,6 +536,10 @@ def main() -> None:
                     f"entropy={metrics.get('entropy', 0):.3f} "
                     f"kl={metrics.get('approx_kl', 0):.4f} "
                     f"clip_frac={metrics.get('clip_frac', 0):.3f} "
+                    f"ratio_std={metrics.get('ratio_std', 0):.6f} "
+                    f"ratio_range=[{metrics.get('ratio_min', 0):.4f},{metrics.get('ratio_max', 0):.4f}] "
+                    f"logr_max={metrics.get('log_ratio_abs_max', 0):.6f} "
+                    f"param_delta={metrics.get('param_relative_delta', 0):.8f} "
                     f"grad_norm={metrics.get('grad_norm', 0):.3f} "
                     f"reward={metrics.get('mean_reward', 0):.3f} "
                     f"terminal={metrics.get('terminal_reward_mean', 0):.3f} "
@@ -571,9 +576,11 @@ def main() -> None:
             if total_episodes - last_eval_episode >= cfg["eval_every"]:
                 last_eval_episode = total_episodes
                 current_lr = float(optimizer.param_groups[0]["lr"])
-                eval_pool = list(cfg.get("eval_opponents", [])) + _checkpoint_opponent_paths(
-                    run_dir, int(cfg.get("league_archive_size", 0))
-                )
+                eval_pool = list(cfg.get("eval_opponents", []))
+                if not use_simple_2p_only:
+                    eval_pool += _checkpoint_opponent_paths(
+                        run_dir, int(cfg.get("league_archive_size", 0))
+                    )
                 save_checkpoint(
                     candidate_path,
                     _model_state_np(model),
@@ -662,7 +669,7 @@ def main() -> None:
                         model = model.to(device)
                         model.eval()
                         new_lr = max(float(cfg["min_lr"]), current_lr * float(cfg["rollback_lr_mult"]))
-                        _set_optimizer_lr(optimizer, new_lr)
+                        optimizer = torch.optim.Adam(model.parameters(), lr=new_lr)
                         policy_version += 1
                         try:
                             model_update_queue.put_nowait({"state": _model_state_np(model), "policy_version": policy_version})

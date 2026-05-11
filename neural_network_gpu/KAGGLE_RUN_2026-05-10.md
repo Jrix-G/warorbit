@@ -17,7 +17,7 @@ export RESUME=/kaggle/input/warorbit-checkpoints/best_validated.npz
 
 ## Recommended 2-player run
 
-This preset spends the Kaggle session on training, keeps eval moderate, and writes outputs to `/kaggle/working/runs`.
+This preset spends the Kaggle session on 2-player training against only three simple agents: `random`, `greedy`, and `starter`. Checkpoint/archive league opponents are disabled for 2p by `simple_2p_only`.
 
 ```bash
 cd /kaggle/working/warorbit
@@ -52,6 +52,8 @@ Good signs:
 - `eps_per_hour` is much higher than the old run.
 - `grad_norm` is not near zero all the time.
 - `policy_loss`, `value_loss`, and `entropy` are finite.
-- `kl` eventually rises above exact zero, while `clip_frac` remains below about `0.30`.
+- `param_delta` is above zero after each train step; this proves the optimizer moved weights.
+- `ratio_std`, `ratio_range`, or `logr_max` rise above exact zero even when rounded `kl` and `clip_frac` are still `0.0000`.
+- `clip_frac` remains below about `0.30`; exact zero is acceptable only if the ratio diagnostics and `param_delta` show movement.
 
 After the run, download or save `/kaggle/working/runs/<run_name>/best_validated.npz`, `latest.npz`, `gpu_train.log`, `eval_history.jsonl`, and `result.json`.

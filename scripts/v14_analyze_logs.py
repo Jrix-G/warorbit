@@ -19,6 +19,7 @@ KEYS = (
     "agn",
     "cgn",
     "adv",
+    "rawadv",
     "ret",
     "bc",
     "lr",

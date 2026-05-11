@@ -41,6 +41,7 @@ _4P_MIN_SEND = 5
 _FOCUS_SEND_RATIO = 0.65
 # Fraction of source ships sent in opportunistic_expand
 _OPP_SEND_RATIO = 0.40
+_OPENING_4P_TURNS = 70
 
 
 def _get(obs: Any, key: str, default: Any = None) -> Any:
@@ -337,6 +338,42 @@ def _gen_4p_candidates(
         return []
 
     my_total = sum(float(p[5]) for p in my_planets)
+    candidates: list[dict] = []
+
+    # opening_expand: V13/V12 often refuse close neutrals when the home planet
+    # has only 10 ships. In 4p that creates fatal inactivity or early enemy hits.
+    if step < _OPENING_4P_TURNS:
+        neutrals = [p for p in planets if int(p[1]) == -1]
+        opening_options: list[tuple[float, list, list, int, float]] = []
+        for src in my_planets:
+            src_ships = int(float(src[5]))
+            if src_ships < 7:
+                continue
+            for tgt in neutrals:
+                d = _dist(src, tgt)
+                if d > 58.0 and float(tgt[6]) < 3.0:
+                    continue
+                defenders = float(tgt[5])
+                prod = float(tgt[6])
+                needed = int(math.ceil(defenders + max(1.0, prod)))
+                if needed > src_ships:
+                    if defenders <= src_ships:
+                        needed = src_ships
+                    else:
+                        continue
+                angle = math.atan2(float(tgt[3]) - float(src[3]), float(tgt[2]) - float(src[2]))
+                roi = (2.5 * prod + max(0.0, 18.0 - defenders)) / max(8.0, d)
+                opening_options.append((roi, src, tgt, needed, d))
+        opening_options.sort(key=lambda item: item[0], reverse=True)
+        for roi, src, tgt, needed, d in opening_options[:4]:
+            angle = math.atan2(float(tgt[3]) - float(src[3]), float(tgt[2]) - float(src[2]))
+            candidates.append({
+                "type": "expand",
+                "moves": [[int(src[0]), float(angle), int(needed)]],
+                "score_hint": float(roi),
+                "sources": {int(src[0])},
+                "features": np.zeros(bot_v13.FEATURE_DIM, dtype=np.float32),
+            })
 
     # Rank enemies by total force (planet ships + fleet ships)
     enemy_data: list[tuple[float, int, list]] = []
@@ -347,11 +384,10 @@ def _gen_4p_candidates(
         enemy_data.append((strength, eid, ep))
     enemy_data.sort()  # ascending: weakest first
 
-    candidates: list[dict] = []
-
     # focus_finish: coordinate multi-source strike on weakest enemy's planets
     weakest_strength, weakest_id, weakest_planets = enemy_data[0]
-    if weakest_planets and my_total > weakest_strength * 0.9:
+    allow_finish = step >= _OPENING_4P_TURNS or weakest_strength < my_total * 0.55
+    if allow_finish and weakest_planets and my_total > weakest_strength * 0.9:
         # Sort sources by available ships descending
         srcs_sorted = sorted(my_planets, key=lambda p: -float(p[5]))
         for tgt in weakest_planets[:3]:
