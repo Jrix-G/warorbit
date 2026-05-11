@@ -36,12 +36,12 @@ HIDDEN2 = 64
 MAX_ACTIONS = 8
 
 # Minimum ships to bother sending in 4p political candidates
-_4P_MIN_SEND = 5
+_4P_MIN_SEND = 4
 # Fraction of source ships sent in focus_finish
-_FOCUS_SEND_RATIO = 0.65
+_FOCUS_SEND_RATIO = 0.70
 # Fraction of source ships sent in opportunistic_expand
-_OPP_SEND_RATIO = 0.40
-_OPENING_4P_TURNS = 70
+_OPP_SEND_RATIO = 0.45
+_OPENING_4P_TURNS = 50
 
 
 def _get(obs: Any, key: str, default: Any = None) -> Any:
@@ -187,8 +187,10 @@ def _inter_enemy_fight(planets: list, fleets: list, me: int) -> float:
 _TYPE_SLOT: dict[str, int] = {
     "attack": 0,
     "focus_finish": 0,
+    "pressure": 0,
     "expand": 1,
     "opportunistic_expand": 1,
+    "frontier_expand": 1,
     "defense": 2,
     "staging": 3,
     "noop": 4,
@@ -328,7 +330,7 @@ def _gen_4p_candidates(
     fleets: list,
     step: int,
 ) -> list[dict]:
-    """Political candidates for 4p: focus_finish on weakest enemy, opportunistic_expand."""
+    """Political candidates for 4p: pressure weakest enemies and take nearby neutrals early."""
     enemy_ids = {int(p[1]) for p in planets if int(p[1]) not in (-1, me)}
     if len(enemy_ids) < 2:
         return []
@@ -338,6 +340,17 @@ def _gen_4p_candidates(
         return []
 
     my_total = sum(float(p[5]) for p in my_planets)
+    total_enemy_strength = 0.0
+    enemy_data: list[tuple[float, int, list, list]] = []
+    for eid in enemy_ids:
+        ep = [p for p in planets if int(p[1]) == eid]
+        ef = [f for f in fleets if int(f[1]) == eid]
+        strength = sum(float(p[5]) for p in ep) + sum(float(f[6]) for f in ef)
+        total_enemy_strength += strength
+        enemy_data.append((strength, eid, ep, ef))
+    enemy_data.sort()
+    weakest_strength, weakest_id, weakest_planets, _ = enemy_data[0]
+    strongest_strength, strongest_id, strongest_planets, _ = enemy_data[-1]
     candidates: list[dict] = []
 
     # opening_expand: V13/V12 often refuse close neutrals when the home planet
@@ -362,44 +375,40 @@ def _gen_4p_candidates(
                     else:
                         continue
                 angle = math.atan2(float(tgt[3]) - float(src[3]), float(tgt[2]) - float(src[2]))
-                roi = (2.5 * prod + max(0.0, 18.0 - defenders)) / max(8.0, d)
+                roi = (3.0 * prod + max(0.0, 18.0 - defenders)) / max(8.0, d)
                 opening_options.append((roi, src, tgt, needed, d))
         opening_options.sort(key=lambda item: item[0], reverse=True)
-        for roi, src, tgt, needed, d in opening_options[:4]:
+        for roi, src, tgt, needed, d in opening_options[:6]:
             angle = math.atan2(float(tgt[3]) - float(src[3]), float(tgt[2]) - float(src[2]))
             candidates.append({
-                "type": "expand",
+                "type": "frontier_expand",
                 "moves": [[int(src[0]), float(angle), int(needed)]],
                 "score_hint": float(roi),
                 "sources": {int(src[0])},
                 "features": np.zeros(bot_v13.FEATURE_DIM, dtype=np.float32),
             })
 
-    # Rank enemies by total force (planet ships + fleet ships)
-    enemy_data: list[tuple[float, int, list]] = []
-    for eid in enemy_ids:
-        ep = [p for p in planets if int(p[1]) == eid]
-        ef = [f for f in fleets if int(f[1]) == eid]
-        strength = sum(float(p[5]) for p in ep) + sum(float(f[6]) for f in ef)
-        enemy_data.append((strength, eid, ep))
-    enemy_data.sort()  # ascending: weakest first
-
-    # focus_finish: coordinate multi-source strike on weakest enemy's planets
-    weakest_strength, weakest_id, weakest_planets = enemy_data[0]
-    allow_finish = step >= _OPENING_4P_TURNS or weakest_strength < my_total * 0.55
-    if allow_finish and weakest_planets and my_total > weakest_strength * 0.9:
+    # focus_finish: coordinate multi-source strike on the weakest enemy once the
+    # board is no longer opening-only, or when we are already clearly stronger.
+    allow_finish = (
+        step >= max(40, _OPENING_4P_TURNS - 10)
+        or weakest_strength < my_total * 0.80
+        or my_total > total_enemy_strength * 0.60
+    )
+    if allow_finish and weakest_planets and my_total > weakest_strength * 0.75:
         # Sort sources by available ships descending
         srcs_sorted = sorted(my_planets, key=lambda p: -float(p[5]))
-        for tgt in weakest_planets[:3]:
+        for tgt in weakest_planets[:4]:
             tx, ty = float(tgt[2]), float(tgt[3])
             moves: list[list] = []
-            for src in srcs_sorted[:6]:
+            for src in srcs_sorted[:8]:
                 ships_avail = int(float(src[5]) * _FOCUS_SEND_RATIO)
                 if ships_avail < _4P_MIN_SEND:
                     continue
                 angle = math.atan2(ty - float(src[3]), tx - float(src[2]))
                 moves.append([int(src[0]), float(angle), ships_avail])
-            if len(moves) >= 1:
+            total_sent = sum(m[2] for m in moves)
+            if len(moves) >= 1 and total_sent >= float(tgt[5]) + max(4.0, float(tgt[6]) * 1.1):
                 total_sent = sum(m[2] for m in moves)
                 score_hint = float(tgt[6]) / max(1.0, float(tgt[5]) + 1.0) * min(2.0, total_sent / max(1.0, float(tgt[5])))
                 candidates.append({
@@ -407,6 +416,45 @@ def _gen_4p_candidates(
                     "moves": moves,
                     "score_hint": score_hint,
                     "sources": {int(m[0]) for m in moves},
+                    "features": np.zeros(bot_v13.FEATURE_DIM, dtype=np.float32),
+                })
+
+    # pressure: single-source strikes on weak enemy targets that can actually land.
+    if step < 120 or my_total > total_enemy_strength * 0.55:
+        for strength, eid, ep, _ in enemy_data:
+            if not ep:
+                continue
+            # Pressure the weakest and strongest enemy, but only if the target is viable.
+            for tgt in sorted(ep, key=lambda p: (float(p[5]), -float(p[6])))[:2]:
+                best_src = max(
+                    my_planets,
+                    key=lambda src: float(src[5]) - 0.75 * _dist(src, tgt),
+                )
+                src_ships = int(float(best_src[5]))
+                if src_ships < 8:
+                    continue
+                d = _dist(best_src, tgt)
+                defenders = float(tgt[5])
+                prod = float(tgt[6])
+                needed = int(math.ceil(defenders + max(2.0, 1.0 + prod)))
+                if needed > src_ships:
+                    continue
+                send = max(_4P_MIN_SEND, min(src_ships, int(math.ceil(needed * 1.05))))
+                if send > src_ships or send < _4P_MIN_SEND:
+                    continue
+                angle = math.atan2(float(tgt[3]) - float(best_src[3]), float(tgt[2]) - float(best_src[2]))
+                pressure_hint = (3.5 * prod + max(0.0, 20.0 - defenders)) / max(7.0, d)
+                if eid == weakest_id:
+                    pressure_hint += 1.5
+                if eid == strongest_id and my_total > total_enemy_strength * 0.50:
+                    pressure_hint += 0.8
+                if step < 55:
+                    pressure_hint += 0.7
+                candidates.append({
+                    "type": "pressure",
+                    "moves": [[int(best_src[0]), float(angle), int(send)]],
+                    "score_hint": float(pressure_hint),
+                    "sources": {int(best_src[0])},
                     "features": np.zeros(bot_v13.FEATURE_DIM, dtype=np.float32),
                 })
 
@@ -422,7 +470,7 @@ def _gen_4p_candidates(
             inter_fight = True
             break
 
-    if inter_fight:
+    if inter_fight or step < 90 or len(my_planets) <= 5:
         neutrals = [p for p in planets if int(p[1]) == -1]
         if neutrals and my_planets:
             # Precompute centroid of my empire for proximity sort
@@ -435,7 +483,7 @@ def _gen_4p_candidates(
             for tgt in neutrals_sorted[:3]:
                 tx, ty = float(tgt[2]), float(tgt[3])
                 src = min(my_planets, key=lambda p: math.hypot(float(p[2]) - tx, float(p[3]) - ty))
-                ships_avail = int(float(src[5]) * _OPP_SEND_RATIO)
+                ships_avail = int(float(src[5]) * (_OPP_SEND_RATIO if inter_fight else 0.42))
                 if ships_avail < _4P_MIN_SEND:
                     continue
                 needed = int(float(tgt[5])) + _4P_MIN_SEND

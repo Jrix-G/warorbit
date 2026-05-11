@@ -477,8 +477,8 @@ def main() -> None:
                         default=Path("evaluations/critic_v14_v2.npz"))
     parser.add_argument("--bc-data", type=Path,
                         default=Path("replay_dataset/v14_bc_top1.npz"))
-    parser.add_argument("--bc-weight-4p", type=float, default=0.15)
-    parser.add_argument("--bc-weight-2p", type=float, default=0.40)
+    parser.add_argument("--bc-weight-4p", type=float, default=0.25)
+    parser.add_argument("--bc-weight-2p", type=float, default=0.0)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--lr", type=float, default=5e-5)
@@ -486,7 +486,7 @@ def main() -> None:
     parser.add_argument("--max-steps", type=int, default=220)
     parser.add_argument("--temperature-start", type=float, default=1.1)
     parser.add_argument("--temperature-end", type=float, default=0.7)
-    parser.add_argument("--modes", nargs="*", default=["4p", "4p", "4p", "2p"])
+    parser.add_argument("--modes", nargs="*", default=["4p", "4p", "4p", "4p"])
     parser.add_argument("--selfplay-pool", type=int, default=8)
     parser.add_argument("--selfplay-every", type=int, default=3)
     parser.add_argument("--rank-reward-4p", nargs=4, type=float,

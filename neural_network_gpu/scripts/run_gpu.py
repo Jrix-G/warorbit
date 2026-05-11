@@ -7,6 +7,7 @@ import math
 import multiprocessing as mp
 import sys
 import time
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from queue import Empty
@@ -56,6 +57,128 @@ def _set_optimizer_lr(optimizer: torch.optim.Optimizer, lr: float) -> None:
         group["lr"] = float(lr)
 
 
+def _clamp_float(value: float, low: float, high: float) -> float:
+    return max(low, min(high, float(value)))
+
+
+def _auto_tune_training(
+    cfg: Dict[str, Any],
+    optimizer: torch.optim.Optimizer,
+    train_history: List[Dict[str, float]],
+    metrics: Dict[str, float],
+    mission_counts: Dict[str, int],
+) -> Dict[str, Any]:
+    if not bool(cfg.get("auto_tune_training", False)):
+        return {}
+
+    patch: Dict[str, Any] = {}
+    reasons: List[str] = []
+    lr = float(optimizer.param_groups[0]["lr"])
+    recent = train_history[-5:] or [metrics]
+    entropy = float(np.mean([row.get("entropy", 0.0) for row in recent]))
+    clip_frac = float(np.mean([row.get("clip_frac", 0.0) for row in recent]))
+    approx_kl = float(np.mean([row.get("approx_kl", 0.0) for row in recent]))
+    ratio_std = float(np.mean([row.get("ratio_std", 0.0) for row in recent]))
+    param_delta = float(np.mean([row.get("param_relative_delta", 0.0) for row in recent]))
+    log_ratio_abs = float(np.mean([row.get("log_ratio_abs_max", 0.0) for row in recent]))
+    total_missions = max(1, sum(int(v) for v in mission_counts.values()))
+    noop_rate = float(mission_counts.get("do_nothing", 0)) / float(total_missions)
+
+    min_lr = float(cfg.get("min_lr", 1e-6))
+    max_lr = float(cfg.get("max_lr", 2e-4))
+    new_lr = lr
+
+    enough_history = len(train_history) >= 3
+    if enough_history and clip_frac < 0.003 and ratio_std < 0.025 and param_delta < 0.018:
+        new_lr = min(max_lr, new_lr * 1.06)
+        reasons.append("update_too_small")
+    if clip_frac > 0.075 or approx_kl > 0.010 or log_ratio_abs > 1.25:
+        new_lr = max(min_lr, new_lr * 0.90)
+        reasons.append("update_too_large")
+    if abs(new_lr - lr) > 1e-12:
+        _set_optimizer_lr(optimizer, new_lr)
+        patch["learning_rate"] = new_lr
+
+    if enough_history and entropy > 0.0 and entropy < 1.70:
+        patch["entropy_coef_start"] = _clamp_float(float(cfg.get("entropy_coef_start", 0.10)) * 1.05, 0.04, 0.18)
+        patch["temperature_end"] = _clamp_float(float(cfg.get("temperature_end", 0.18)) * 1.05, 0.18, 0.65)
+        patch["temperature_start"] = _clamp_float(float(cfg.get("temperature_start", 1.05)) * 1.02, 0.75, 1.35)
+        reasons.append("entropy_low")
+    elif enough_history and entropy > 2.90 and clip_frac > 0.020:
+        patch["entropy_coef_start"] = _clamp_float(float(cfg.get("entropy_coef_start", 0.10)) * 0.96, 0.04, 0.18)
+        patch["temperature_start"] = _clamp_float(float(cfg.get("temperature_start", 1.05)) * 0.98, 0.75, 1.35)
+        reasons.append("entropy_high")
+
+    target_noop = float(cfg.get("train_target_do_nothing_rate", 0.18))
+    avg_noop_rate = float(np.mean([row.get("noop_rate", noop_rate) for row in recent]))
+    if enough_history and avg_noop_rate > target_noop + 0.25:
+        patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.40)) * 1.04, 0.10, 0.90)
+        patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.03, 0.05, 0.55)
+        patch["train_ships_sent_bonus_coef"] = _clamp_float(float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.03, 0.03, 0.40)
+        reasons.append("noop_high")
+
+    if patch:
+        cfg.update(patch)
+        patch["auto_tune_reasons"] = ",".join(reasons)
+        patch["auto_tune_noop_rate"] = avg_noop_rate
+    return patch
+
+
+def _weighted_pool_from_counts(counts: Dict[str, int]) -> List[str]:
+    pool: List[str] = []
+    for name in ("random", "greedy", "starter"):
+        pool.extend([name] * max(0, int(counts.get(name, 0))))
+    return pool or ["random", "greedy", "starter"]
+
+
+def _auto_tune_opponent_mix(
+    cfg: Dict[str, Any],
+    eval_history: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    if not bool(cfg.get("auto_tune_training", False)) or not eval_history:
+        return {}
+
+    current_counts = dict(cfg.get("opponent_mix_counts", {"random": 6, "greedy": 13, "starter": 1}))
+    latest = eval_history[-1]
+    by_opp = latest.get("by_opponent", {})
+    wr = {name: float(by_opp.get(name, {}).get("winrate", 0.0)) for name in ("random", "greedy", "starter")}
+    noop = float(latest.get("eval_do_nothing_rate", 1.0))
+
+    new_counts = dict(current_counts)
+    reasons: List[str] = []
+
+    if wr["random"] >= 0.70 and wr["greedy"] < 0.55:
+        new_counts = {"random": 4, "greedy": 15, "starter": 1}
+        reasons.append("focus_greedy")
+    elif wr["random"] >= 0.70 and wr["greedy"] >= 0.60 and wr["starter"] < 0.35:
+        new_counts = {"random": 4, "greedy": 14, "starter": 2}
+        reasons.append("introduce_starter")
+    elif wr["random"] >= 0.75 and wr["greedy"] >= 0.70 and wr["starter"] >= 0.35:
+        new_counts = {"random": 3, "greedy": 13, "starter": 4}
+        reasons.append("starter_ramp")
+    elif wr["random"] < 0.45:
+        new_counts = {"random": 8, "greedy": 11, "starter": 1}
+        reasons.append("repair_random")
+
+    if noop > float(cfg.get("max_eval_do_nothing_rate", 0.55)):
+        new_counts["starter"] = min(new_counts.get("starter", 1), 2)
+        reasons.append("hold_starter_noop_high")
+
+    if new_counts == current_counts:
+        return {}
+
+    pool = _weighted_pool_from_counts(new_counts)
+    cfg["opponent_mix_counts"] = new_counts
+    cfg["stage1_pool"] = pool
+    if cfg.get("curriculum_tiers"):
+        cfg["curriculum_tiers"][0]["opponents"] = pool
+    return {
+        "opponent_mix_counts": new_counts,
+        "stage1_pool": pool,
+        "auto_tune_reasons": ",".join(reasons),
+    }
+
+
 def _wilson_ci(wins: int, games: int, z: float = 1.96) -> tuple[float, float]:
     if games <= 0:
         return 0.0, 0.0
@@ -84,14 +207,20 @@ def _checkpoint_opponent_paths(run_dir: Path, max_items: int) -> List[str]:
     return [f"checkpoint:{path}" for path in paths[-max_items:]]
 
 
-def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
-    simple_opponents = [
+def _parse_opponent_list(raw_value: str, fallback: List[str]) -> List[str]:
+    opponents = [
         item.strip()
-        for item in str(args.simple_opponents).split(",")
+        for item in str(raw_value).split(",")
         if item.strip()
     ]
-    if not simple_opponents:
-        simple_opponents = ["random", "greedy", "starter"]
+    return opponents or list(fallback)
+
+
+def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
+    default_opponents = ["random", "greedy", "starter"]
+    simple_opponents = _parse_opponent_list(args.simple_opponents, default_opponents)
+    eval_opponents = _parse_opponent_list(args.eval_opponents, list(dict.fromkeys(simple_opponents)))
+    opponent_mix_counts = {name: simple_opponents.count(name) for name in ("random", "greedy", "starter")}
     return {
         # Game
         "game_engine": "official_fast",
@@ -144,7 +273,8 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "temperature_decay_updates": args.temperature_decay_updates,
         # Pool
         "stage1_pool": simple_opponents,
-        "eval_opponents": simple_opponents,
+        "eval_opponents": eval_opponents,
+        "opponent_mix_counts": opponent_mix_counts,
         "simple_2p_only": True,
         "league_archive_size": args.league_archive_size,
         "curriculum_tiers": [
@@ -175,6 +305,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "min_eval_avg_ships_sent": args.min_eval_avg_ships_sent,
         "max_opponent_regression": args.max_opponent_regression,
         "min_ci_promotion_games": args.min_ci_promotion_games,
+        "auto_tune_training": bool(args.auto_tune_training),
     }
 
 
@@ -394,7 +525,9 @@ def main() -> None:
     parser.add_argument("--min-ci-promotion-games", type=int, default=96)
     parser.add_argument("--league-archive-size", type=int, default=4)
     parser.add_argument("--simple-opponents", default="random,greedy,starter")
+    parser.add_argument("--eval-opponents", default="")
     parser.add_argument("--disable-support-actions", action="store_true")
+    parser.add_argument("--auto-tune-training", action="store_true")
     parser.add_argument("--temperature-decay-updates", type=int, default=200)
     parser.add_argument("--resume-checkpoint", default="")
     parser.add_argument("--run-name", default=None)
@@ -409,6 +542,25 @@ def main() -> None:
     resume_meta: Dict[str, Any] = {}
     if args.resume_checkpoint and Path(args.resume_checkpoint).exists():
         _, resume_meta = load_checkpoint(args.resume_checkpoint)
+        adaptive_config = resume_meta.get("adaptive_config", {})
+        if isinstance(adaptive_config, dict):
+            for key in (
+                "learning_rate",
+                "entropy_coef_start",
+                "temperature_start",
+                "temperature_end",
+                "train_noop_penalty_coef",
+                "train_action_bonus_coef",
+                "train_ships_sent_bonus_coef",
+            ):
+                if key in adaptive_config:
+                    cfg[key] = adaptive_config[key]
+            mix_counts = adaptive_config.get("opponent_mix_counts")
+            if isinstance(mix_counts, dict):
+                cfg["opponent_mix_counts"] = {str(k): int(v) for k, v in mix_counts.items()}
+                cfg["stage1_pool"] = _weighted_pool_from_counts(cfg["opponent_mix_counts"])
+                if cfg.get("curriculum_tiers"):
+                    cfg["curriculum_tiers"][0]["opponents"] = list(cfg["stage1_pool"])
 
     run_name = args.run_name or (Path(args.resume_checkpoint).resolve().parent.name if args.resume_checkpoint and Path(args.resume_checkpoint).exists() else _run_tag())
 
@@ -458,6 +610,7 @@ def main() -> None:
     # Queues
     obs_queue: mp.Queue = mp.Queue(maxsize=cfg["n_workers"] * 8)
     action_queues: Dict[int, mp.Queue] = {i: mp.Queue(maxsize=8) for i in range(cfg["n_workers"])}
+    control_queues: Dict[int, mp.Queue] = {i: mp.Queue(maxsize=4) for i in range(cfg["n_workers"])}
     result_queue: mp.Queue = mp.Queue(maxsize=cfg["n_workers"] * 4)
     model_update_queue: mp.Queue = mp.Queue(maxsize=2)
     stop_event: mp.Event = mp.Event()
@@ -498,7 +651,7 @@ def main() -> None:
             args=(
                 wid, cfg, pool, n_players,
                 obs_queue, action_queues[wid],
-                result_queue, stop_event,
+                result_queue, control_queues[wid], stop_event,
                 int(cfg["seed"]) + wid * 1000,
             ),
             daemon=True,
@@ -520,6 +673,8 @@ def main() -> None:
     pending_episodes: List[Dict[str, Any]] = []
     policy_version = 0
     last_train_metrics: Dict[str, float] = {}
+    train_history = deque(maxlen=12)
+    eval_history = deque(maxlen=8)
     consecutive_regressions = 0
 
     try:
@@ -551,6 +706,25 @@ def main() -> None:
                 for ep in pending_episodes:
                     for key, value in ep.get("action_metrics", {}).get("mission_counts", {}).items():
                         mission_counts[key] = mission_counts.get(key, 0) + int(value)
+                total_missions = max(1, sum(int(v) for v in mission_counts.values()))
+                train_record = dict(metrics)
+                train_record["noop_rate"] = float(mission_counts.get("do_nothing", 0)) / float(total_missions)
+                train_record["train_winrate"] = float(np.mean(wins)) if wins else 0.0
+                train_history.append(train_record)
+                config_patch = _auto_tune_training(cfg, optimizer, list(train_history), metrics, mission_counts)
+                if config_patch:
+                    _log(
+                        log_path,
+                        "AUTO_TUNE "
+                        f"reasons={config_patch.get('auto_tune_reasons', '')} "
+                        f"noop={config_patch.get('auto_tune_noop_rate', 0.0):.3f} "
+                        f"lr={float(optimizer.param_groups[0]['lr']):.8f} "
+                        f"entropy_coef={float(cfg.get('entropy_coef_start', 0.0)):.4f} "
+                        f"temp=[{float(cfg.get('temperature_start', 0.0)):.3f},{float(cfg.get('temperature_end', 0.0)):.3f}] "
+                        f"noop_penalty={float(cfg.get('train_noop_penalty_coef', 0.0)):.3f} "
+                        f"action_bonus={float(cfg.get('train_action_bonus_coef', 0.0)):.3f} "
+                        f"ship_bonus={float(cfg.get('train_ships_sent_bonus_coef', 0.0)):.3f}",
+                    )
                 _log(
                     log_path,
                     f"train episodes={total_episodes} elapsed={elapsed:.1f}m "
@@ -580,11 +754,22 @@ def main() -> None:
                     f"baseline={baseline:.3f}",
                 )
                 # Push updated weights to inference server
-                new_state = {"state": _model_state_np(model), "policy_version": policy_version}
+                new_state = {
+                    "state": _model_state_np(model),
+                    "policy_version": policy_version,
+                    "config_patch": config_patch,
+                }
                 try:
                     model_update_queue.put_nowait(new_state)
                 except Exception:
                     pass
+                if config_patch:
+                    control_msg = {"config_patch": dict(config_patch)}
+                    for queue in control_queues.values():
+                        try:
+                            queue.put_nowait(control_msg)
+                        except Exception:
+                            pass
 
                 save_checkpoint(
                     latest_path,
@@ -597,6 +782,16 @@ def main() -> None:
                         "run_name": run_name,
                         "policy_version": policy_version,
                         "train_metrics": metrics,
+                        "adaptive_config": {
+                            "learning_rate": float(optimizer.param_groups[0]["lr"]),
+                            "entropy_coef_start": float(cfg.get("entropy_coef_start", 0.0)),
+                            "temperature_start": float(cfg.get("temperature_start", 0.0)),
+                            "temperature_end": float(cfg.get("temperature_end", 0.0)),
+                            "train_noop_penalty_coef": float(cfg.get("train_noop_penalty_coef", 0.0)),
+                            "train_action_bonus_coef": float(cfg.get("train_action_bonus_coef", 0.0)),
+                            "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
+                            "opponent_mix_counts": dict(cfg.get("opponent_mix_counts", {})),
+                        },
                     },
                 )
                 pending_episodes = []
@@ -636,6 +831,24 @@ def main() -> None:
                     train_metrics=last_train_metrics,
                     progress_log_path=log_path,
                 )
+                eval_history.append(eval_result)
+                mix_patch = _auto_tune_opponent_mix(cfg, list(eval_history))
+                if mix_patch:
+                    pool = list(mix_patch["stage1_pool"])
+                    control_msg = {"pool": pool}
+                    for queue in control_queues.values():
+                        try:
+                            queue.put_nowait(control_msg)
+                        except Exception:
+                            pass
+                    _log(
+                        log_path,
+                        "AUTO_MIX "
+                        f"reasons={mix_patch.get('auto_tune_reasons', '')} "
+                        f"counts={mix_patch.get('opponent_mix_counts', {})} "
+                        f"pool={pool}",
+                    )
+                    save_json(run_dir / "config.json", cfg)
                 best_model = _load_model_from_checkpoint(best_validated_path, cfg, device)
                 best_eval = _evaluate(
                     best_model, cfg, device,
@@ -674,6 +887,16 @@ def main() -> None:
                         "run_name": run_name,
                         "policy_version": policy_version,
                         "train_metrics": last_train_metrics,
+                        "adaptive_config": {
+                            "learning_rate": float(optimizer.param_groups[0]["lr"]),
+                            "entropy_coef_start": float(cfg.get("entropy_coef_start", 0.0)),
+                            "temperature_start": float(cfg.get("temperature_start", 0.0)),
+                            "temperature_end": float(cfg.get("temperature_end", 0.0)),
+                            "train_noop_penalty_coef": float(cfg.get("train_noop_penalty_coef", 0.0)),
+                            "train_action_bonus_coef": float(cfg.get("train_action_bonus_coef", 0.0)),
+                            "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
+                            "opponent_mix_counts": dict(cfg.get("opponent_mix_counts", {})),
+                        },
                     }
                     save_checkpoint(best_validated_path, _model_state_np(model), metadata)
                     save_checkpoint(checkpoint_path, _model_state_np(model), metadata)

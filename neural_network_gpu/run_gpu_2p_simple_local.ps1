@@ -5,6 +5,8 @@ $RepoRoot = Resolve-Path (Join-Path $ScriptDir "..")
 $RunName = "gpu_2p_rg_nosupport_local"
 $RunDir = Join-Path $RepoRoot.Path "runs\$RunName"
 $LatestCheckpoint = Join-Path $RunDir "latest.npz"
+$TrainOpponents = "random,random,random,random,random,random,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,starter"
+$EvalOpponents = "random,greedy,starter"
 $ResumeArgs = @()
 if (Test-Path $LatestCheckpoint) {
   $ResumeArgs = @("--resume-checkpoint", $LatestCheckpoint)
@@ -35,8 +37,10 @@ python neural_network_gpu\scripts\run_gpu.py `
   --min-lr 0.00002 `
   --ppo-epochs 3 `
   --n-players 2 `
-  --simple-opponents random,greedy `
+  --simple-opponents $TrainOpponents `
+  --eval-opponents $EvalOpponents `
   --disable-support-actions `
+  --auto-tune-training `
   --target-winrate 0.80 `
   --max-eval-do-nothing-rate 0.55 `
   --min-eval-avg-ships-sent 3.0 `

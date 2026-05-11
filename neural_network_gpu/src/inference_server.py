@@ -56,6 +56,9 @@ def inference_server_fn(
             new_state = model_update_queue.get_nowait()
             if isinstance(new_state, dict) and "state" in new_state:
                 policy_version = int(new_state.get("policy_version", policy_version + 1))
+                config_patch = new_state.get("config_patch")
+                if isinstance(config_patch, dict):
+                    config.update(config_patch)
                 new_state = new_state["state"]
             else:
                 policy_version += 1

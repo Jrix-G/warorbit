@@ -1,5 +1,6 @@
 {
   "allow_support_actions": false,
+  "auto_tune_training": true,
   "baseline_momentum": 0.1,
   "batch_timeout": 0.01,
   "board_scale": 100.0,
@@ -9,7 +10,25 @@
       "name": "simple_2p",
       "opponents": [
         "random",
-        "greedy"
+        "random",
+        "random",
+        "random",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "greedy",
+        "starter",
+        "starter"
       ]
     }
   ],
@@ -27,7 +46,8 @@
   "eval_every": 256,
   "eval_opponents": [
     "random",
-    "greedy"
+    "greedy",
+    "starter"
   ],
   "eval_seed_start": 900000,
   "game_engine": "official_fast",
@@ -35,7 +55,7 @@
   "hidden_dim": 320,
   "horizon_scale": 100.0,
   "league_archive_size": 4,
-  "learning_rate": 8e-05,
+  "learning_rate": 3.0993639120000006e-05,
   "max_actions_per_turn": 4,
   "max_batch_size": 48,
   "max_eval_do_nothing_rate": 0.55,
@@ -53,6 +73,11 @@
   "n_players": 2,
   "n_workers": 6,
   "official_fast_c_accel": true,
+  "opponent_mix_counts": {
+    "greedy": 14,
+    "random": 4,
+    "starter": 2
+  },
   "planet_id_scale": 64.0,
   "policy_prior_strength": 0.0,
   "ppo_clip_eps": 0.2,
@@ -77,17 +102,35 @@
   "simple_2p_only": true,
   "stage1_pool": [
     "random",
-    "greedy"
+    "random",
+    "random",
+    "random",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "greedy",
+    "starter",
+    "starter"
   ],
   "target_winrate": 0.8,
   "temperature_decay_updates": 200,
   "temperature_end": 0.18,
   "temperature_start": 1.05,
-  "train_action_bonus_coef": 0.28,
+  "train_action_bonus_coef": 0.55,
   "train_activity_reward_clip": 0.55,
   "train_every": 32,
-  "train_noop_penalty_coef": 0.4,
-  "train_ships_sent_bonus_coef": 0.18,
+  "train_noop_penalty_coef": 0.9,
+  "train_ships_sent_bonus_coef": 0.4,
   "train_target_do_nothing_rate": 0.18,
   "value_loss_coef": 0.25
 }

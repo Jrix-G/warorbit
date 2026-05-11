@@ -3,6 +3,7 @@ from __future__ import annotations
 import multiprocessing as mp
 import sys
 from pathlib import Path
+from queue import Empty
 from typing import Any, Dict, List
 
 import numpy as np
@@ -154,6 +155,7 @@ def worker_fn(
     obs_queue: mp.Queue,
     action_queue: mp.Queue,
     result_queue: mp.Queue,
+    control_queue: mp.Queue,
     stop_event: mp.Event,
     base_seed: int,
 ) -> None:
@@ -162,6 +164,19 @@ def worker_fn(
     episode = 0
     checkpoint_agent_cache: Dict[str, Any] = {}
     while not stop_event.is_set():
+        try:
+            while True:
+                control_msg = control_queue.get_nowait()
+                if isinstance(control_msg, dict):
+                    config_patch = control_msg.get("config_patch")
+                    if isinstance(config_patch, dict):
+                        config.update(config_patch)
+                    pool_patch = control_msg.get("pool")
+                    if isinstance(pool_patch, list) and pool_patch:
+                        pool = [str(item) for item in pool_patch]
+        except Empty:
+            pass
+
         seed = base_seed + worker_id * 99991 + episode * 9973
         our_index = (worker_id + episode) % n_players
         trajectory: List[Dict[str, Any]] = []

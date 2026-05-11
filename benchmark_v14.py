@@ -223,7 +223,7 @@ def main() -> None:
         help="Use 'ml' to benchmark V14 weights in 4p; 'notebook' tests the notebook fallback.",
     )
     parser.add_argument("--v14-4p-agent", default="distance")
-    parser.add_argument("--v14-4p-profile", default="eco")
+    parser.add_argument("--v14-4p-profile", default="closer")
     args = parser.parse_args()
 
     missing = [name for name in args.opponents if name not in ZOO]

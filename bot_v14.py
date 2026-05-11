@@ -165,24 +165,24 @@ def _four_player_heuristic_scores(obs: dict[str, Any], candidates: list[dict], s
         score = 0.03 * float(scorer_scores[i]) + 0.15 * math.tanh(hint)
 
         if ctype == "noop":
-            scores[i] = -8.0 if my_planets else 0.0
+            scores[i] = -12.0 if my_planets else 0.0
             continue
 
         if ctype == "defense":
-            score += 8.0 + 2.0 * min(2.0, sent / max(1.0, my_ships * 0.08))
+            score += 8.5 + 2.5 * min(2.0, sent / max(1.0, my_ships * 0.08))
             scores[i] = score
             continue
 
         if ctype in ("staging",):
-            score += 1.5
+            score += 0.8
             if leader_pressure:
-                score += 1.0
-            if step < 70:
-                score += 1.0
+                score += 0.8
+            if step < 55:
+                score += 1.2
             scores[i] = score
             continue
 
-        if owner == -1 or ctype in ("expand", "opportunistic_expand"):
+        if owner == -1 or ctype in ("expand", "opportunistic_expand", "frontier_expand"):
             if target is None:
                 continue
             prod = float(target[6])
@@ -190,11 +190,13 @@ def _four_player_heuristic_scores(obs: dict[str, Any], candidates: list[dict], s
             margin = sent - defenders
             close_bonus = max(0.0, (55.0 - nearest) / 55.0)
             robust = 1.0 if margin >= max(6.0, 1.5 * prod) else -1.0
-            score += 3.0 + 1.8 * close_bonus + 0.55 * prod + 0.04 * margin + robust
-            if step < 65 and nearest > 58.0:
-                score -= 4.0
-            if sent < 14.0 and step < 80:
-                score -= 2.5
+            score += 4.2 + 2.2 * close_bonus + 0.70 * prod + 0.05 * margin + robust
+            if ctype == "frontier_expand":
+                score += 1.0
+            if step < 55 and nearest > 55.0:
+                score -= 4.5
+            if sent < 12.0 and step < 70:
+                score -= 2.0
             if leader_pressure and step > 70:
                 score -= 1.0
             scores[i] = score
@@ -212,22 +214,32 @@ def _four_player_heuristic_scores(obs: dict[str, Any], candidates: list[dict], s
             ) or enemy["strength"] < 0.35 * max(1.0, my_strength)
             margin = sent - (float(target[5]) if target is not None else 0.0)
 
-            if ctype == "focus_finish":
-                if step < 70 and not almost_dead:
-                    scores[i] = -14.0 + 0.01 * margin
+            if ctype == "pressure":
+                if step < 45 and not almost_dead:
+                    score += 1.0
+                score += 4.5 + 1.7 * prod - 0.05 * defenders - 0.02 * distance + 0.06 * margin
+                score += 3.0 if is_weakest else 0.0
+                score += 1.5 if is_strongest and leader_pressure else -1.0 if is_strongest else 0.0
+                score += 4.0 if almost_dead else 0.0
+                if nearest > 70.0:
+                    score -= 1.5
+            elif ctype == "focus_finish":
+                if step < 55 and not almost_dead:
+                    score -= 4.0
+                    scores[i] = score
                     continue
-                score += 6.0 if is_weakest else -4.0
-                score += 3.0 if almost_dead else -1.0
-                score += 0.03 * margin
+                score += 5.5 if is_weakest else -2.5
+                score += 3.5 if almost_dead else -0.5
+                score += 0.04 * margin
             else:
-                if step < 70 and not almost_dead:
-                    score -= 6.0
-                score += 3.5 if is_weakest else -2.0
-                score -= 3.5 if is_strongest and not leader_pressure else 0.0
+                if step < 55 and not almost_dead:
+                    score -= 3.0
+                score += 3.0 if is_weakest else -1.5
+                score -= 2.5 if is_strongest and not leader_pressure else 0.0
                 score += 2.0 if almost_dead else 0.0
-                score += 0.025 * margin
+                score += 0.03 * margin
                 if nearest > 65.0:
-                    score -= 2.0
+                    score -= 1.0
             scores[i] = score
             continue
 
@@ -280,7 +292,7 @@ def _load_four_player_agent() -> Any | None:
         _FOUR_PLAYER_AGENT = None
         _FOUR_PLAYER_MODULES = None
     else:
-        profile = os.environ.get("V14_4P_PROFILE", "eco").strip().lower()
+        profile = os.environ.get("V14_4P_PROFILE", "closer").strip().lower()
         patch = _FOUR_PLAYER_PROFILES.get(profile, _FOUR_PLAYER_PROFILES["eco"])
         for module in modules:
             for name, value in patch.items():
@@ -404,24 +416,35 @@ def _agent_inner(obs: Any, config: Any = None) -> list[list]:
         return bot_v12.agent(obs, config)
 
     obs_dict = v14_core.obs_as_dict(obs)
-    if _is_four_player(obs_dict) and os.environ.get("V14_4P_RUNTIME", "notebook").lower() != "ml":
-        actions_4p = _call_four_player_agent(obs, config)
-        if actions_4p is not None:
-            return actions_4p
+    is_4p = _is_four_player(obs_dict)
+    if is_4p:
+        runtime = os.environ.get("V14_4P_RUNTIME", "notebook").lower()
+        if runtime != "ml":
+            actions_4p = _call_four_player_agent(obs, config)
+            if actions_4p is not None:
+                return actions_4p
 
     candidates = v14_core.get_candidates(obs_dict)
     if not candidates:
         return bot_v12.agent(obs, config)
     feats = v14_core.candidate_matrix(obs_dict, candidates)
     scores = scorer.forward(feats)
-    if _is_four_player(obs_dict):
+    if is_4p:
         scores = _four_player_heuristic_scores(obs_dict, candidates, scores)
     actions = v14_core.select_actions(candidates, scores)
+
+    if is_4p and os.environ.get("V14_4P_RUNTIME", "notebook").lower() == "ml":
+        notebook_actions = _call_four_player_agent(obs, config)
+        if notebook_actions is not None:
+            ml_score = _score_action_batch(obs_dict, actions)
+            nb_score = _score_action_batch(obs_dict, notebook_actions)
+            if nb_score > ml_score + 0.35:
+                return notebook_actions
 
     # Conservative fallback: if the ranker wants to do nothing early while V12
     # sees a move, trust the tactical baseline.
     step = int(obs_dict.get("step", 0) or 0)
-    if not actions and step < 160 and not _is_four_player(obs_dict):
+    if not actions and step < 160 and not is_4p:
         fallback = bot_v12.agent(obs, config)
         return fallback if isinstance(fallback, list) else []
     return actions
