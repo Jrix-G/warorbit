@@ -18,8 +18,8 @@ python neural_network_gpu\scripts\run_gpu.py `
   --duration-minutes 360 `
   --workers 4 `
   --train-every 32 `
-  --eval-every 256 `
-  --eval-episodes 64 `
+  --eval-every 128 `
+  --eval-episodes 8 `
   --batch-size 32 `
   --batch-timeout 0.010 `
   --ppo-minibatch-size 64 `

@@ -23,8 +23,8 @@
   "device": "cuda",
   "duration_minutes": 360.0,
   "entropy_coef_start": 0.1,
-  "eval_episodes": 64,
-  "eval_every": 256,
+  "eval_episodes": 8,
+  "eval_every": 128,
   "eval_opponents": [
     "random",
     "greedy",

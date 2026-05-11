@@ -182,6 +182,7 @@ def _evaluate(
     episode_count: int = 0,
     lr: float = 0.0,
     train_metrics: Dict[str, float] | None = None,
+    progress_log_path: Path | None = None,
 ) -> Dict[str, Any]:
     from neural_network.src.notebook_4p_training import (
         _build_agents, run_match, _action_summary,
@@ -201,6 +202,8 @@ def _evaluate(
     train_metrics = train_metrics or {}
 
     for opponent_idx, opponent in enumerate(opponents):
+        if progress_log_path is not None:
+            _log(progress_log_path, f"eval_start checkpoint={checkpoint_label} opponent={opponent} games={episodes}")
         wins: List[float] = []
         do_nothing_rates: List[float] = []
         avg_ships_sent: List[float] = []
@@ -228,6 +231,12 @@ def _evaluate(
             metrics = _action_summary(action_records)
             do_nothing_rates.append(float(metrics.get("do_nothing_rate", 1.0)))
             avg_ships_sent.append(float(metrics.get("avg_ships_sent", 0.0)))
+            if progress_log_path is not None and ((i + 1) == episodes or (i + 1) % max(1, episodes // 4) == 0):
+                _log(
+                    progress_log_path,
+                    f"eval_progress checkpoint={checkpoint_label} opponent={opponent} "
+                    f"games={i + 1}/{episodes} wins={int(sum(wins))}",
+                )
 
         win_count = int(sum(wins))
         ci_low, ci_high = _wilson_ci(win_count, episodes)
@@ -258,6 +267,12 @@ def _evaluate(
             "seed_count": int(episodes),
         }
         per_opponent[str(opponent)] = record
+        if progress_log_path is not None:
+            _log(
+                progress_log_path,
+                f"eval_done checkpoint={checkpoint_label} opponent={opponent} "
+                f"winrate={record['winrate']:.3f} noop={record['do_nothing_rate']:.3f} ships={record['avg_ships_sent']:.2f}",
+            )
         if eval_history_path is not None:
             append_jsonl(eval_history_path, record)
         all_wins.extend(wins)
@@ -605,6 +620,7 @@ def main() -> None:
                     episode_count=total_episodes,
                     lr=current_lr,
                     train_metrics=last_train_metrics,
+                    progress_log_path=log_path,
                 )
                 best_model = _load_model_from_checkpoint(best_validated_path, cfg, device)
                 best_eval = _evaluate(
@@ -618,6 +634,7 @@ def main() -> None:
                     episode_count=total_episodes,
                     lr=current_lr,
                     train_metrics=last_train_metrics,
+                    progress_log_path=log_path,
                 )
                 elapsed = (time.time() - started_at) / 60.0
                 promote, promotion_reasons, rollback = _promotion_decision(eval_result, best_eval, cfg)
