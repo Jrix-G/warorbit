@@ -85,6 +85,13 @@ def _checkpoint_opponent_paths(run_dir: Path, max_items: int) -> List[str]:
 
 
 def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
+    simple_opponents = [
+        item.strip()
+        for item in str(args.simple_opponents).split(",")
+        if item.strip()
+    ]
+    if not simple_opponents:
+        simple_opponents = ["random", "greedy", "starter"]
     return {
         # Game
         "game_engine": "official_fast",
@@ -125,8 +132,8 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "dense_score_coef": 0.10,
         "dense_survival_coef": 0.05,
         "dense_reward_clip": 0.40,
-        "train_target_do_nothing_rate": 0.20,
-        "train_noop_penalty_coef": 0.25,
+        "train_target_do_nothing_rate": 0.18,
+        "train_noop_penalty_coef": 0.40,
         "train_action_bonus_coef": 0.28,
         "train_ships_sent_bonus_coef": 0.18,
         "train_activity_reward_clip": 0.55,
@@ -135,12 +142,12 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "temperature_end": 0.18,
         "temperature_decay_updates": args.temperature_decay_updates,
         # Pool
-        "stage1_pool": ["random", "greedy", "starter"],
-        "eval_opponents": ["random", "greedy", "starter"],
+        "stage1_pool": simple_opponents,
+        "eval_opponents": simple_opponents,
         "simple_2p_only": True,
         "league_archive_size": args.league_archive_size,
         "curriculum_tiers": [
-            {"name": "simple_2p", "opponents": ["random", "greedy", "starter"]},
+            {"name": "simple_2p", "opponents": simple_opponents},
         ],
         "curriculum_tier": 0,
         # GPU
@@ -166,6 +173,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "max_eval_do_nothing_rate": args.max_eval_do_nothing_rate,
         "min_eval_avg_ships_sent": args.min_eval_avg_ships_sent,
         "max_opponent_regression": args.max_opponent_regression,
+        "min_ci_promotion_games": args.min_ci_promotion_games,
     }
 
 
@@ -308,6 +316,7 @@ def _promotion_decision(
     max_do_nothing = float(config.get("max_eval_do_nothing_rate", 0.75))
     min_avg_ships = float(config.get("min_eval_avg_ships_sent", 0.0))
     max_opp_regression = float(config.get("max_opponent_regression", 0.12))
+    min_ci_games = int(config.get("min_ci_promotion_games", 96))
     reasons: List[str] = []
 
     cand_wr = float(candidate_eval.get("winrate", 0.0))
@@ -317,7 +326,8 @@ def _promotion_decision(
     if delta < margin:
         promote = False
         reasons.append(f"delta {delta:.4f} < margin {margin:.4f}")
-    if float(candidate_eval.get("ci_low", 0.0)) <= best_wr:
+    eval_games = int(candidate_eval.get("eval_games", 0))
+    if eval_games >= min_ci_games and float(candidate_eval.get("ci_low", 0.0)) <= best_wr:
         promote = False
         reasons.append(
             f"candidate ci_low {float(candidate_eval.get('ci_low', 0.0)):.4f} <= best_winrate {best_wr:.4f}"
@@ -380,7 +390,9 @@ def main() -> None:
     parser.add_argument("--max-eval-do-nothing-rate", type=float, default=0.75)
     parser.add_argument("--min-eval-avg-ships-sent", type=float, default=0.0)
     parser.add_argument("--max-opponent-regression", type=float, default=0.12)
+    parser.add_argument("--min-ci-promotion-games", type=int, default=96)
     parser.add_argument("--league-archive-size", type=int, default=4)
+    parser.add_argument("--simple-opponents", default="random,greedy,starter")
     parser.add_argument("--temperature-decay-updates", type=int, default=200)
     parser.add_argument("--resume-checkpoint", default="")
     parser.add_argument("--run-name", default=None)

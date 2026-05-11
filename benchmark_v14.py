@@ -52,7 +52,14 @@ def _call_agent(fn: Callable, obs, config) -> list:
     return move if isinstance(move, list) else []
 
 
-def _agent(name: str, v13_weights: str, v14_weights: str) -> Callable:
+def _agent(
+    name: str,
+    v13_weights: str,
+    v14_weights: str,
+    v14_4p_runtime: str,
+    v14_4p_agent: str,
+    v14_4p_profile: str,
+) -> Callable:
     if name == "v7":
         return bot_v7.agent
     if name == "v12":
@@ -63,20 +70,52 @@ def _agent(name: str, v13_weights: str, v14_weights: str) -> Callable:
         return bot_v13.agent
     if name == "v14":
         os.environ["V14_WEIGHTS"] = v14_weights
+        os.environ["V14_4P_RUNTIME"] = v14_4p_runtime
+        os.environ["V14_4P_AGENT"] = v14_4p_agent
+        os.environ["V14_4P_PROFILE"] = v14_4p_profile
         bot_v14._CACHE.clear()
+        bot_v14._FOUR_PLAYER_AGENT = None
+        bot_v14._FOUR_PLAYER_MODULES = None
+        bot_v14._FOUR_PLAYER_AGENT_LOADED = False
         return bot_v14.agent
     if name not in ZOO:
         raise KeyError(name)
     return ZOO[name]
 
 
-def _lineup(bot_name: str, opponents: Sequence[str], n_players: int, seed_i: int,
-            v13_weights: str, v14_weights: str) -> tuple[list[Callable], int]:
-    our = _agent(bot_name, v13_weights, v14_weights)
+def _lineup(
+    bot_name: str,
+    opponents: Sequence[str],
+    n_players: int,
+    seed_i: int,
+    v13_weights: str,
+    v14_weights: str,
+    v14_4p_runtime: str,
+    v14_4p_agent: str,
+    v14_4p_profile: str,
+) -> tuple[list[Callable], int]:
+    our = _agent(bot_name, v13_weights, v14_weights, v14_4p_runtime, v14_4p_agent, v14_4p_profile)
     if n_players <= 2:
-        opp = _agent(opponents[seed_i % len(opponents)], v13_weights, v14_weights)
+        opp = _agent(
+            opponents[seed_i % len(opponents)],
+            v13_weights,
+            v14_weights,
+            v14_4p_runtime,
+            v14_4p_agent,
+            v14_4p_profile,
+        )
         return ([our, opp], 0) if seed_i % 2 == 0 else ([opp, our], 1)
-    chosen = [_agent(opponents[(seed_i + j) % len(opponents)], v13_weights, v14_weights) for j in range(3)]
+    chosen = [
+        _agent(
+            opponents[(seed_i + j) % len(opponents)],
+            v13_weights,
+            v14_weights,
+            v14_4p_runtime,
+            v14_4p_agent,
+            v14_4p_profile,
+        )
+        for j in range(3)
+    ]
     our_idx = seed_i % 4
     agents = []
     opp_iter = iter(chosen)
@@ -85,10 +124,31 @@ def _lineup(bot_name: str, opponents: Sequence[str], n_players: int, seed_i: int
     return agents, our_idx
 
 
-def _play_task(task: tuple[str, tuple[str, ...], int, int, int, str, str]) -> tuple[int, float]:
-    bot_name, opponents, n_players, seed, max_steps, v13_weights, v14_weights = task
+def _play_task(task: tuple[str, tuple[str, ...], int, int, int, str, str, str, str, str]) -> tuple[int, float]:
+    (
+        bot_name,
+        opponents,
+        n_players,
+        seed,
+        max_steps,
+        v13_weights,
+        v14_weights,
+        v14_4p_runtime,
+        v14_4p_agent,
+        v14_4p_profile,
+    ) = task
     start = time.time()
-    agents, our_idx = _lineup(bot_name, opponents, n_players, seed, v13_weights, v14_weights)
+    agents, our_idx = _lineup(
+        bot_name,
+        opponents,
+        n_players,
+        seed,
+        v13_weights,
+        v14_weights,
+        v14_4p_runtime,
+        v14_4p_agent,
+        v14_4p_profile,
+    )
     game = OfficialFastGame(
         n_players=n_players,
         seed=seed,
@@ -111,9 +171,21 @@ def _play_task(task: tuple[str, tuple[str, ...], int, int, int, str, str]) -> tu
 
 
 def run_suite(bot_name: str, opponents: Sequence[str], games: int, n_players: int, seed_offset: int,
-              workers: int, max_steps: int, v13_weights: str, v14_weights: str) -> MatchStats:
+              workers: int, max_steps: int, v13_weights: str, v14_weights: str,
+              v14_4p_runtime: str, v14_4p_agent: str, v14_4p_profile: str) -> MatchStats:
     tasks = [
-        (bot_name, tuple(opponents), n_players, seed_offset + i, max_steps, v13_weights, v14_weights)
+        (
+            bot_name,
+            tuple(opponents),
+            n_players,
+            seed_offset + i,
+            max_steps,
+            v13_weights,
+            v14_weights,
+            v14_4p_runtime,
+            v14_4p_agent,
+            v14_4p_profile,
+        )
         for i in range(games)
     ]
     if workers <= 1:
@@ -144,6 +216,14 @@ def main() -> None:
     parser.add_argument("--bots", nargs="*", default=["v7", "v12", "v13", "v14"])
     parser.add_argument("--modes", nargs="*", default=["4p", "2p"])
     parser.add_argument("--opponents", nargs="*", default=DEFAULT_OPPONENTS)
+    parser.add_argument(
+        "--v14-4p-runtime",
+        choices=["ml", "notebook"],
+        default="ml",
+        help="Use 'ml' to benchmark V14 weights in 4p; 'notebook' tests the notebook fallback.",
+    )
+    parser.add_argument("--v14-4p-agent", default="distance")
+    parser.add_argument("--v14-4p-profile", default="eco")
     args = parser.parse_args()
 
     missing = [name for name in args.opponents if name not in ZOO]
@@ -152,7 +232,8 @@ def main() -> None:
     print(
         f"V14 benchmark | games={args.games} modes={','.join(args.modes)} "
         f"bots={','.join(args.bots)} opponents={len(args.opponents)} "
-        f"workers={args.workers} max_steps={args.max_steps}"
+        f"workers={args.workers} max_steps={args.max_steps} "
+        f"v14_4p_runtime={args.v14_4p_runtime}"
     )
     for mode in args.modes:
         n_players = 4 if mode == "4p" else 2
@@ -168,6 +249,9 @@ def main() -> None:
                 max_steps=args.max_steps,
                 v13_weights=args.v13_weights,
                 v14_weights=args.v14_weights,
+                v14_4p_runtime=args.v14_4p_runtime,
+                v14_4p_agent=args.v14_4p_agent,
+                v14_4p_profile=args.v14_4p_profile,
             )
             print(
                 f"- {bot_name:4s} W/L/D={stats.wins}/{stats.losses}/{stats.draws} "

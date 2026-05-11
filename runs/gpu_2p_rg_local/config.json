@@ -8,8 +8,7 @@
       "name": "simple_2p",
       "opponents": [
         "random",
-        "greedy",
-        "starter"
+        "greedy"
       ]
     }
   ],
@@ -21,14 +20,13 @@
   "dense_ship_share_coef": 0.14,
   "dense_survival_coef": 0.05,
   "device": "cuda",
-  "duration_minutes": 360.0,
+  "duration_minutes": 720.0,
   "entropy_coef_start": 0.1,
   "eval_episodes": 8,
   "eval_every": 128,
   "eval_opponents": [
     "random",
-    "greedy",
-    "starter"
+    "greedy"
   ],
   "eval_seed_start": 900000,
   "game_engine": "official_fast",
@@ -43,14 +41,14 @@
   "max_fleets": 128,
   "max_grad_norm": 1.0,
   "max_lr": 0.0002,
-  "max_opponent_regression": 0.12,
+  "max_opponent_regression": 1.0,
   "max_planets": 64,
   "max_players": 4,
   "max_turns": 100,
   "min_ci_promotion_games": 96,
   "min_eval_avg_ships_sent": 0.0,
   "min_expand_attack_ships": 6,
-  "min_lr": 1e-06,
+  "min_lr": 2e-05,
   "n_players": 2,
   "n_workers": 4,
   "official_fast_c_accel": true,
@@ -64,7 +62,7 @@
   "promotion_margin": 0.03,
   "radius_scale": 10.0,
   "rollback_lr_mult": 0.5,
-  "rollback_margin": 0.08,
+  "rollback_margin": 1.0,
   "seed": 42,
   "send_ratios": [
     0.25,
@@ -78,18 +76,17 @@
   "simple_2p_only": true,
   "stage1_pool": [
     "random",
-    "greedy",
-    "starter"
+    "greedy"
   ],
-  "target_winrate": 0.85,
+  "target_winrate": 0.8,
   "temperature_decay_updates": 200,
   "temperature_end": 0.18,
   "temperature_start": 1.05,
   "train_action_bonus_coef": 0.28,
   "train_activity_reward_clip": 0.55,
   "train_every": 32,
-  "train_noop_penalty_coef": 0.25,
+  "train_noop_penalty_coef": 0.4,
   "train_ships_sent_bonus_coef": 0.18,
-  "train_target_do_nothing_rate": 0.2,
+  "train_target_do_nothing_rate": 0.18,
   "value_loss_coef": 0.25
 }

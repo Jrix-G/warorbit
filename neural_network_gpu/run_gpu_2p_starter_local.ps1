@@ -2,13 +2,19 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Resolve-Path (Join-Path $ScriptDir "..")
-$RunName = "gpu_2p_rg_active_local"
-$RunDir = Join-Path $RepoRoot.Path "neural_network_gpu\runs\$RunName"
-$LatestCheckpoint = Join-Path $RunDir "latest.npz"
-$ResumeArgs = @()
-if (Test-Path $LatestCheckpoint) {
-  $ResumeArgs = @("--resume-checkpoint", $LatestCheckpoint)
-  Write-Host "Resuming from $LatestCheckpoint"
+$Stage1RunName = "gpu_2p_rg_active_local"
+$RunName = "gpu_2p_starter_local"
+$Stage1RunDir = Join-Path $RepoRoot.Path "neural_network_gpu\runs\$Stage1RunName"
+$Stage1Best = Join-Path $Stage1RunDir "best_validated.npz"
+$Stage1Latest = Join-Path $Stage1RunDir "latest.npz"
+
+$ResumeCheckpoint = ""
+if (Test-Path $Stage1Best) {
+  $ResumeCheckpoint = $Stage1Best
+} elseif (Test-Path $Stage1Latest) {
+  $ResumeCheckpoint = $Stage1Latest
+} else {
+  throw "No stage-1 checkpoint found. Run .\run_gpu_2p_simple_local.ps1 first."
 }
 
 Set-Location $RepoRoot
@@ -20,8 +26,10 @@ if ($LASTEXITCODE -ne 0) {
   throw "PyTorch cannot see CUDA. Install a CUDA-enabled PyTorch build or run with --device cpu."
 }
 
+Write-Host "Starting starter stage from $ResumeCheckpoint"
+
 python neural_network_gpu\scripts\run_gpu.py `
-  @ResumeArgs `
+  --resume-checkpoint $ResumeCheckpoint `
   --device cuda `
   --duration-minutes 720 `
   --workers 4 `
@@ -31,14 +39,12 @@ python neural_network_gpu\scripts\run_gpu.py `
   --batch-size 32 `
   --batch-timeout 0.010 `
   --ppo-minibatch-size 64 `
-  --learning-rate 0.00008 `
+  --learning-rate 0.00006 `
   --min-lr 0.00002 `
   --ppo-epochs 3 `
   --n-players 2 `
-  --simple-opponents random,greedy `
-  --target-winrate 0.80 `
-  --max-eval-do-nothing-rate 0.55 `
-  --min-eval-avg-ships-sent 3.0 `
+  --simple-opponents random,greedy,starter `
+  --target-winrate 0.85 `
   --rollback-margin 1.0 `
   --max-opponent-regression 1.0 `
   --min-ci-promotion-games 96 `
