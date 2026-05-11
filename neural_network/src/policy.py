@@ -76,6 +76,7 @@ def build_action_candidates(
     game: Dict[str, Any],
     send_ratios: Sequence[float] | None = None,
     min_expand_attack_ships: int = 1,
+    allow_support: bool = True,
 ) -> List[ActionCandidate]:
     planets = game.get("planets", [])
     my_id = game.get("my_id", 0)
@@ -97,6 +98,8 @@ def build_action_candidates(
                 mission = "support"
             else:
                 mission = "attack"
+            if mission == "support" and not allow_support:
+                continue
             for ratio in ratios:
                 amount = max(1, min(int(float(src.get("ships", 0.0)) * ratio), int(float(src.get("ships", 0.0))) - 1))
                 if mission in {"expand", "attack"} and amount < int(min_expand_attack_ships):
@@ -182,11 +185,13 @@ def choose_action(
     send_ratios: Sequence[float] | None = None,
     min_expand_attack_ships: int = 1,
     prior_strength: float = 0.0,
+    allow_support: bool = True,
 ) -> Tuple[ActionCandidate, torch.Tensor] | Tuple[ActionCandidate, torch.Tensor, torch.Tensor]:
     candidates = build_action_candidates(
         game,
         send_ratios=send_ratios,
         min_expand_attack_ships=min_expand_attack_ships,
+        allow_support=allow_support,
     )
     return choose_action_from_candidates(
         outputs,

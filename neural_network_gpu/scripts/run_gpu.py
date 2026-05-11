@@ -100,6 +100,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "max_actions_per_turn": 4,
         "min_expand_attack_ships": 6,
         "send_ratios": [0.25, 0.35, 0.50, 0.65, 0.80, 0.95],
+        "allow_support_actions": not bool(args.disable_support_actions),
         "policy_prior_strength": 0.0,
         # Encoder
         "max_planets": 64,
@@ -393,6 +394,7 @@ def main() -> None:
     parser.add_argument("--min-ci-promotion-games", type=int, default=96)
     parser.add_argument("--league-archive-size", type=int, default=4)
     parser.add_argument("--simple-opponents", default="random,greedy,starter")
+    parser.add_argument("--disable-support-actions", action="store_true")
     parser.add_argument("--temperature-decay-updates", type=int, default=200)
     parser.add_argument("--resume-checkpoint", default="")
     parser.add_argument("--run-name", default=None)

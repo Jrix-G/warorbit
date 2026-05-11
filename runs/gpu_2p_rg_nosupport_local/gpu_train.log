@@ -1,0 +1,43 @@
+[2026-05-11 13:10:34 UTC] run_start name=gpu_2p_rg_nosupport_local device=cuda workers=6 target=0.8
+[2026-05-11 13:10:34 UTC] policy_prior_strength=0.0 (external prior disabled; prior remains candidate feature)
+[2026-05-11 13:10:34 UTC] params=1847362 lr=8e-05
+[2026-05-11 13:10:35 UTC] curriculum_tier=simple_2p train_pool=['random', 'greedy']
+[2026-05-11 13:10:39 UTC] inference_server started
+[2026-05-11 13:10:39 UTC] 6 workers started
+[2026-05-11 13:12:12 UTC] train episodes=32 elapsed=1.5m eps_per_hour=1243.0 train_s=7.37 samples=5741 minibatches=180 winrate=0.375 policy_loss=0.024 value_loss=0.086 total_loss=-0.048 entropy=2.060 kl=0.0000 clip_frac=0.000 ratio_std=0.002349 ratio_range=[0.9851,1.0328] logr_max=0.032258 param_delta=0.01616307 grad_norm=0.702 reward=-0.206 terminal=-0.250 dense=0.251 activity=0.120 temp=1.050 skipped_oldlp=0 missions={'expand': 2423, 'do_nothing': 2922, 'attack': 396} baseline=-0.117
+[2026-05-11 13:13:09 UTC] train episodes=64 elapsed=2.5m eps_per_hour=1538.6 train_s=7.52 samples=5678 minibatches=180 winrate=0.312 policy_loss=0.048 value_loss=0.057 total_loss=-0.028 entropy=2.016 kl=0.0000 clip_frac=0.000 ratio_std=0.004959 ratio_range=[0.9691,1.0550] logr_max=0.053555 param_delta=0.01799508 grad_norm=0.527 reward=-0.327 terminal=-0.375 dense=0.281 activity=0.114 temp=1.047 skipped_oldlp=0 missions={'expand': 2288, 'do_nothing': 2974, 'attack': 416} baseline=-0.348
+[2026-05-11 13:13:57 UTC] train episodes=96 elapsed=3.3m eps_per_hour=1748.8 train_s=8.08 samples=5459 minibatches=171 winrate=0.344 policy_loss=0.086 value_loss=0.041 total_loss=0.010 entropy=1.809 kl=0.0000 clip_frac=0.000 ratio_std=0.006750 ratio_range=[0.9523,1.0661] logr_max=0.064021 param_delta=0.01677179 grad_norm=0.418 reward=-0.276 terminal=-0.312 dense=0.210 activity=0.099 temp=1.043 skipped_oldlp=0 missions={'expand': 2129, 'do_nothing': 3038, 'attack': 292} baseline=-0.256
+[2026-05-11 13:14:48 UTC] train episodes=128 elapsed=4.1m eps_per_hour=1852.9 train_s=6.16 samples=5508 minibatches=174 winrate=0.281 policy_loss=0.054 value_loss=0.064 total_loss=-0.016 entropy=1.887 kl=0.0000 clip_frac=0.000 ratio_std=0.009761 ratio_range=[0.9315,1.1136] logr_max=0.107568 param_delta=0.01907073 grad_norm=0.526 reward=-0.401 terminal=-0.438 dense=0.213 activity=0.099 temp=1.038 skipped_oldlp=0 missions={'expand': 2215, 'do_nothing': 2995, 'attack': 298} baseline=-0.616
+[2026-05-11 13:15:45 UTC] train episodes=160 elapsed=5.1m eps_per_hour=1880.6 train_s=9.22 samples=5925 minibatches=186 winrate=0.312 policy_loss=0.080 value_loss=0.044 total_loss=-0.003 entropy=2.166 kl=0.0000 clip_frac=0.000 ratio_std=0.009094 ratio_range=[0.9010,1.0615] logr_max=0.104252 param_delta=0.01872868 grad_norm=0.353 reward=-0.325 terminal=-0.375 dense=0.295 activity=0.124 temp=1.034 skipped_oldlp=0 missions={'expand': 2593, 'do_nothing': 2947, 'attack': 385} baseline=-0.141
+[2026-05-11 13:16:34 UTC] train episodes=192 elapsed=5.9m eps_per_hour=1950.2 train_s=7.08 samples=5487 minibatches=174 winrate=0.219 policy_loss=0.044 value_loss=0.040 total_loss=-0.030 entropy=1.792 kl=0.0000 clip_frac=0.000 ratio_std=0.008991 ratio_range=[0.8858,1.0552] logr_max=0.121303 param_delta=0.01785202 grad_norm=0.353 reward=-0.520 terminal=-0.562 dense=0.246 activity=0.102 temp=1.029 skipped_oldlp=0 missions={'expand': 2036, 'do_nothing': 3035, 'attack': 416} baseline=-0.731
+[2026-05-11 13:17:20 UTC] train episodes=224 elapsed=6.7m eps_per_hour=2010.8 train_s=10.78 samples=5711 minibatches=180 winrate=0.250 policy_loss=0.075 value_loss=0.039 total_loss=-0.005 entropy=2.099 kl=0.0002 clip_frac=0.000 ratio_std=0.020643 ratio_range=[0.8599,1.2067] logr_max=0.187925 param_delta=0.01895944 grad_norm=0.322 reward=-0.460 terminal=-0.500 dense=0.232 activity=0.112 temp=1.025 skipped_oldlp=0 missions={'expand': 2311, 'do_nothing': 2902, 'attack': 498} baseline=-0.581
+[2026-05-11 13:18:12 UTC] train episodes=256 elapsed=7.5m eps_per_hour=2037.4 train_s=7.29 samples=6004 minibatches=189 winrate=0.344 policy_loss=0.034 value_loss=0.045 total_loss=-0.048 entropy=2.139 kl=0.0002 clip_frac=0.000 ratio_std=0.022448 ratio_range=[0.8828,1.1933] logr_max=0.176686 param_delta=0.02012183 grad_norm=0.340 reward=-0.265 terminal=-0.312 dense=0.275 activity=0.129 temp=1.021 skipped_oldlp=0 missions={'expand': 2486, 'do_nothing': 2963, 'attack': 555} baseline=-0.241
+[2026-05-11 13:18:12 UTC] eval_start checkpoint=candidate opponent=random games=16
+[2026-05-11 13:18:27 UTC] eval_progress checkpoint=candidate opponent=random games=4/16 wins=0
+[2026-05-11 13:18:53 UTC] eval_progress checkpoint=candidate opponent=random games=8/16 wins=3
+[2026-05-11 13:19:08 UTC] eval_progress checkpoint=candidate opponent=random games=12/16 wins=3
+[2026-05-11 13:19:58 UTC] eval_progress checkpoint=candidate opponent=random games=16/16 wins=6
+[2026-05-11 13:19:58 UTC] eval_done checkpoint=candidate opponent=random winrate=0.375 noop=0.621 ships=10.15
+[2026-05-11 13:19:58 UTC] eval_start checkpoint=candidate opponent=greedy games=16
+[2026-05-11 13:20:18 UTC] eval_progress checkpoint=candidate opponent=greedy games=4/16 wins=1
+[2026-05-11 13:20:44 UTC] eval_progress checkpoint=candidate opponent=greedy games=8/16 wins=4
+[2026-05-11 13:20:53 UTC] eval_progress checkpoint=candidate opponent=greedy games=12/16 wins=6
+[2026-05-11 13:21:07 UTC] eval_progress checkpoint=candidate opponent=greedy games=16/16 wins=7
+[2026-05-11 13:21:07 UTC] eval_done checkpoint=candidate opponent=greedy winrate=0.438 noop=0.604 ships=8.89
+[2026-05-11 13:21:08 UTC] eval_start checkpoint=best_validated opponent=random games=16
+[2026-05-11 13:21:18 UTC] eval_progress checkpoint=best_validated opponent=random games=4/16 wins=4
+[2026-05-11 13:21:28 UTC] eval_progress checkpoint=best_validated opponent=random games=8/16 wins=8
+[2026-05-11 13:21:34 UTC] eval_progress checkpoint=best_validated opponent=random games=12/16 wins=12
+[2026-05-11 13:21:42 UTC] eval_progress checkpoint=best_validated opponent=random games=16/16 wins=15
+[2026-05-11 13:21:42 UTC] eval_done checkpoint=best_validated opponent=random winrate=0.938 noop=0.927 ships=16.71
+[2026-05-11 13:21:42 UTC] eval_start checkpoint=best_validated opponent=greedy games=16
+[2026-05-11 13:21:48 UTC] eval_progress checkpoint=best_validated opponent=greedy games=4/16 wins=4
+[2026-05-11 13:21:56 UTC] eval_progress checkpoint=best_validated opponent=greedy games=8/16 wins=7
+[2026-05-11 13:22:04 UTC] eval_progress checkpoint=best_validated opponent=greedy games=12/16 wins=10
+[2026-05-11 13:22:13 UTC] eval_progress checkpoint=best_validated opponent=greedy games=16/16 wins=14
+[2026-05-11 13:22:13 UTC] eval_done checkpoint=best_validated opponent=greedy winrate=0.875 noop=0.914 ships=14.35
+[2026-05-11 13:22:14 UTC] eval episodes=256 elapsed=11.6m winrate=0.406 ci=[0.255,0.577] best_eval=0.906 best_ci=[0.758,0.968] noop=0.612 ships=9.52 lr=0.00008000 best=-1.000 target=0.8
+[2026-05-11 13:22:14 UTC] not promoted reasons=['delta -0.5000 < margin 0.0300', 'do_nothing gate failed']
+[2026-05-11 13:22:24 UTC] train episodes=288 elapsed=11.8m eps_per_hour=1470.4 train_s=7.08 samples=5651 minibatches=177 winrate=0.188 policy_loss=0.082 value_loss=0.030 total_loss=0.002 entropy=1.949 kl=0.0003 clip_frac=0.000 ratio_std=0.022820 ratio_range=[0.8443,1.1144] logr_max=0.169206 param_delta=0.01633325 grad_norm=0.252 reward=-0.586 terminal=-0.625 dense=0.224 activity=0.105 temp=1.016 skipped_oldlp=0 missions={'expand': 2300, 'do_nothing': 2992, 'attack': 359} baseline=-0.538
+[2026-05-11 13:23:33 UTC] train episodes=320 elapsed=12.9m eps_per_hour=1488.9 train_s=8.35 samples=5667 minibatches=180 winrate=0.188 policy_loss=0.049 value_loss=0.047 total_loss=-0.025 entropy=2.030 kl=0.0002 clip_frac=0.000 ratio_std=0.018454 ratio_range=[0.8677,1.1373] logr_max=0.141865 param_delta=0.01849882 grad_norm=0.281 reward=-0.589 terminal=-0.625 dense=0.205 activity=0.105 temp=1.012 skipped_oldlp=0 missions={'expand': 2329, 'do_nothing': 2955, 'attack': 383} baseline=-0.733
+[2026-05-11 13:24:33 UTC] train episodes=352 elapsed=13.9m eps_per_hour=1520.3 train_s=9.75 samples=5964 minibatches=189 winrate=0.281 policy_loss=0.081 value_loss=0.030 total_loss=-0.004 entropy=2.166 kl=0.0003 clip_frac=0.001 ratio_std=0.025140 ratio_range=[0.8615,1.2377] logr_max=0.213255 param_delta=0.01764803 grad_norm=0.233 reward=-0.394 terminal=-0.438 dense=0.246 activity=0.125 temp=1.008 skipped_oldlp=0 missions={'expand': 2581, 'do_nothing': 2966, 'attack': 417} baseline=-0.565

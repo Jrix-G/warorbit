@@ -265,6 +265,7 @@ def _make_policy_agent(
                 planning_game,
                 send_ratios=ratios,
                 min_expand_attack_ships=min_expand_attack_ships,
+                allow_support=bool(config.get("allow_support_actions", True)),
             )
             candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
             outputs = model(

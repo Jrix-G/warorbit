@@ -2,9 +2,9 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Resolve-Path (Join-Path $ScriptDir "..")
-$Stage1RunName = "gpu_2p_rg_active_local"
+$Stage1RunName = "gpu_2p_rg_nosupport_local"
 $RunName = "gpu_2p_starter_local"
-$Stage1RunDir = Join-Path $RepoRoot.Path "neural_network_gpu\runs\$Stage1RunName"
+$Stage1RunDir = Join-Path $RepoRoot.Path "runs\$Stage1RunName"
 $Stage1Best = Join-Path $Stage1RunDir "best_validated.npz"
 $Stage1Latest = Join-Path $Stage1RunDir "latest.npz"
 

@@ -75,6 +75,7 @@ def _make_gpu_agent(
                 planning_game,
                 send_ratios=ratios,
                 min_expand_attack_ships=min_ships,
+                allow_support=bool(config.get("allow_support_actions", True)),
             )
             if not candidates:
                 break
