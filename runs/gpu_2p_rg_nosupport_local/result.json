@@ -1,0 +1,11 @@
+{
+  "best_checkpoint": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\runs\\gpu_2p_rg_nosupport_local\\best_validated.npz",
+  "best_winrate": -1.0,
+  "elapsed_minutes": 480.5055797378222,
+  "eval_history": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\runs\\gpu_2p_rg_nosupport_local\\eval_history.jsonl",
+  "legacy_best_checkpoint": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\runs\\gpu_2p_rg_nosupport_local\\best.npz",
+  "run_name": "gpu_2p_rg_nosupport_local",
+  "target_reached": false,
+  "target_winrate": 0.8,
+  "total_episodes": 16765
+}

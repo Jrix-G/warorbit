@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(Get-ChildItem C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\neural_network_gpu *)",
+      "Bash(awk -F'[= ]' '{print $3, $5}')",
+      "Bash(awk 'NR%20==0 || NR<=5')",
+      "PowerShell([System.IO.Directory]::GetFiles\\(\"C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\local_simulator\"\\))"
+    ]
+  }
+}

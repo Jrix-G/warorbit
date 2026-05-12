@@ -109,12 +109,14 @@ def _auto_tune_training(
         patch["temperature_start"] = _clamp_float(float(cfg.get("temperature_start", 1.05)) * 0.98, 0.75, 1.35)
         reasons.append("entropy_high")
 
-    target_noop = float(cfg.get("train_target_do_nothing_rate", 0.18))
+    target_noop = float(cfg.get("train_target_do_nothing_rate", 0.45))
     avg_noop_rate = float(np.mean([row.get("noop_rate", noop_rate) for row in recent]))
-    if enough_history and avg_noop_rate > target_noop + 0.25:
-        patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.40)) * 1.04, 0.10, 0.90)
+    if enough_history and avg_noop_rate > target_noop + 0.05:
+        patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.70)) * 1.04, 0.10, 1.40)
+        patch["train_passivity_penalty_coef"] = _clamp_float(float(cfg.get("train_passivity_penalty_coef", 0.55)) * 1.06, 0.10, 1.60)
         patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.03, 0.05, 0.55)
         patch["train_ships_sent_bonus_coef"] = _clamp_float(float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.03, 0.03, 0.40)
+        patch["policy_prior_strength"] = _clamp_float(float(cfg.get("policy_prior_strength", 0.0)) + 0.02, 0.0, 0.55)
         reasons.append("noop_high")
 
     if patch:
@@ -230,7 +232,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "min_expand_attack_ships": 6,
         "send_ratios": [0.25, 0.35, 0.50, 0.65, 0.80, 0.95],
         "allow_support_actions": not bool(args.disable_support_actions),
-        "policy_prior_strength": 0.0,
+        "policy_prior_strength": args.policy_prior_strength,
         # Encoder
         "max_planets": 64,
         "max_fleets": 128,
@@ -262,8 +264,9 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "dense_score_coef": 0.10,
         "dense_survival_coef": 0.05,
         "dense_reward_clip": 0.40,
-        "train_target_do_nothing_rate": 0.18,
-        "train_noop_penalty_coef": 0.40,
+        "train_target_do_nothing_rate": 0.45,
+        "train_noop_penalty_coef": 0.70,
+        "train_passivity_penalty_coef": 0.55,
         "train_action_bonus_coef": 0.28,
         "train_ships_sent_bonus_coef": 0.18,
         "train_activity_reward_clip": 0.55,
@@ -297,6 +300,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "eval_seed_start": args.eval_seed_start,
         "promotion_margin": args.promotion_margin,
         "rollback_margin": args.rollback_margin,
+        "rollback_on_noop_rate": args.rollback_on_noop_rate,
         "min_lr": args.min_lr,
         "max_lr": args.max_lr,
         "promotion_lr_mult": args.promotion_lr_mult,
@@ -446,6 +450,7 @@ def _promotion_decision(
     margin = float(config.get("promotion_margin", 0.03))
     rollback_margin = float(config.get("rollback_margin", 0.08))
     max_do_nothing = float(config.get("max_eval_do_nothing_rate", 0.75))
+    rollback_noop_rate = float(config.get("rollback_on_noop_rate", 0.0))
     min_avg_ships = float(config.get("min_eval_avg_ships_sent", 0.0))
     max_opp_regression = float(config.get("max_opponent_regression", 0.12))
     min_ci_games = int(config.get("min_ci_promotion_games", 96))
@@ -464,7 +469,8 @@ def _promotion_decision(
         reasons.append(
             f"candidate ci_low {float(candidate_eval.get('ci_low', 0.0)):.4f} <= best_winrate {best_wr:.4f}"
         )
-    if float(candidate_eval.get("eval_do_nothing_rate", 1.0)) > max_do_nothing:
+    eval_noop_rate = float(candidate_eval.get("eval_do_nothing_rate", 1.0))
+    if eval_noop_rate > max_do_nothing:
         promote = False
         reasons.append("do_nothing gate failed")
     if float(candidate_eval.get("eval_avg_ships_sent", 0.0)) < min_avg_ships:
@@ -472,6 +478,9 @@ def _promotion_decision(
         reasons.append("avg_ships_sent gate failed")
 
     rollback = delta <= -rollback_margin
+    if rollback_noop_rate > 0.0 and eval_noop_rate > rollback_noop_rate:
+        rollback = True
+        reasons.append(f"noop rollback {eval_noop_rate:.4f} > {rollback_noop_rate:.4f}")
     cand_by_opp = candidate_eval.get("by_opponent", {})
     best_by_opp = best_eval.get("by_opponent", {})
     for opponent, cand_record in cand_by_opp.items():
@@ -520,6 +529,7 @@ def main() -> None:
     parser.add_argument("--promotion-lr-mult", type=float, default=1.05)
     parser.add_argument("--rollback-lr-mult", type=float, default=0.5)
     parser.add_argument("--max-eval-do-nothing-rate", type=float, default=0.75)
+    parser.add_argument("--rollback-on-noop-rate", type=float, default=0.0)
     parser.add_argument("--min-eval-avg-ships-sent", type=float, default=0.0)
     parser.add_argument("--max-opponent-regression", type=float, default=0.12)
     parser.add_argument("--min-ci-promotion-games", type=int, default=96)
@@ -528,6 +538,7 @@ def main() -> None:
     parser.add_argument("--eval-opponents", default="")
     parser.add_argument("--disable-support-actions", action="store_true")
     parser.add_argument("--auto-tune-training", action="store_true")
+    parser.add_argument("--policy-prior-strength", type=float, default=0.20)
     parser.add_argument("--temperature-decay-updates", type=int, default=200)
     parser.add_argument("--resume-checkpoint", default="")
     parser.add_argument("--run-name", default=None)
@@ -549,7 +560,9 @@ def main() -> None:
                 "entropy_coef_start",
                 "temperature_start",
                 "temperature_end",
+                "policy_prior_strength",
                 "train_noop_penalty_coef",
+                "train_passivity_penalty_coef",
                 "train_action_bonus_coef",
                 "train_ships_sent_bonus_coef",
             ):
@@ -574,9 +587,10 @@ def main() -> None:
     latest_path = run_dir / "latest.npz"
     eval_history_path = run_dir / "eval_history.jsonl"
 
+    cfg["temperature_start_initial"] = float(cfg.get("temperature_start", 1.05))
     save_json(run_dir / "config.json", cfg)
     _log(log_path, f"run_start name={run_name} device={device} workers={cfg['n_workers']} target={cfg['target_winrate']}")
-    _log(log_path, f"policy_prior_strength={cfg['policy_prior_strength']} (external prior disabled; prior remains candidate feature)")
+    _log(log_path, f"policy_prior_strength={cfg['policy_prior_strength']}")
 
     # Build model
     model = NeuralNetworkModel(ModelConfig(
@@ -720,8 +734,10 @@ def main() -> None:
                         f"noop={config_patch.get('auto_tune_noop_rate', 0.0):.3f} "
                         f"lr={float(optimizer.param_groups[0]['lr']):.8f} "
                         f"entropy_coef={float(cfg.get('entropy_coef_start', 0.0)):.4f} "
+                        f"prior={float(cfg.get('policy_prior_strength', 0.0)):.3f} "
                         f"temp=[{float(cfg.get('temperature_start', 0.0)):.3f},{float(cfg.get('temperature_end', 0.0)):.3f}] "
                         f"noop_penalty={float(cfg.get('train_noop_penalty_coef', 0.0)):.3f} "
+                        f"passivity_penalty={float(cfg.get('train_passivity_penalty_coef', 0.0)):.3f} "
                         f"action_bonus={float(cfg.get('train_action_bonus_coef', 0.0)):.3f} "
                         f"ship_bonus={float(cfg.get('train_ships_sent_bonus_coef', 0.0)):.3f}",
                     )
@@ -748,6 +764,8 @@ def main() -> None:
                     f"terminal={metrics.get('terminal_reward_mean', 0):.3f} "
                     f"dense={metrics.get('dense_reward_mean', 0):.3f} "
                     f"activity={metrics.get('activity_reward_mean', 0):.3f} "
+                    f"passivity_penalty={metrics.get('passivity_penalty_mean', 0):.3f} "
+                    f"passivity={metrics.get('do_nothing_rate_mean', 1):.3f} "
                     f"temp={metrics.get('mean_sample_temperature', 0):.3f} "
                     f"skipped_oldlp={metrics.get('skipped_missing_old_log_prob', 0):.0f} "
                     f"missions={mission_counts} "
@@ -787,7 +805,9 @@ def main() -> None:
                             "entropy_coef_start": float(cfg.get("entropy_coef_start", 0.0)),
                             "temperature_start": float(cfg.get("temperature_start", 0.0)),
                             "temperature_end": float(cfg.get("temperature_end", 0.0)),
+                            "policy_prior_strength": float(cfg.get("policy_prior_strength", 0.0)),
                             "train_noop_penalty_coef": float(cfg.get("train_noop_penalty_coef", 0.0)),
+                            "train_passivity_penalty_coef": float(cfg.get("train_passivity_penalty_coef", 0.0)),
                             "train_action_bonus_coef": float(cfg.get("train_action_bonus_coef", 0.0)),
                             "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
                             "opponent_mix_counts": dict(cfg.get("opponent_mix_counts", {})),
@@ -892,7 +912,9 @@ def main() -> None:
                             "entropy_coef_start": float(cfg.get("entropy_coef_start", 0.0)),
                             "temperature_start": float(cfg.get("temperature_start", 0.0)),
                             "temperature_end": float(cfg.get("temperature_end", 0.0)),
+                            "policy_prior_strength": float(cfg.get("policy_prior_strength", 0.0)),
                             "train_noop_penalty_coef": float(cfg.get("train_noop_penalty_coef", 0.0)),
+                            "train_passivity_penalty_coef": float(cfg.get("train_passivity_penalty_coef", 0.0)),
                             "train_action_bonus_coef": float(cfg.get("train_action_bonus_coef", 0.0)),
                             "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
                             "opponent_mix_counts": dict(cfg.get("opponent_mix_counts", {})),
@@ -924,7 +946,9 @@ def main() -> None:
                         model.eval()
                         new_lr = max(float(cfg["min_lr"]), current_lr * float(cfg["rollback_lr_mult"]))
                         optimizer = torch.optim.Adam(model.parameters(), lr=new_lr)
-                        policy_version += 1
+                        policy_version = 0
+                        cfg["temperature_start"] = float(cfg.get("temperature_start_initial", 1.05))
+                        train_history.clear()
                         try:
                             model_update_queue.put_nowait({"state": _model_state_np(model), "policy_version": policy_version})
                         except Exception:

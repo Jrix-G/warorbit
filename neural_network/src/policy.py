@@ -30,7 +30,7 @@ def _candidate_prior(candidate: ActionCandidate, game: Dict[str, Any]) -> float:
             p["owner"] == game.get("my_id", 0) and float(p.get("ships", 0.0)) >= 2.0
             for p in game.get("planets", [])
         )
-        return -1.25 if has_real_action else 0.0
+        return -2.5 if has_real_action else 0.0
 
     planets = _planet_lookup(game)
     src = planets.get(candidate.source_id)
@@ -80,7 +80,10 @@ def build_action_candidates(
 ) -> List[ActionCandidate]:
     planets = game.get("planets", [])
     my_id = game.get("my_id", 0)
-    candidates: List[ActionCandidate] = [ActionCandidate(-1, -1, 0, "do_nothing", np.zeros(16, dtype=np.float32))]
+    do_nothing_features = np.zeros(16, dtype=np.float32)
+    do_nothing_cand = ActionCandidate(-1, -1, 0, "do_nothing", do_nothing_features)
+    do_nothing_cand.score_features[-1] = _candidate_prior(do_nothing_cand, game) / 3.0
+    candidates: List[ActionCandidate] = [do_nothing_cand]
     my_planets = [p for p in planets if p["owner"] == my_id and float(p.get("ships", 0.0)) >= 2.0]
     ratios = tuple(float(r) for r in (send_ratios or (0.25, 0.35, 0.5, 0.65, 0.8, 0.95)) if 0.0 < float(r) < 1.0)
     seen: set[tuple[int, int, int]] = set()

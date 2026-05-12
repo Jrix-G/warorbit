@@ -14,6 +14,12 @@ INTERCEPT_TOLERANCE = 1.35
 SUN_GUARD_RAY_DISTANCE = 150.0
 
 
+def _fleet_speed(ships: int) -> float:
+    if ships <= 1:
+        return 1.0
+    return min(FLEET_SPEED, 1.0 + (FLEET_SPEED - 1.0) * (math.log(ships) / math.log(1000.0)) ** 1.5)
+
+
 def _planet_id(planet: Dict[str, Any]) -> int:
     return int(planet.get("id", -1))
 
@@ -78,7 +84,7 @@ def _angle_if_safe(src_x: float, src_y: float, tgt_x: float, tgt_y: float, targe
     return float(angle)
 
 
-def safe_plan_shot(src: Dict[str, Any], tgt: Dict[str, Any], game: Dict[str, Any]) -> float | None:
+def safe_plan_shot(src: Dict[str, Any], tgt: Dict[str, Any], game: Dict[str, Any], ships: int = 0) -> float | None:
     """Return a safe firing angle, or None if the target line is sun-blocked."""
     src_x = float(src.get("x", 0.0))
     src_y = float(src.get("y", 0.0))
@@ -86,12 +92,14 @@ def safe_plan_shot(src: Dict[str, Any], tgt: Dict[str, Any], game: Dict[str, Any
     if math.hypot(src_x - CENTER_X, src_y - CENTER_Y) < SUN_RADIUS + SUN_SHOT_MARGIN:
         return None
 
+    speed = _fleet_speed(ships) if ships > 0 else FLEET_SPEED
+
     current_tx, current_ty = predict_planet_position(tgt, game, 0.0)
-    eta = math.hypot(current_tx - src_x, current_ty - src_y) / FLEET_SPEED
+    eta = math.hypot(current_tx - src_x, current_ty - src_y) / speed
     for _ in range(10):
         eta = min(float(SHOT_HORIZON), max(0.0, eta))
         target_x, target_y = predict_planet_position(tgt, game, eta)
-        eta = math.hypot(target_x - src_x, target_y - src_y) / FLEET_SPEED
+        eta = math.hypot(target_x - src_x, target_y - src_y) / speed
 
     if eta <= SHOT_HORIZON:
         target_x, target_y = predict_planet_position(tgt, game, eta)
@@ -99,12 +107,12 @@ def safe_plan_shot(src: Dict[str, Any], tgt: Dict[str, Any], game: Dict[str, Any
         if angle is not None:
             return angle
 
-    start = max(0, int(math.hypot(current_tx - src_x, current_ty - src_y) / FLEET_SPEED) - 8)
+    start = max(0, int(math.hypot(current_tx - src_x, current_ty - src_y) / speed) - 8)
     best: tuple[float, float] | None = None
     for turn in range(start, SHOT_HORIZON + 1):
         target_x, target_y = predict_planet_position(tgt, game, float(turn))
         distance = math.hypot(target_x - src_x, target_y - src_y)
-        arrival = distance / FLEET_SPEED
+        arrival = distance / speed
         error = abs(arrival - float(turn))
         if error > INTERCEPT_TOLERANCE:
             continue

@@ -5,7 +5,7 @@ $RepoRoot = Resolve-Path (Join-Path $ScriptDir "..")
 $RunName = "gpu_2p_rg_nosupport_local"
 $RunDir = Join-Path $RepoRoot.Path "runs\$RunName"
 $LatestCheckpoint = Join-Path $RunDir "latest.npz"
-$TrainOpponents = "random,random,random,random,random,random,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,starter"
+$TrainOpponents = "random,random,random,random,random,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,starter,starter,starter,starter,starter,starter"
 $EvalOpponents = "random,greedy,starter"
 $ResumeArgs = @()
 if (Test-Path $LatestCheckpoint) {
@@ -25,12 +25,12 @@ if ($LASTEXITCODE -ne 0) {
 python neural_network_gpu\scripts\run_gpu.py `
   @ResumeArgs `
   --device cuda `
-  --duration-minutes 720 `
-  --workers 6 `
+  --duration-minutes 480 `
+  --workers 10 `
   --train-every 32 `
-  --eval-every 256 `
-  --eval-episodes 16 `
-  --batch-size 48 `
+  --eval-every 512 `
+  --eval-episodes 32 `
+  --batch-size 64 `
   --batch-timeout 0.010 `
   --ppo-minibatch-size 96 `
   --learning-rate 0.00008 `
@@ -41,10 +41,12 @@ python neural_network_gpu\scripts\run_gpu.py `
   --eval-opponents $EvalOpponents `
   --disable-support-actions `
   --auto-tune-training `
+  --policy-prior-strength 0.20 `
   --target-winrate 0.80 `
-  --max-eval-do-nothing-rate 0.55 `
+  --max-eval-do-nothing-rate 0.45 `
+  --rollback-on-noop-rate 0.65 `
   --min-eval-avg-ships-sent 3.0 `
-  --rollback-margin 1.0 `
-  --max-opponent-regression 1.0 `
-  --min-ci-promotion-games 96 `
+  --rollback-margin 0.35 `
+  --max-opponent-regression 0.35 `
+  --min-ci-promotion-games 128 `
   --run-name $RunName

@@ -100,6 +100,9 @@ def inference_server_fn(
         with torch.no_grad():
             outputs = model(state_t, cand_t)
             logits = outputs["policy_logits"]
+            prior_strength = float(config.get("policy_prior_strength", 0.0))
+            if prior_strength:
+                logits = logits + prior_strength * cand_t[..., -1] * 3.0
             logits = logits.masked_fill(~mask_t, float("-inf"))
 
             temp = _scheduled_temperature(config, policy_version)

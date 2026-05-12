@@ -9,7 +9,7 @@ Improvements over train_v14_finetune.py:
 - Delta-based dense reward (step-to-step).
 - PFSP self-play sampling.
 - Anti-noop bias as logit shift (no post-hoc index swap).
-- bc_weight_4p > 0 default.
+- 4p checkpoint selection uses a short rolling window.
 - LR cosine decay, temperature anneal.
 - Sanity assert on records / step_rewards alignment.
 """
@@ -17,6 +17,7 @@ Improvements over train_v14_finetune.py:
 from __future__ import annotations
 
 import argparse
+from collections import deque
 import math
 import time
 from concurrent.futures import ProcessPoolExecutor
@@ -497,6 +498,8 @@ def main() -> None:
     parser.add_argument("--grad-clip", type=float, default=_GRAD_CLIP)
     parser.add_argument("--ppo-epochs", type=int, default=_PPO_EPOCHS)
     parser.add_argument("--advantage-scale", type=float, default=1.0)
+    parser.add_argument("--best-window", type=int, default=4,
+                        help="Rolling 4p window used to decide best4p checkpoint saving.")
     parser.add_argument("--no-adv-norm", action="store_true")
     parser.add_argument("--no-bc", action="store_true")
     parser.add_argument("--diagnostic-only", action="store_true")
@@ -541,6 +544,7 @@ def main() -> None:
     best_train_wr = -1.0
     best_train_wr4 = -1.0
     best_train_wr2 = -1.0
+    wr4_history: deque[float] = deque(maxlen=max(1, int(args.best_window)))
     started = time.time()
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -638,7 +642,9 @@ def main() -> None:
             # BC anchor (mixed weight by mode share)
             n4p = sum(1 for x in nps if x == 4)
             n2p = sum(1 for x in nps if x == 2)
-            bc_w = (n4p * args.bc_weight_4p + n2p * args.bc_weight_2p) / max(1, len(nps))
+            bc_w = 0.0 if args.no_bc else (
+                (n4p * args.bc_weight_4p + n2p * args.bc_weight_2p) / max(1, len(nps))
+            )
             bc_loss_acc = 0.0
             bc_correct = 0
             bc_used = 0
@@ -703,12 +709,15 @@ def main() -> None:
             wr2_w = [w for w, p in zip(wins, nps) if p == 2]
             wr4 = sum(wr4_w) / max(1, len(wr4_w))
             wr2 = sum(wr2_w) / max(1, len(wr2_w))
+            if wr4_w:
+                wr4_history.append(wr4)
+            wr4_ma = sum(wr4_history) / max(1, len(wr4_history))
 
             if wr > best_train_wr:
                 best_train_wr = wr
                 np.savez(path_best_global, **actor.to_dict())
-            if wr4_w and wr4 > best_train_wr4:
-                best_train_wr4 = wr4
+            if wr4_w and wr4_ma > best_train_wr4:
+                best_train_wr4 = wr4_ma
                 np.savez(path_best_4p, **actor.to_dict())
             if wr2_w and wr2 > best_train_wr2:
                 best_train_wr2 = wr2
@@ -719,7 +728,7 @@ def main() -> None:
                 f"[{elapsed:6.0f}s b{batch:04d}] games={games_total} "
                 f"wr={sum(wins)}/{len(wins)} ({wr:.3f}) "
                 f"wr2={wr2:.3f}(best={best_train_wr2:.3f}) "
-                f"wr4={wr4:.3f}(best={best_train_wr4:.3f}) "
+                f"wr4={wr4:.3f} ma={wr4_ma:.3f}(best={best_train_wr4:.3f}) "
                 f"reward={float(np.mean(terminals)):+.3f} "
                 f"dec={len(triples)} sp={len(selfplay_pool)} "
                 f"pg={metrics['pg_loss']:+.3f} v={metrics['v_loss']:.3f} "

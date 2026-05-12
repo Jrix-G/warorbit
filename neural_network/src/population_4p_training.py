@@ -250,7 +250,7 @@ def _activity_shaping_reward(action_metrics: Dict[str, Any], config: Dict[str, A
     do_nothing = _clip01(float(action_metrics.get("do_nothing_rate", 1.0)))
     real_action_count = float(action_metrics.get("real_action_count", 0.0))
     avg_ships_sent = float(action_metrics.get("avg_ships_sent", 0.0))
-    target_noop = _clip01(float(config.get("train_target_do_nothing_rate", 0.55)))
+    target_noop = _clip01(float(config.get("train_target_do_nothing_rate", 0.45)))
     noop_penalty_coef = max(0.0, float(config.get("train_noop_penalty_coef", 0.30)))
     action_bonus_coef = max(0.0, float(config.get("train_action_bonus_coef", 0.08)))
     ships_bonus_coef = max(0.0, float(config.get("train_ships_sent_bonus_coef", 0.04)))

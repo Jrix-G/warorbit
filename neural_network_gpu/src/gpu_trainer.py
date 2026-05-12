@@ -43,6 +43,8 @@ def train_on_episodes(
     terminal_rewards: List[float] = []
     dense_rewards: List[float] = []
     activity_rewards: List[float] = []
+    passivity_penalties: List[float] = []
+    do_nothing_rates: List[float] = []
     skipped_missing_old_log_prob = 0
     trajectory_lengths: List[int] = []
 
@@ -50,15 +52,23 @@ def train_on_episodes(
         trajectory = ep["trajectory"]
         if not trajectory:
             continue
-        activity_reward = _activity_shaping_reward(ep.get("action_metrics", {}), config)
+        action_metrics = ep.get("action_metrics", {})
+        activity_reward = _activity_shaping_reward(action_metrics, config)
+        do_nothing_rate = max(0.0, min(1.0, float(action_metrics.get("do_nothing_rate", 1.0))))
+        passive_limit = max(0.0, min(1.0, float(config.get("train_target_do_nothing_rate", 0.45))))
+        passive_coef = max(0.0, float(config.get("train_passivity_penalty_coef", 0.55)))
+        passive_excess = max(0.0, do_nothing_rate - passive_limit) / max(1e-6, 1.0 - passive_limit)
+        passivity_penalty = passive_coef * passive_excess
         terminal_reward = float(ep["terminal_reward"])
         dense_reward = float(ep.get("dense_reward", 0.0))
-        reward = float(terminal_reward + 0.15 * dense_reward + 0.05 * activity_reward)
+        reward = float(terminal_reward + 0.15 * dense_reward + 0.05 * activity_reward - passivity_penalty)
         reward = max(-1.2, min(1.2, reward))
         rewards.append(reward)
         terminal_rewards.append(terminal_reward)
         dense_rewards.append(dense_reward)
         activity_rewards.append(float(activity_reward))
+        passivity_penalties.append(float(passivity_penalty))
+        do_nothing_rates.append(float(do_nothing_rate))
         valid_steps = [
             step for step in trajectory
             if step.get("old_log_prob") is not None and int(step.get("action_idx", -1)) >= 0
@@ -139,7 +149,11 @@ def train_on_episodes(
             )
 
             outputs = model(state_t, cand_t)
-            logits = outputs["policy_logits"].masked_fill(~mask_t, float("-inf"))
+            logits = outputs["policy_logits"]
+            prior_strength = float(config.get("policy_prior_strength", 0.0))
+            if prior_strength:
+                logits = logits + prior_strength * cand_t[..., -1] * 3.0
+            logits = logits.masked_fill(~mask_t, float("-inf"))
             value = outputs["value"]
 
             action_logits = logits / temp_t.unsqueeze(-1)
@@ -229,6 +243,8 @@ def train_on_episodes(
         "terminal_reward_mean": float(np.mean(terminal_rewards)) if terminal_rewards else 0.0,
         "dense_reward_mean": float(np.mean(dense_rewards)) if dense_rewards else 0.0,
         "activity_reward_mean": float(np.mean(activity_rewards)) if activity_rewards else 0.0,
+        "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,
+        "do_nothing_rate_mean": float(np.mean(do_nothing_rates)) if do_nothing_rates else 1.0,
         "mean_win": float(np.mean([ep["win"] for ep in episodes])),
         "skipped_missing_old_log_prob": float(skipped_missing_old_log_prob),
         "mean_trajectory_len": float(np.mean(trajectory_lengths)) if trajectory_lengths else 0.0,
