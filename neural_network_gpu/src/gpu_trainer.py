@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 from neural_network.src.model import NeuralNetworkModel
 from neural_network.src.population_4p_training import _activity_shaping_reward
 from neural_network.src.notebook_4p_training import _action_summary
+from neural_network_gpu.src.probability import cap_do_nothing_probability_with_info, caps_for_action_slots
 
 
 def train_on_episodes(
@@ -47,6 +48,16 @@ def train_on_episodes(
     do_nothing_rates: List[float] = []
     skipped_missing_old_log_prob = 0
     trajectory_lengths: List[int] = []
+    episode_turn_lengths: List[int] = []
+    slot_real_actions: Dict[int, List[float]] = {}
+    slot_noop_actions: Dict[int, List[float]] = {}
+    inference_noop_probs_before_cap: Dict[int, List[float]] = {}
+    inference_noop_probs_after_cap: Dict[int, List[float]] = {}
+    inference_noop_cap_values: Dict[int, List[float]] = {}
+    inference_noop_has_real_candidate: Dict[int, List[float]] = {}
+    inference_noop_cap_applied: Dict[int, List[float]] = {}
+    inference_real_noop_probs_before_cap: Dict[int, List[float]] = {}
+    inference_real_noop_probs_after_cap: Dict[int, List[float]] = {}
 
     for ep in episodes:
         trajectory = ep["trajectory"]
@@ -78,7 +89,9 @@ def train_on_episodes(
             continue
         step_weight = 1.0 / float(len(valid_steps))
         trajectory_lengths.append(len(valid_steps))
+        episode_turn_lengths.append(max(1, int(ep.get("episode_length") or 0)))
         for step in valid_steps:
+            action_slot = int(step.get("action_slot") or 0)
             dataset.append({
                 "state": step["state"],
                 "candidates": step["candidates"],
@@ -87,9 +100,30 @@ def train_on_episodes(
                 "sample_entropy": float(step.get("entropy") or 0.0),
                 "temperature": float(step.get("temperature") or 0.0),
                 "policy_version": int(step.get("policy_version") or 0),
+                "action_slot": action_slot,
                 "reward": reward,
                 "step_weight": step_weight,
             })
+            mission = str(step.get("mission") or "do_nothing")
+            ships = int(step.get("ships") or 0)
+            slot_real_actions.setdefault(action_slot, []).append(1.0 if mission != "do_nothing" and ships > 0 else 0.0)
+            slot_noop_actions.setdefault(action_slot, []).append(1.0 if mission == "do_nothing" or ships <= 0 else 0.0)
+            noop_before = step.get("noop_prob_before_cap")
+            noop_after = step.get("noop_prob_after_cap")
+            if noop_before is not None:
+                inference_noop_probs_before_cap.setdefault(action_slot, []).append(float(noop_before))
+            if noop_after is not None:
+                inference_noop_probs_after_cap.setdefault(action_slot, []).append(float(noop_after))
+            noop_cap_value = step.get("noop_cap_value")
+            if noop_cap_value is not None:
+                inference_noop_cap_values.setdefault(action_slot, []).append(float(noop_cap_value))
+            has_real_candidate = bool(step.get("noop_has_real_candidate"))
+            inference_noop_has_real_candidate.setdefault(action_slot, []).append(1.0 if has_real_candidate else 0.0)
+            inference_noop_cap_applied.setdefault(action_slot, []).append(1.0 if step.get("noop_cap_applied") else 0.0)
+            if has_real_candidate and noop_before is not None:
+                inference_real_noop_probs_before_cap.setdefault(action_slot, []).append(float(noop_before))
+            if has_real_candidate and noop_after is not None:
+                inference_real_noop_probs_after_cap.setdefault(action_slot, []).append(float(noop_after))
 
     if not dataset:
         return baseline, {"skipped_missing_old_log_prob": float(skipped_missing_old_log_prob)}
@@ -108,6 +142,9 @@ def train_on_episodes(
     all_grad_norms: List[float] = []
     all_ratios: List[float] = []
     all_log_ratio_abs: List[float] = []
+    all_noop_probs_before_cap: List[float] = []
+    all_noop_probs_after_cap: List[float] = []
+    all_noop_cap_fracs: List[float] = []
     minibatch_updates = 0
 
     model.train()
@@ -147,18 +184,36 @@ def train_on_episodes(
                 dtype=torch.float32,
                 device=device,
             )
+            action_slot_t = torch.as_tensor([int(d.get("action_slot") or 0) for d in batch], dtype=torch.long, device=device)
 
             outputs = model(state_t, cand_t)
             logits = outputs["policy_logits"]
             prior_strength = float(config.get("policy_prior_strength", 0.0))
             if prior_strength:
                 logits = logits + prior_strength * cand_t[..., -1] * 3.0
+            noop_penalty = float(config.get("do_nothing_logit_penalty", 0.0))
+            if noop_penalty > 0.0:
+                has_real_candidate = mask_t[:, 1:].any(dim=-1) if mask_t.size(-1) > 1 else torch.zeros(mask_t.size(0), dtype=torch.bool, device=device)
+                logits[:, 0] = logits[:, 0] - noop_penalty * has_real_candidate.to(dtype=logits.dtype)
             logits = logits.masked_fill(~mask_t, float("-inf"))
             value = outputs["value"]
 
             action_logits = logits / temp_t.unsqueeze(-1)
-            log_probs_all = torch.log_softmax(action_logits, dim=-1)
-            probs = log_probs_all.exp()
+            raw_probs = torch.softmax(action_logits, dim=-1)
+            noop_cap = caps_for_action_slots(config, action_slot_t)
+            if raw_probs.size(-1) > 1:
+                has_real_candidate = mask_t[:, 1:].any(dim=-1)
+                cap_applies = has_real_candidate & mask_t[:, 0] & (raw_probs[:, 0] > noop_cap.to(device=device, dtype=raw_probs.dtype))
+                all_noop_probs_before_cap.extend(raw_probs[:, 0].detach().cpu().numpy().astype(float).tolist())
+                all_noop_cap_fracs.append(float(cap_applies.float().mean().item()))
+            probs, cap_info = cap_do_nothing_probability_with_info(
+                raw_probs,
+                mask_t,
+                noop_cap,
+            )
+            if probs.size(-1) > 1:
+                all_noop_probs_after_cap.extend(probs[:, 0].detach().cpu().numpy().astype(float).tolist())
+            log_probs_all = torch.log(probs.clamp_min(1e-12))
             safe_log_probs = log_probs_all.masked_fill(~mask_t, 0.0)
             entropy_terms = probs * safe_log_probs
             entropy = -entropy_terms.sum(dim=-1)
@@ -222,6 +277,13 @@ def train_on_episodes(
     for r in rewards:
         baseline = (1.0 - baseline_momentum) * baseline + baseline_momentum * r
 
+    total_real_actions = float(sum(float(np.sum(values)) for values in slot_real_actions.values()))
+    total_turns = float(sum(episode_turn_lengths))
+
+    def _slot_mean(values_by_slot: Dict[int, List[float]], slot: int, default: float = 0.0) -> float:
+        values = values_by_slot.get(slot)
+        return float(np.mean(values)) if values else default
+
     metrics = {
         "policy_loss": float(np.mean(all_policy_losses)) if all_policy_losses else 0.0,
         "value_loss": float(np.mean(all_value_losses)) if all_value_losses else 0.0,
@@ -245,6 +307,27 @@ def train_on_episodes(
         "activity_reward_mean": float(np.mean(activity_rewards)) if activity_rewards else 0.0,
         "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,
         "do_nothing_rate_mean": float(np.mean(do_nothing_rates)) if do_nothing_rates else 1.0,
+        "noop_prob_before_cap_mean": float(np.mean(all_noop_probs_before_cap)) if all_noop_probs_before_cap else 0.0,
+        "noop_prob_after_cap_mean": float(np.mean(all_noop_probs_after_cap)) if all_noop_probs_after_cap else 0.0,
+        "noop_prob_cap_frac": float(np.mean(all_noop_cap_fracs)) if all_noop_cap_fracs else 0.0,
+        "first_slot_noop_rate": float(np.mean(slot_noop_actions.get(0, [1.0]))),
+        "first_slot_real_action_rate": float(np.mean(slot_real_actions.get(0, [0.0]))),
+        "mean_real_actions_per_game": float(total_real_actions / max(1, len(episodes))),
+        "mean_real_actions_per_turn": float(total_real_actions / max(1.0, total_turns)),
+        "slot0_noop_prob_before_cap": _slot_mean(inference_noop_probs_before_cap, 0),
+        "slot0_noop_prob_after_cap": _slot_mean(inference_noop_probs_after_cap, 0),
+        "slot0_noop_cap_value": _slot_mean(inference_noop_cap_values, 0, 1.0),
+        "slot0_has_real_candidate": _slot_mean(inference_noop_has_real_candidate, 0),
+        "slot0_real_noop_prob_before_cap": _slot_mean(inference_real_noop_probs_before_cap, 0),
+        "slot0_real_noop_prob_after_cap": _slot_mean(inference_real_noop_probs_after_cap, 0),
+        "slot0_noop_cap_frac": _slot_mean(inference_noop_cap_applied, 0),
+        "slot1_noop_prob_before_cap": _slot_mean(inference_noop_probs_before_cap, 1),
+        "slot1_noop_prob_after_cap": _slot_mean(inference_noop_probs_after_cap, 1),
+        "slot1_noop_cap_value": _slot_mean(inference_noop_cap_values, 1, 1.0),
+        "slot1_has_real_candidate": _slot_mean(inference_noop_has_real_candidate, 1),
+        "slot1_real_noop_prob_before_cap": _slot_mean(inference_real_noop_probs_before_cap, 1),
+        "slot1_real_noop_prob_after_cap": _slot_mean(inference_real_noop_probs_after_cap, 1),
+        "slot1_noop_cap_frac": _slot_mean(inference_noop_cap_applied, 1),
         "mean_win": float(np.mean([ep["win"] for ep in episodes])),
         "skipped_missing_old_log_prob": float(skipped_missing_old_log_prob),
         "mean_trajectory_len": float(np.mean(trajectory_lengths)) if trajectory_lengths else 0.0,

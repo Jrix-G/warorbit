@@ -42,7 +42,7 @@ _GRAD_CLIP = 1.0
 _CRITIC_HIDDEN = 64
 _CRITIC_IN = 2 * v14_core.FEATURE_DIM
 
-_RANK_REWARD_4P = (1.0, 0.3, -0.3, -0.8)
+_RANK_REWARD_4P = (2.5, 0.6, -1.0, -2.8)
 
 
 # ---------- critic ----------
@@ -125,28 +125,38 @@ def _terminal_reward(scores: list[float], my_slot: int) -> float:
     return -0.6 + 0.25 * margin
 
 
-def _econ_share(obs: dict, me: int) -> tuple[float, float, float]:
+def _econ_share(obs: dict, me: int) -> tuple[float, float, float, float, float]:
     planets = list(obs.get("planets", []) or [])
     fleets = list(obs.get("fleets", []) or [])
     my_p = [p for p in planets if int(p[1]) == me]
+    enemy_p = [p for p in planets if int(p[1]) not in (-1, me)]
     my_prod = sum(float(p[6]) for p in my_p)
     my_ships = (sum(float(p[5]) for p in my_p)
                 + sum(float(f[6]) for f in fleets if int(f[1]) == me))
     total_prod = max(1.0, sum(float(p[6]) for p in planets if int(p[1]) >= 0))
     total_ships = max(1.0, sum(float(p[5]) for p in planets if int(p[1]) >= 0)
                       + sum(float(f[6]) for f in fleets if int(f[1]) >= 0))
-    return my_prod / total_prod, my_ships / total_ships, float(len(my_p))
+    enemy_ids = {int(p[1]) for p in enemy_p}
+    return (
+        my_prod / total_prod,
+        my_ships / total_ships,
+        float(len(my_p)),
+        float(len(enemy_p)),
+        float(len(enemy_ids)),
+    )
 
 
 def _delta_reward(prev: tuple[float, float, float] | None,
-                  cur: tuple[float, float, float],
+                  cur: tuple[float, float, float, float, float],
                   n_players: int) -> float:
     if prev is None:
         return 0.0
     d_prod = cur[0] - prev[0]
     d_ship = cur[1] - prev[1]
     d_pl = (cur[2] - prev[2]) / 40.0
-    return float(0.4 * d_prod + 0.3 * d_ship + 0.3 * d_pl)
+    d_enemy_pl = (prev[3] - cur[3]) / 20.0
+    d_enemy_alive = (prev[4] - cur[4]) / max(1.0, float(n_players - 1))
+    return float(0.32 * d_prod + 0.28 * d_ship + 0.20 * d_pl + 0.12 * d_enemy_pl + 0.08 * d_enemy_alive)
 
 
 def _discounted_returns(step_rewards: list[float], terminal: float, gamma: float) -> list[float]:
@@ -184,8 +194,11 @@ def _clip_grads(grads: dict, max_norm: float) -> float:
 
 # ---------- rollout ----------
 def _play_episode_task(task: tuple):
-    (actor_w, critic_w, seed, max_steps, n_players,
-     opponent_names, temperature, sp_pool_w, sp_weights_pfsp) = task
+    if len(task) == 9:
+        actor_w, critic_w, seed, max_steps, n_players, opponent_names, temperature, sp_pool_w, sp_weights_pfsp = task
+        greedy = False
+    else:
+        actor_w, critic_w, seed, max_steps, n_players, opponent_names, temperature, sp_pool_w, sp_weights_pfsp, greedy = task
     actor = v14_core.V14Scorer(weights=actor_w)
     critic = V14Critic(weights=critic_w)
     rng = np.random.default_rng(seed)
@@ -232,7 +245,7 @@ def _play_episode_task(task: tuple):
 
     records: list[dict] = []  # {feats, idx, log_p_old, value, pooled}
     step_rewards: list[float] = []
-    prev_share: tuple[float, float, float] | None = None
+    prev_share: tuple[float, float, float, float, float] | None = None
 
     while not game.done:
         actions = []
@@ -254,7 +267,10 @@ def _play_episode_task(task: tuple):
                 logits = scores / max(0.05, temperature)
                 lse = _logsumexp(logits)
                 probs = np.exp(logits - lse)
-                idx = int(rng.choice(len(candidates), p=probs))
+                if greedy:
+                    idx = int(np.argmax(logits))
+                else:
+                    idx = int(rng.choice(len(candidates), p=probs))
                 log_p_old = float(logits[idx] - lse)
                 pooled = _pool_feats(feats)
                 v_pred, _ = critic.forward(pooled)
@@ -478,8 +494,14 @@ def main() -> None:
                         default=Path("evaluations/critic_v14_v2.npz"))
     parser.add_argument("--bc-data", type=Path,
                         default=Path("replay_dataset/v14_bc_top1.npz"))
+    parser.add_argument("--bc-data-4p", type=Path, default=None,
+                        help="Optional 4p-only BC warmstart dataset.")
     parser.add_argument("--bc-weight-4p", type=float, default=0.25)
     parser.add_argument("--bc-weight-2p", type=float, default=0.0)
+    parser.add_argument("--warmstart-batches", type=int, default=4,
+                        help="Number of initial batches that use BC-only warmstart.")
+    parser.add_argument("--warmstart-bc-multiplier", type=float, default=2.5,
+                        help="Extra BC weight during warmstart batches.")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--lr", type=float, default=5e-5)
@@ -500,6 +522,10 @@ def main() -> None:
     parser.add_argument("--advantage-scale", type=float, default=1.0)
     parser.add_argument("--best-window", type=int, default=4,
                         help="Rolling 4p window used to decide best4p checkpoint saving.")
+    parser.add_argument("--eval-every", type=int, default=4,
+                        help="Evaluate the current actor every N batches.")
+    parser.add_argument("--eval-games", type=int, default=16)
+    parser.add_argument("--eval-seed", type=int, default=240512)
     parser.add_argument("--no-adv-norm", action="store_true")
     parser.add_argument("--no-bc", action="store_true")
     parser.add_argument("--diagnostic-only", action="store_true")
@@ -524,9 +550,15 @@ def main() -> None:
     rng = np.random.default_rng(args.seed)
 
     data = np.load(args.bc_data) if args.bc_data.exists() and not args.no_bc else None
+    data_4p = None
+    if args.bc_data_4p is not None and args.bc_data_4p.exists() and not args.no_bc:
+        data_4p = np.load(args.bc_data_4p)
     X = data["X"].astype(np.float32) if data is not None else None
     mask = data["mask"].astype(np.float32) if data is not None else None
     y = data["y"].astype(np.int64) if data is not None else np.zeros(0, dtype=np.int64)
+    X4 = data_4p["X"].astype(np.float32) if data_4p is not None else None
+    mask4 = data_4p["mask"].astype(np.float32) if data_4p is not None else None
+    y4 = data_4p["y"].astype(np.int64) if data_4p is not None else np.zeros(0, dtype=np.int64)
 
     opponent_names = tuple(name for name in args.opponents if name in ZOO)
     if not opponent_names:
@@ -544,7 +576,10 @@ def main() -> None:
     best_train_wr = -1.0
     best_train_wr4 = -1.0
     best_train_wr2 = -1.0
+    best_eval_wr = -1.0
+    best_eval_wr4 = -1.0
     wr4_history: deque[float] = deque(maxlen=max(1, int(args.best_window)))
+    val_wr4_history: deque[float] = deque(maxlen=max(1, int(args.best_window)))
     started = time.time()
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -625,19 +660,32 @@ def main() -> None:
                         rec["noop_bias_idx"], rec["temperature"],
                     ))
 
-            metrics = _ppo_update(
-                actor,
-                critic,
-                triples,
-                max(1, int(args.ppo_epochs)),
-                entropy_beta=float(args.entropy_beta),
-                value_coef=float(args.value_coef),
-                grad_clip=float(args.grad_clip),
-                normalize_advantage=not bool(args.no_adv_norm),
-                advantage_scale=float(args.advantage_scale),
-            )
-            actor_grads = metrics.pop("_actor_grads", None)
-            critic_grads = metrics.pop("_critic_grads", None)
+            warmstart_mode = batch < max(0, int(args.warmstart_batches))
+            if warmstart_mode:
+                metrics = {
+                    "pg_loss": 0.0, "v_loss": 0.0, "entropy": 0.0,
+                    "kl": 0.0, "grad_norm": 0.0, "actor_grad_norm": 0.0,
+                    "critic_grad_norm": 0.0, "clip_frac": 0.0,
+                    "adv_mean": 0.0, "adv_std": 0.0, "raw_adv_mean": 0.0,
+                    "raw_adv_std": 0.0, "ret_mean": 0.0, "ret_std": 0.0,
+                    "val_mean": 0.0, "ratio_std": 0.0,
+                }
+                actor_grads = {k: np.zeros_like(v) for k, v in actor.to_dict().items()}
+                critic_grads = None
+            else:
+                metrics = _ppo_update(
+                    actor,
+                    critic,
+                    triples,
+                    max(1, int(args.ppo_epochs)),
+                    entropy_beta=float(args.entropy_beta),
+                    value_coef=float(args.value_coef),
+                    grad_clip=float(args.grad_clip),
+                    normalize_advantage=not bool(args.no_adv_norm),
+                    advantage_scale=float(args.advantage_scale),
+                )
+                actor_grads = metrics.pop("_actor_grads", None)
+                critic_grads = metrics.pop("_critic_grads", None)
 
             # BC anchor (mixed weight by mode share)
             n4p = sum(1 for x in nps if x == 4)
@@ -645,17 +693,25 @@ def main() -> None:
             bc_w = 0.0 if args.no_bc else (
                 (n4p * args.bc_weight_4p + n2p * args.bc_weight_2p) / max(1, len(nps))
             )
+            if warmstart_mode:
+                bc_w *= float(args.warmstart_bc_multiplier)
+            bc_source = None
+            if X4 is not None and len(y4) > 0:
+                bc_source = (X4, mask4, y4)
+            elif X is not None and len(y) > 0:
+                bc_source = (X, mask, y)
             bc_loss_acc = 0.0
             bc_correct = 0
             bc_used = 0
-            if X is not None and len(y) > 0 and bc_w > 0 and actor_grads is not None:
-                idxs = rng.choice(len(y), size=min(args.batch_size, len(y)), replace=False)
+            if bc_source is not None and bc_w > 0 and actor_grads is not None:
+                bcX, bcmask, bcy = bc_source
+                idxs = rng.choice(len(bcy), size=min(args.batch_size, len(bcy)), replace=False)
                 for ii in idxs:
-                    k = int(mask[ii].sum())
-                    label = int(y[ii])
+                    k = int(bcmask[ii].sum())
+                    label = int(bcy[ii])
                     if k <= 0 or label >= k:
                         continue
-                    feat_slice = X[ii, :k, : v14_core.FEATURE_DIM]
+                    feat_slice = bcX[ii, :k, : v14_core.FEATURE_DIM]
                     if feat_slice.shape[1] < v14_core.FEATURE_DIM:
                         pad = np.zeros((k, v14_core.FEATURE_DIM - feat_slice.shape[1]), dtype=np.float32)
                         feat_slice = np.concatenate([feat_slice, pad], axis=1)
@@ -718,10 +774,46 @@ def main() -> None:
                 np.savez(path_best_global, **actor.to_dict())
             if wr4_w and wr4_ma > best_train_wr4:
                 best_train_wr4 = wr4_ma
-                np.savez(path_best_4p, **actor.to_dict())
             if wr2_w and wr2 > best_train_wr2:
                 best_train_wr2 = wr2
                 np.savez(path_best_2p, **actor.to_dict())
+
+            val_wr = None
+            val_wr4 = None
+            val_reward = None
+            val_wr4_ma = None
+            if args.eval_every > 0 and batch % max(1, int(args.eval_every)) == 0:
+                actor_eval = {k: v.copy() for k, v in actor.to_dict().items()}
+                critic_eval = {k: v.copy() for k, v in critic.to_dict().items()}
+                val_tasks = [
+                    (
+                        actor_eval,
+                        critic_eval,
+                        int(args.eval_seed + batch * max(1, int(args.eval_games)) + i),
+                        args.max_steps,
+                        4,
+                        opponent_names,
+                        max(0.05, temp_t),
+                        None,
+                        None,
+                        True,
+                    )
+                    for i in range(max(1, int(args.eval_games)))
+                ]
+                val_results = list(pool.map(_play_episode_task, val_tasks))
+                val_wins = [r[2] for r in val_results]
+                val_terminals = [r[1] for r in val_results]
+                val_wr = sum(val_wins) / max(1, len(val_wins))
+                val_wr4 = val_wr
+                val_reward = float(np.mean(val_terminals)) if val_terminals else 0.0
+                val_wr4_history.append(val_wr4)
+                val_wr4_ma = sum(val_wr4_history) / max(1, len(val_wr4_history))
+                if val_wr4_ma > best_eval_wr4:
+                    best_eval_wr4 = val_wr4_ma
+                    np.savez(path_best_4p, **actor.to_dict())
+                if val_wr is not None and val_wr > best_eval_wr:
+                    best_eval_wr = val_wr
+                    np.savez(path_best_global, **actor.to_dict())
 
             elapsed = time.time() - started
             print(
@@ -729,8 +821,11 @@ def main() -> None:
                 f"wr={sum(wins)}/{len(wins)} ({wr:.3f}) "
                 f"wr2={wr2:.3f}(best={best_train_wr2:.3f}) "
                 f"wr4={wr4:.3f} ma={wr4_ma:.3f}(best={best_train_wr4:.3f}) "
+                f"val4={'' if val_wr4 is None else f'{val_wr4:.3f}'} "
+                f"valma={'' if val_wr4_ma is None else f'{val_wr4_ma:.3f}'} "
                 f"reward={float(np.mean(terminals)):+.3f} "
-                f"dec={len(triples)} sp={len(selfplay_pool)} "
+                f"valreward={'' if val_reward is None else f'{val_reward:+.3f}'} "
+                f"dec={len(all_triples)} sp={len(selfplay_pool)} "
                 f"pg={metrics['pg_loss']:+.3f} v={metrics['v_loss']:.3f} "
                 f"H={metrics['entropy']:.3f} kl={metrics['kl']:+.4f} "
                 f"postkl={change['post_kl']:.5f} dlogit={change['logit_delta']:.5f} "

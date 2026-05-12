@@ -61,6 +61,35 @@ def _clamp_float(value: float, low: float, high: float) -> float:
     return max(low, min(high, float(value)))
 
 
+def _clamp_int(value: int, low: int, high: int) -> int:
+    return max(low, min(high, int(value)))
+
+
+def _raise_ratio_floor(ratios: List[float], step: float = 0.05, floor_cap: float = 0.40) -> List[float]:
+    adjusted = []
+    for ratio in ratios:
+        value = float(ratio)
+        if value < floor_cap:
+            value = min(floor_cap, value + step)
+        adjusted.append(round(value, 3))
+    return sorted(set(adjusted))
+
+
+def _weighted_eval_score(result: Dict[str, Any], weights: Dict[str, float] | None = None) -> float:
+    by_opp = result.get("by_opponent", {})
+    weights = weights or {"random": 0.35, "greedy": 0.35, "starter": 0.30}
+    total_weight = 0.0
+    score = 0.0
+    for opponent, weight in weights.items():
+        if opponent not in by_opp:
+            continue
+        total_weight += float(weight)
+        score += float(weight) * float(by_opp.get(opponent, {}).get("winrate", 0.0))
+    if total_weight <= 0.0:
+        return float(result.get("winrate", 0.0))
+    return score / total_weight
+
+
 def _auto_tune_training(
     cfg: Dict[str, Any],
     optimizer: torch.optim.Optimizer,
@@ -109,11 +138,19 @@ def _auto_tune_training(
         patch["temperature_start"] = _clamp_float(float(cfg.get("temperature_start", 1.05)) * 0.98, 0.75, 1.35)
         reasons.append("entropy_high")
 
-    target_noop = float(cfg.get("train_target_do_nothing_rate", 0.45))
     avg_noop_rate = float(np.mean([row.get("noop_rate", noop_rate) for row in recent]))
+    if bool(cfg.get("eval_stabilizer_enabled", True)):
+        if patch:
+            cfg.update(patch)
+            patch["auto_tune_reasons"] = ",".join(reasons)
+            patch["auto_tune_noop_rate"] = avg_noop_rate
+        return patch
+
+    target_noop = float(cfg.get("train_target_do_nothing_rate", 0.45))
     if enough_history and avg_noop_rate > target_noop + 0.05:
         patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.70)) * 1.04, 0.10, 1.40)
         patch["train_passivity_penalty_coef"] = _clamp_float(float(cfg.get("train_passivity_penalty_coef", 0.55)) * 1.06, 0.10, 1.60)
+        patch["do_nothing_logit_penalty"] = _clamp_float(float(cfg.get("do_nothing_logit_penalty", 0.50)) + 0.10, 0.0, 2.0)
         patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.03, 0.05, 0.55)
         patch["train_ships_sent_bonus_coef"] = _clamp_float(float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.03, 0.03, 0.40)
         patch["policy_prior_strength"] = _clamp_float(float(cfg.get("policy_prior_strength", 0.0)) + 0.02, 0.0, 0.55)
@@ -138,6 +175,8 @@ def _auto_tune_opponent_mix(
     eval_history: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     if not bool(cfg.get("auto_tune_training", False)) or not eval_history:
+        return {}
+    if bool(cfg.get("eval_stabilizer_enabled", True)):
         return {}
 
     current_counts = dict(cfg.get("opponent_mix_counts", {"random": 6, "greedy": 13, "starter": 1}))
@@ -179,6 +218,121 @@ def _auto_tune_opponent_mix(
         "stage1_pool": pool,
         "auto_tune_reasons": ",".join(reasons),
     }
+
+
+def _eval_stabilizer(
+    cfg: Dict[str, Any],
+    eval_history: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    if not bool(cfg.get("auto_tune_training", False)) or not bool(cfg.get("eval_stabilizer_enabled", True)):
+        return {}
+    if not eval_history:
+        return {}
+
+    patch: Dict[str, Any] = {}
+    reasons: List[str] = []
+    eval_count = int(cfg.get("stabilizer_eval_count", 0)) + 1
+    cfg["stabilizer_eval_count"] = eval_count
+    patch["stabilizer_eval_count"] = eval_count
+
+    cooldown = int(cfg.get("stabilizer_cooldown_remaining", 0))
+    if cooldown > 0:
+        cooldown -= 1
+        cfg["stabilizer_cooldown_remaining"] = cooldown
+        patch["stabilizer_cooldown_remaining"] = cooldown
+        patch["stabilizer_reasons"] = "cooldown"
+        patch["stabilizer_action"] = "hold"
+        return patch
+
+    window = int(cfg.get("stabilizer_window_evals", 3))
+    recent = eval_history[-window:]
+    if len(recent) < window:
+        patch["stabilizer_reasons"] = f"warming_up_{len(recent)}/{window}"
+        patch["stabilizer_action"] = "hold"
+        return patch
+
+    score = float(np.mean([_weighted_eval_score(row) for row in recent]))
+    noop = float(np.mean([row.get("eval_do_nothing_rate", 1.0) for row in recent]))
+    ships = float(np.mean([row.get("eval_avg_ships_sent", 0.0) for row in recent]))
+    passivity = float(np.mean([row.get("train_passivity_rate", 1.0) for row in recent]))
+    real_moves = float(np.mean([row.get("train_real_moves_per_turn", 0.0) for row in recent]))
+    latest_by_opp = recent[-1].get("by_opponent", {})
+    wr = {name: float(latest_by_opp.get(name, {}).get("winrate", 0.0)) for name in ("random", "greedy", "starter")}
+
+    target_noop = float(cfg.get("stabilizer_target_noop", 0.60))
+    target_passivity = float(cfg.get("stabilizer_target_passivity", 0.50))
+    target_ships = float(cfg.get("stabilizer_target_avg_ships_sent", 3.0))
+    target_real_moves = float(cfg.get("stabilizer_target_real_moves_turn", 1.20))
+    poor_score = score < float(cfg.get("stabilizer_min_weighted_score", 0.55))
+
+    action = "hold"
+    if ships < target_ships and noop <= target_noop + 0.20:
+        action = "increase_ship_volume"
+        reasons.append("ships_low")
+        patch["train_ships_sent_bonus_coef"] = _clamp_float(
+            float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.08,
+            0.03,
+            float(cfg.get("stabilizer_max_ship_bonus", 0.80)),
+        )
+        if real_moves >= target_real_moves * 0.90 and passivity <= target_passivity + 0.08:
+            patch["min_expand_attack_ships"] = _clamp_int(
+                int(cfg.get("min_expand_attack_ships", 2)) + 1,
+                2,
+                int(cfg.get("stabilizer_max_min_ships", 6)),
+            )
+        patch["send_ratios"] = _raise_ratio_floor(list(cfg.get("send_ratios", [0.25, 0.35, 0.50, 0.65, 0.80, 0.95])))
+    elif noop > target_noop and passivity > target_passivity and ships >= max(2.5, target_ships * 0.80):
+        action = "reduce_noop"
+        reasons.append("noop_high")
+        patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.70)) * 1.03, 0.10, 1.40)
+        patch["do_nothing_logit_penalty"] = _clamp_float(float(cfg.get("do_nothing_logit_penalty", 0.50)) + 0.05, 0.0, 2.0)
+        patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.02, 0.05, 0.55)
+    elif poor_score and passivity < target_passivity - 0.05 and ships < target_ships:
+        action = "relax_overcorrection"
+        reasons.append("active_but_weak")
+        patch["train_passivity_penalty_coef"] = _clamp_float(float(cfg.get("train_passivity_penalty_coef", 0.55)) * 0.94, 0.10, 1.60)
+        patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 0.96, 0.05, 0.55)
+        patch["do_nothing_logit_penalty"] = _clamp_float(float(cfg.get("do_nothing_logit_penalty", 0.50)) - 0.05, 0.0, 2.0)
+    elif real_moves < target_real_moves and noop > target_noop:
+        action = "increase_action_availability"
+        reasons.append("moves_low_noop_high")
+        patch["min_expand_attack_ships"] = _clamp_int(int(cfg.get("min_expand_attack_ships", 2)) - 1, 2, 6)
+        patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.03, 0.05, 0.55)
+    elif wr["random"] >= 0.65 and wr["greedy"] >= 0.60 and wr["starter"] < 0.30 and ships >= target_ships * 0.75:
+        action = "starter_focus"
+        reasons.append("starter_low")
+        counts = dict(cfg.get("opponent_mix_counts", {"random": 6, "greedy": 13, "starter": 1}))
+        counts["starter"] = min(int(counts.get("starter", 1)) + 1, int(cfg.get("stabilizer_max_starter_count", 5)))
+        if int(counts.get("greedy", 0)) > 8:
+            counts["greedy"] = int(counts.get("greedy", 0)) - 1
+        patch["opponent_mix_counts"] = {str(k): int(v) for k, v in counts.items()}
+        patch["stage1_pool"] = _weighted_pool_from_counts(patch["opponent_mix_counts"])
+
+    if action == "hold":
+        patch["stabilizer_reasons"] = "constraints_ok_or_waiting"
+        patch["stabilizer_action"] = "hold"
+        patch["stabilizer_score"] = score
+        patch["stabilizer_noop"] = noop
+        patch["stabilizer_ships"] = ships
+        patch["stabilizer_passivity"] = passivity
+        patch["stabilizer_real_moves"] = real_moves
+        return patch
+
+    cooldown = int(cfg.get("stabilizer_cooldown_evals", 2))
+    patch["stabilizer_cooldown_remaining"] = cooldown
+    patch["stabilizer_reasons"] = ",".join(reasons)
+    patch["stabilizer_action"] = action
+    patch["stabilizer_score"] = score
+    patch["stabilizer_noop"] = noop
+    patch["stabilizer_ships"] = ships
+    patch["stabilizer_passivity"] = passivity
+    patch["stabilizer_real_moves"] = real_moves
+    cfg.update(patch)
+    if "opponent_mix_counts" in patch:
+        cfg["stage1_pool"] = list(patch["stage1_pool"])
+        if cfg.get("curriculum_tiers"):
+            cfg["curriculum_tiers"][0]["opponents"] = list(patch["stage1_pool"])
+    return patch
 
 
 def _wilson_ci(wins: int, games: int, z: float = 1.96) -> tuple[float, float]:
@@ -228,8 +382,8 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "game_engine": "official_fast",
         "official_fast_c_accel": True,
         "max_turns": 100,
-        "max_actions_per_turn": 4,
-        "min_expand_attack_ships": 6,
+        "max_actions_per_turn": 8,
+        "min_expand_attack_ships": 2,
         "send_ratios": [0.25, 0.35, 0.50, 0.65, 0.80, 0.95],
         "allow_support_actions": not bool(args.disable_support_actions),
         "policy_prior_strength": args.policy_prior_strength,
@@ -267,9 +421,27 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "train_target_do_nothing_rate": 0.45,
         "train_noop_penalty_coef": 0.70,
         "train_passivity_penalty_coef": 0.55,
+        "do_nothing_logit_penalty": 0.50,
+        "do_nothing_prob_cap": 0.45,
+        "do_nothing_prob_caps_by_slot": [0.05, 0.08, 0.12, 0.20, 0.32, 0.45, 0.55, 0.65],
         "train_action_bonus_coef": 0.28,
         "train_ships_sent_bonus_coef": 0.18,
         "train_activity_reward_clip": 0.55,
+        # Slow eval-level stabilizer. It replaces fast train-step behavior
+        # shaping when auto-tune is enabled.
+        "eval_stabilizer_enabled": True,
+        "stabilizer_window_evals": 3,
+        "stabilizer_cooldown_evals": 2,
+        "stabilizer_target_noop": 0.60,
+        "stabilizer_target_passivity": 0.50,
+        "stabilizer_target_real_moves_turn": 1.20,
+        "stabilizer_target_avg_ships_sent": 3.0,
+        "stabilizer_min_weighted_score": 0.55,
+        "stabilizer_max_ship_bonus": 0.80,
+        "stabilizer_max_min_ships": 6,
+        "stabilizer_max_starter_count": 5,
+        "stabilizer_eval_count": 0,
+        "stabilizer_cooldown_remaining": 0,
         # Temperature
         "temperature_start": 1.05,
         "temperature_end": 0.18,
@@ -426,7 +598,7 @@ def _evaluate(
     total_games = len(all_wins)
     total_wins = int(sum(all_wins))
     ci_low, ci_high = _wilson_ci(total_wins, total_games)
-    return {
+    aggregate = {
         "winrate": float(np.mean(all_wins)) if all_wins else 0.0,
         "wins": total_wins,
         "losses": int(total_games - total_wins),
@@ -439,6 +611,13 @@ def _evaluate(
         "seed_start": int(seed_start),
         "seed_count": int(episodes),
         "by_opponent": per_opponent,
+        "train_passivity_rate": float(train_metrics.get("do_nothing_rate_mean", 1.0)),
+        "train_real_moves_per_turn": float(train_metrics.get("mean_real_actions_per_turn", 0.0)),
+        "train_real_moves_per_game": float(train_metrics.get("mean_real_actions_per_game", 0.0)),
+    }
+    aggregate["weighted_score"] = _weighted_eval_score(aggregate)
+    return {
+        **aggregate,
     }
 
 
@@ -561,10 +740,18 @@ def main() -> None:
                 "temperature_start",
                 "temperature_end",
                 "policy_prior_strength",
+                "do_nothing_logit_penalty",
+                "do_nothing_prob_cap",
+                "do_nothing_prob_caps_by_slot",
                 "train_noop_penalty_coef",
                 "train_passivity_penalty_coef",
                 "train_action_bonus_coef",
                 "train_ships_sent_bonus_coef",
+                "min_expand_attack_ships",
+                "send_ratios",
+                "eval_stabilizer_enabled",
+                "stabilizer_eval_count",
+                "stabilizer_cooldown_remaining",
             ):
                 if key in adaptive_config:
                     cfg[key] = adaptive_config[key]
@@ -735,6 +922,9 @@ def main() -> None:
                         f"lr={float(optimizer.param_groups[0]['lr']):.8f} "
                         f"entropy_coef={float(cfg.get('entropy_coef_start', 0.0)):.4f} "
                         f"prior={float(cfg.get('policy_prior_strength', 0.0)):.3f} "
+                        f"noop_logit_penalty={float(cfg.get('do_nothing_logit_penalty', 0.0)):.3f} "
+                        f"noop_prob_cap={float(cfg.get('do_nothing_prob_cap', 1.0)):.3f} "
+                        f"noop_slot_caps={cfg.get('do_nothing_prob_caps_by_slot', [])} "
                         f"temp=[{float(cfg.get('temperature_start', 0.0)):.3f},{float(cfg.get('temperature_end', 0.0)):.3f}] "
                         f"noop_penalty={float(cfg.get('train_noop_penalty_coef', 0.0)):.3f} "
                         f"passivity_penalty={float(cfg.get('train_passivity_penalty_coef', 0.0)):.3f} "
@@ -766,6 +956,21 @@ def main() -> None:
                     f"activity={metrics.get('activity_reward_mean', 0):.3f} "
                     f"passivity_penalty={metrics.get('passivity_penalty_mean', 0):.3f} "
                     f"passivity={metrics.get('do_nothing_rate_mean', 1):.3f} "
+                    f"noop_p=[{metrics.get('noop_prob_before_cap_mean', 0):.3f}->{metrics.get('noop_prob_after_cap_mean', 0):.3f}] "
+                    f"noop_cap_frac={metrics.get('noop_prob_cap_frac', 0):.3f} "
+                    f"slot0_noop={metrics.get('first_slot_noop_rate', 1):.3f} "
+                    f"slot0_p=[{metrics.get('slot0_noop_prob_before_cap', 0):.3f}->{metrics.get('slot0_noop_prob_after_cap', 0):.3f}] "
+                    f"slot0_cap={metrics.get('slot0_noop_cap_value', 1):.3f} "
+                    f"slot0_real={metrics.get('slot0_has_real_candidate', 0):.3f} "
+                    f"slot0_real_p=[{metrics.get('slot0_real_noop_prob_before_cap', 0):.3f}->{metrics.get('slot0_real_noop_prob_after_cap', 0):.3f}] "
+                    f"slot0_cap_frac={metrics.get('slot0_noop_cap_frac', 0):.3f} "
+                    f"slot1_p=[{metrics.get('slot1_noop_prob_before_cap', 0):.3f}->{metrics.get('slot1_noop_prob_after_cap', 0):.3f}] "
+                    f"slot1_cap={metrics.get('slot1_noop_cap_value', 1):.3f} "
+                    f"slot1_real={metrics.get('slot1_has_real_candidate', 0):.3f} "
+                    f"slot1_real_p=[{metrics.get('slot1_real_noop_prob_before_cap', 0):.3f}->{metrics.get('slot1_real_noop_prob_after_cap', 0):.3f}] "
+                    f"slot1_cap_frac={metrics.get('slot1_noop_cap_frac', 0):.3f} "
+                    f"real_moves_game={metrics.get('mean_real_actions_per_game', 0):.2f} "
+                    f"real_moves_turn={metrics.get('mean_real_actions_per_turn', 0):.2f} "
                     f"temp={metrics.get('mean_sample_temperature', 0):.3f} "
                     f"skipped_oldlp={metrics.get('skipped_missing_old_log_prob', 0):.0f} "
                     f"missions={mission_counts} "
@@ -806,10 +1011,18 @@ def main() -> None:
                             "temperature_start": float(cfg.get("temperature_start", 0.0)),
                             "temperature_end": float(cfg.get("temperature_end", 0.0)),
                             "policy_prior_strength": float(cfg.get("policy_prior_strength", 0.0)),
+                            "do_nothing_logit_penalty": float(cfg.get("do_nothing_logit_penalty", 0.0)),
+                            "do_nothing_prob_cap": float(cfg.get("do_nothing_prob_cap", 1.0)),
+                            "do_nothing_prob_caps_by_slot": list(cfg.get("do_nothing_prob_caps_by_slot", [])),
                             "train_noop_penalty_coef": float(cfg.get("train_noop_penalty_coef", 0.0)),
                             "train_passivity_penalty_coef": float(cfg.get("train_passivity_penalty_coef", 0.0)),
                             "train_action_bonus_coef": float(cfg.get("train_action_bonus_coef", 0.0)),
                             "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
+                            "min_expand_attack_ships": int(cfg.get("min_expand_attack_ships", 2)),
+                            "send_ratios": list(cfg.get("send_ratios", [])),
+                            "eval_stabilizer_enabled": bool(cfg.get("eval_stabilizer_enabled", True)),
+                            "stabilizer_eval_count": int(cfg.get("stabilizer_eval_count", 0)),
+                            "stabilizer_cooldown_remaining": int(cfg.get("stabilizer_cooldown_remaining", 0)),
                             "opponent_mix_counts": dict(cfg.get("opponent_mix_counts", {})),
                         },
                     },
@@ -889,8 +1102,10 @@ def main() -> None:
                     log_path,
                     f"eval episodes={total_episodes} elapsed={elapsed:.1f}m "
                     f"winrate={eval_result['winrate']:.3f} "
+                    f"wscore={eval_result.get('weighted_score', eval_result['winrate']):.3f} "
                     f"ci=[{eval_result['ci_low']:.3f},{eval_result['ci_high']:.3f}] "
                     f"best_eval={best_eval['winrate']:.3f} "
+                    f"best_wscore={best_eval.get('weighted_score', best_eval['winrate']):.3f} "
                     f"best_ci=[{best_eval['ci_low']:.3f},{best_eval['ci_high']:.3f}] "
                     f"noop={eval_result['eval_do_nothing_rate']:.3f} "
                     f"ships={eval_result['eval_avg_ships_sent']:.2f} "
@@ -913,10 +1128,18 @@ def main() -> None:
                             "temperature_start": float(cfg.get("temperature_start", 0.0)),
                             "temperature_end": float(cfg.get("temperature_end", 0.0)),
                             "policy_prior_strength": float(cfg.get("policy_prior_strength", 0.0)),
+                            "do_nothing_logit_penalty": float(cfg.get("do_nothing_logit_penalty", 0.0)),
+                            "do_nothing_prob_cap": float(cfg.get("do_nothing_prob_cap", 1.0)),
+                            "do_nothing_prob_caps_by_slot": list(cfg.get("do_nothing_prob_caps_by_slot", [])),
                             "train_noop_penalty_coef": float(cfg.get("train_noop_penalty_coef", 0.0)),
                             "train_passivity_penalty_coef": float(cfg.get("train_passivity_penalty_coef", 0.0)),
                             "train_action_bonus_coef": float(cfg.get("train_action_bonus_coef", 0.0)),
                             "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
+                            "min_expand_attack_ships": int(cfg.get("min_expand_attack_ships", 2)),
+                            "send_ratios": list(cfg.get("send_ratios", [])),
+                            "eval_stabilizer_enabled": bool(cfg.get("eval_stabilizer_enabled", True)),
+                            "stabilizer_eval_count": int(cfg.get("stabilizer_eval_count", 0)),
+                            "stabilizer_cooldown_remaining": int(cfg.get("stabilizer_cooldown_remaining", 0)),
                             "opponent_mix_counts": dict(cfg.get("opponent_mix_counts", {})),
                         },
                     }
@@ -958,6 +1181,42 @@ def main() -> None:
                             f"ROLLBACK failed={failed_path} regressions={consecutive_regressions} "
                             f"lr={current_lr:.8f}->{new_lr:.8f}",
                         )
+                stabilizer_patch = _eval_stabilizer(cfg, list(eval_history))
+                if stabilizer_patch:
+                    _log(
+                        log_path,
+                        "AUTO_STABILIZE "
+                        f"action={stabilizer_patch.get('stabilizer_action', '')} "
+                        f"reasons={stabilizer_patch.get('stabilizer_reasons', '')} "
+                        f"score={float(stabilizer_patch.get('stabilizer_score', eval_result.get('weighted_score', 0.0))):.3f} "
+                        f"noop={float(stabilizer_patch.get('stabilizer_noop', eval_result.get('eval_do_nothing_rate', 0.0))):.3f} "
+                        f"ships={float(stabilizer_patch.get('stabilizer_ships', eval_result.get('eval_avg_ships_sent', 0.0))):.2f} "
+                        f"passivity={float(stabilizer_patch.get('stabilizer_passivity', last_train_metrics.get('do_nothing_rate_mean', 0.0))):.3f} "
+                        f"moves={float(stabilizer_patch.get('stabilizer_real_moves', last_train_metrics.get('mean_real_actions_per_turn', 0.0))):.2f} "
+                        f"min_ships={int(cfg.get('min_expand_attack_ships', 2))} "
+                        f"ship_bonus={float(cfg.get('train_ships_sent_bonus_coef', 0.0)):.3f} "
+                        f"noop_penalty={float(cfg.get('train_noop_penalty_coef', 0.0)):.3f} "
+                        f"passivity_penalty={float(cfg.get('train_passivity_penalty_coef', 0.0)):.3f} "
+                        f"ratios={cfg.get('send_ratios', [])} "
+                        f"counts={cfg.get('opponent_mix_counts', {})}",
+                    )
+                    control_msg = {"config_patch": dict(stabilizer_patch)}
+                    if "stage1_pool" in stabilizer_patch:
+                        control_msg["pool"] = list(stabilizer_patch["stage1_pool"])
+                    for queue in control_queues.values():
+                        try:
+                            queue.put_nowait(control_msg)
+                        except Exception:
+                            pass
+                    try:
+                        model_update_queue.put_nowait({
+                            "state": _model_state_np(model),
+                            "policy_version": policy_version,
+                            "config_patch": dict(stabilizer_patch),
+                        })
+                    except Exception:
+                        pass
+                    save_json(run_dir / "config.json", cfg)
                 if best_winrate >= cfg["target_winrate"]:
                     _log(log_path, f"TARGET REACHED winrate={best_winrate:.4f}")
                     break

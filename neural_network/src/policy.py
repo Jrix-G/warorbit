@@ -179,6 +179,39 @@ def apply_action_mask(logits: torch.Tensor, valid_mask: torch.Tensor) -> torch.T
     return masked
 
 
+def cap_do_nothing_probability(
+    probs: torch.Tensor,
+    valid_mask: torch.Tensor,
+    max_noop_prob: float,
+) -> torch.Tensor:
+    if max_noop_prob <= 0.0 or max_noop_prob >= 1.0 or probs.size(-1) <= 1:
+        return probs
+    if valid_mask.dtype != torch.bool:
+        valid_mask = valid_mask.to(dtype=torch.bool)
+
+    has_real_candidate = valid_mask[1:].any()
+    if not bool(has_real_candidate and valid_mask[0] and probs[0] > float(max_noop_prob)):
+        return probs
+
+    capped = probs.clone()
+    real_mask = valid_mask[1:].to(dtype=probs.dtype)
+    real_mass = (probs[1:] * real_mask).sum().clamp_min(1e-12)
+    capped[0] = float(max_noop_prob)
+    capped[1:] = probs[1:] * real_mask * ((1.0 - float(max_noop_prob)) / real_mass)
+    return capped
+
+
+def _noop_prob_cap_for_slot(
+    default_cap: float,
+    caps_by_slot: Sequence[float] | None,
+    action_slot: int,
+) -> float:
+    if caps_by_slot:
+        idx = max(0, min(int(action_slot), len(caps_by_slot) - 1))
+        return float(caps_by_slot[idx])
+    return float(default_cap)
+
+
 def choose_action(
     outputs: Dict[str, torch.Tensor],
     game: Dict[str, Any],
@@ -188,6 +221,10 @@ def choose_action(
     send_ratios: Sequence[float] | None = None,
     min_expand_attack_ships: int = 1,
     prior_strength: float = 0.0,
+    do_nothing_logit_penalty: float = 0.0,
+    do_nothing_prob_cap: float = 1.0,
+    do_nothing_prob_caps_by_slot: Sequence[float] | None = None,
+    action_slot: int = 0,
     allow_support: bool = True,
 ) -> Tuple[ActionCandidate, torch.Tensor] | Tuple[ActionCandidate, torch.Tensor, torch.Tensor]:
     candidates = build_action_candidates(
@@ -204,6 +241,10 @@ def choose_action(
         explore=explore,
         return_entropy=return_entropy,
         prior_strength=prior_strength,
+        do_nothing_logit_penalty=do_nothing_logit_penalty,
+        do_nothing_prob_cap=do_nothing_prob_cap,
+        do_nothing_prob_caps_by_slot=do_nothing_prob_caps_by_slot,
+        action_slot=action_slot,
     )
 
 
@@ -215,6 +256,10 @@ def choose_action_from_candidates(
     explore: bool = False,
     return_entropy: bool = False,
     prior_strength: float = 0.0,
+    do_nothing_logit_penalty: float = 0.0,
+    do_nothing_prob_cap: float = 1.0,
+    do_nothing_prob_caps_by_slot: Sequence[float] | None = None,
+    action_slot: int = 0,
 ) -> Tuple[ActionCandidate, torch.Tensor] | Tuple[ActionCandidate, torch.Tensor, torch.Tensor]:
     logits = outputs["policy_logits"]
     if logits.dim() == 1:
@@ -234,8 +279,19 @@ def choose_action_from_candidates(
         if return_entropy:
             return fallback, log_prob, entropy
         return fallback, log_prob
+    real_valid_exists = any(
+        candidate.mission != "do_nothing" and bool(valid_mask[idx])
+        for idx, candidate in enumerate(candidates)
+    )
+    if do_nothing_logit_penalty > 0.0 and real_valid_exists:
+        penalty = float(do_nothing_logit_penalty)
+        for idx, candidate in enumerate(candidates):
+            if candidate.mission == "do_nothing" and bool(valid_mask[idx]):
+                masked_logits[idx] = masked_logits[idx] - penalty
     masked_logits = apply_action_mask(masked_logits, valid_mask)
     probs = torch.softmax(masked_logits, dim=-1)
+    cap = _noop_prob_cap_for_slot(do_nothing_prob_cap, do_nothing_prob_caps_by_slot, action_slot)
+    probs = cap_do_nothing_probability(probs, valid_mask, cap)
     dist = Categorical(probs=probs)
     idx = dist.sample() if explore else torch.argmax(probs)
     log_prob = dist.log_prob(idx)

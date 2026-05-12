@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 
 from neural_network.src.model import ModelConfig, NeuralNetworkModel, load_compatible_state_dict
 from neural_network.src.notebook_4p_training import _infer_input_dim
+from neural_network_gpu.src.probability import cap_do_nothing_probability_with_info, caps_for_action_slots
 
 
 def _scheduled_temperature(config: Dict[str, Any], policy_version: int) -> float:
@@ -96,6 +97,7 @@ def inference_server_fn(
         state_t = torch.as_tensor(states, dtype=torch.float32, device=device)
         cand_t = torch.as_tensor(cands_padded, dtype=torch.float32, device=device)
         mask_t = torch.as_tensor(mask, dtype=torch.bool, device=device)
+        action_slot_t = torch.as_tensor([int(m.get("action_slot", 0)) for m in pending], dtype=torch.long, device=device)
 
         with torch.no_grad():
             outputs = model(state_t, cand_t)
@@ -103,19 +105,37 @@ def inference_server_fn(
             prior_strength = float(config.get("policy_prior_strength", 0.0))
             if prior_strength:
                 logits = logits + prior_strength * cand_t[..., -1] * 3.0
+            noop_penalty = float(config.get("do_nothing_logit_penalty", 0.0))
+            if noop_penalty > 0.0:
+                # build_action_candidates always puts do_nothing at index 0; only penalize it
+                # when at least one real candidate exists in the same decision.
+                has_real_candidate = mask_t[:, 1:].any(dim=-1) if mask_t.size(-1) > 1 else torch.zeros(mask_t.size(0), dtype=torch.bool, device=device)
+                logits[:, 0] = logits[:, 0] - noop_penalty * has_real_candidate.to(dtype=logits.dtype)
             logits = logits.masked_fill(~mask_t, float("-inf"))
 
             temp = _scheduled_temperature(config, policy_version)
             if temp > 0.0:
                 action_logits = logits / max(temp, 1e-6)
-                probs = torch.softmax(action_logits, dim=-1)
-                probs = probs.nan_to_num(0.0).clamp(min=1e-8)
+                raw_probs = torch.softmax(action_logits, dim=-1)
+                probs, cap_info = cap_do_nothing_probability_with_info(
+                    raw_probs,
+                    mask_t,
+                    caps_for_action_slots(config, action_slot_t),
+                )
+                probs = probs.nan_to_num(0.0) * mask_t.to(dtype=probs.dtype)
+                probs = probs / probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
                 action_idxs = torch.multinomial(probs, 1).squeeze(-1)
             else:
                 action_logits = logits
-                action_idxs = logits.argmax(dim=-1)
-            log_probs_all = torch.log_softmax(action_logits, dim=-1)
-            probs_all = log_probs_all.exp()
+                raw_probs = torch.softmax(action_logits, dim=-1)
+                probs, cap_info = cap_do_nothing_probability_with_info(
+                    raw_probs,
+                    mask_t,
+                    caps_for_action_slots(config, action_slot_t),
+                )
+                action_idxs = probs.argmax(dim=-1)
+            log_probs_all = torch.log(probs.clamp_min(1e-12))
+            probs_all = probs
             safe_log_probs = log_probs_all.masked_fill(~mask_t, 0.0)
             entropy_terms = probs_all * safe_log_probs
             entropies = -entropy_terms.sum(dim=-1)
@@ -124,13 +144,34 @@ def inference_server_fn(
         action_idxs_np = action_idxs.cpu().numpy()
         log_probs_np = selected_log_probs.cpu().numpy()
         entropies_np = entropies.cpu().numpy()
-        for msg, action_idx, old_log_prob, entropy in zip(pending, action_idxs_np, log_probs_np, entropies_np):
+        noop_before_np = raw_probs[:, 0].detach().cpu().numpy()
+        noop_after_np = probs[:, 0].detach().cpu().numpy()
+        cap_np = cap_info["cap"].detach().cpu().numpy()
+        has_real_np = cap_info["has_real_candidate"].detach().cpu().numpy()
+        cap_applied_np = cap_info["should_cap"].detach().cpu().numpy()
+        for msg, action_idx, old_log_prob, entropy, noop_before, noop_after, cap_value, has_real, cap_applied in zip(
+            pending,
+            action_idxs_np,
+            log_probs_np,
+            entropies_np,
+            noop_before_np,
+            noop_after_np,
+            cap_np,
+            has_real_np,
+            cap_applied_np,
+        ):
             action_queues[msg["worker_id"]].put({
                 "action_idx": int(action_idx),
                 "old_log_prob": float(old_log_prob),
                 "entropy": float(entropy),
                 "temperature": float(temp),
                 "policy_version": int(policy_version),
+                "action_slot": int(msg.get("action_slot", 0)),
+                "noop_prob_before_cap": float(noop_before),
+                "noop_prob_after_cap": float(noop_after),
+                "noop_cap_value": float(cap_value),
+                "noop_has_real_candidate": bool(has_real),
+                "noop_cap_applied": bool(cap_applied),
             })
 
         pending = []

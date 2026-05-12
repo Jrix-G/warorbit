@@ -259,7 +259,7 @@ def _make_policy_agent(
         max_actions = max(1, int(config.get("max_actions_per_turn", 4)))
         planning_game = _copy_planning_game(game)
         moves: list[list[int | float]] = []
-        for _ in range(max_actions):
+        for action_slot in range(max_actions):
             encoded = encode_game_state(planning_game, config)
             candidates = build_action_candidates(
                 planning_game,
@@ -280,6 +280,10 @@ def _make_policy_agent(
                 explore=explore,
                 return_entropy=True,
                 prior_strength=float(config.get("policy_prior_strength", 1.2)),
+                do_nothing_logit_penalty=float(config.get("do_nothing_logit_penalty", 0.0)),
+                do_nothing_prob_cap=float(config.get("do_nothing_prob_cap", 1.0)),
+                do_nothing_prob_caps_by_slot=config.get("do_nothing_prob_caps_by_slot"),
+                action_slot=action_slot,
             )
             log_probs.append(log_prob)
             action = reconstruct_action(cand, planning_game)

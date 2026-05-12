@@ -70,7 +70,7 @@ def _make_gpu_agent(
         planning_game = _copy_planning_game(game)
         moves: List = []
 
-        for _ in range(max_actions):
+        for action_slot in range(max_actions):
             encoded = encode_game_state(planning_game, config)
             candidates = build_action_candidates(
                 planning_game,
@@ -89,6 +89,7 @@ def _make_gpu_agent(
                 "state": state_features,
                 "candidates": cand_features,
                 "n_candidates": len(candidates),
+                "action_slot": action_slot,
             })
 
             action_msg = action_queue.get()
@@ -98,12 +99,22 @@ def _make_gpu_agent(
                 entropy = action_msg.get("entropy")
                 temperature = action_msg.get("temperature")
                 policy_version = action_msg.get("policy_version")
+                noop_prob_before_cap = action_msg.get("noop_prob_before_cap")
+                noop_prob_after_cap = action_msg.get("noop_prob_after_cap")
+                noop_cap_value = action_msg.get("noop_cap_value")
+                noop_has_real_candidate = action_msg.get("noop_has_real_candidate")
+                noop_cap_applied = action_msg.get("noop_cap_applied")
             else:
                 action_idx = int(action_msg)
                 old_log_prob = None
                 entropy = None
                 temperature = None
                 policy_version = None
+                noop_prob_before_cap = None
+                noop_prob_after_cap = None
+                noop_cap_value = None
+                noop_has_real_candidate = False
+                noop_cap_applied = False
 
             if action_idx < 0 or action_idx >= len(candidates):
                 trajectory.append({
@@ -116,6 +127,12 @@ def _make_gpu_agent(
                     "entropy": entropy,
                     "temperature": temperature,
                     "policy_version": policy_version,
+                    "action_slot": action_slot,
+                    "noop_prob_before_cap": noop_prob_before_cap,
+                    "noop_prob_after_cap": noop_prob_after_cap,
+                    "noop_cap_value": noop_cap_value,
+                    "noop_has_real_candidate": noop_has_real_candidate,
+                    "noop_cap_applied": noop_cap_applied,
                 })
                 break
 
@@ -134,6 +151,12 @@ def _make_gpu_agent(
                 "entropy": entropy,
                 "temperature": temperature,
                 "policy_version": policy_version,
+                "action_slot": action_slot,
+                "noop_prob_before_cap": noop_prob_before_cap,
+                "noop_prob_after_cap": noop_prob_after_cap,
+                "noop_cap_value": noop_cap_value,
+                "noop_has_real_candidate": noop_has_real_candidate,
+                "noop_cap_applied": noop_cap_applied,
             })
 
             if not move:
