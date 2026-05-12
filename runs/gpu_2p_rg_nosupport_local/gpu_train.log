@@ -5136,3 +5136,16 @@
 [2026-05-12 16:36:00 UTC] train episodes=26880 elapsed=1.2m eps_per_hour=1317747.1 train_s=17.69 samples=6067 minibatches=192 winrate=0.312 policy_loss=0.031 value_loss=0.074 total_loss=-0.048 entropy=2.882 kl=0.0008 clip_frac=0.001 ratio_std=0.039544 ratio_range=[0.7706,1.3108] logr_max=0.270606 param_delta=0.00767025 grad_norm=0.580 reward=-0.514 terminal=-0.375 dense=0.160 activity=0.291 passivity_penalty=0.320 passivity=0.545 noop_p=[0.333->0.333] noop_cap_frac=0.000 slot0_noop=0.390 slot0_p=[0.150->0.150] slot0_cap=0.062 slot0_real=0.854 slot0_real_p=[0.006->0.006] slot0_cap_frac=0.000 slot1_p=[0.614->0.614] slot1_cap=0.156 slot1_real=0.388 slot1_real_p=[0.005->0.005] slot1_cap_frac=0.000 real_moves_game=90.94 real_moves_turn=0.92 temp=1.220 skipped_oldlp=0 missions={'do_nothing': 3157, 'expand': 2460, 'attack': 450} baseline=-0.277
 [2026-05-12 16:36:02 UTC] eval_start checkpoint=candidate opponent=random games=32
 [2026-05-12 16:38:19 UTC] eval_progress checkpoint=candidate opponent=random games=8/32 wins=6
+[2026-05-12 16:39:19 UTC] eval_progress checkpoint=candidate opponent=random games=16/32 wins=9
+[2026-05-12 16:39:53 UTC] eval_progress checkpoint=candidate opponent=random games=24/32 wins=16
+[2026-05-12 16:40:17 UTC] eval_progress checkpoint=candidate opponent=random games=32/32 wins=22
+[2026-05-12 16:40:17 UTC] eval_done checkpoint=candidate opponent=random winrate=0.688 noop=0.547 ships=1.68
+[2026-05-12 16:40:17 UTC] eval_start checkpoint=candidate opponent=greedy games=32
+[2026-05-12 16:41:03 UTC] eval_progress checkpoint=candidate opponent=greedy games=8/32 wins=4
+[2026-05-12 16:41:35 UTC] eval_progress checkpoint=candidate opponent=greedy games=16/32 wins=8
+[2026-05-12 16:41:57 UTC] eval_progress checkpoint=candidate opponent=greedy games=24/32 wins=12
+[2026-05-12 16:43:00 UTC] eval_progress checkpoint=candidate opponent=greedy games=32/32 wins=17
+[2026-05-12 16:43:00 UTC] eval_done checkpoint=candidate opponent=greedy winrate=0.531 noop=0.497 ships=1.95
+[2026-05-12 16:43:00 UTC] eval_start checkpoint=candidate opponent=starter games=32
+[2026-05-12 16:43:35 UTC] eval_progress checkpoint=candidate opponent=starter games=8/32 wins=1
+[2026-05-12 16:44:21 UTC] eval_progress checkpoint=candidate opponent=starter games=16/32 wins=1
