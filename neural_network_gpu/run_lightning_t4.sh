@@ -78,7 +78,7 @@ python "$RUNNER_PATH" \
   --run-name "$RUN_NAME" \
   --device cuda \
   --duration-minutes 540 \
-  --workers 4 \
+  --workers 8 \
   --train-every 32 \
   --eval-every 512 \
   --eval-episodes 32 \
@@ -104,9 +104,16 @@ python "$RUNNER_PATH" \
   --max-eval-do-nothing-rate 0.74 \
   --rollback-on-noop-rate 0.84 \
   --min-eval-avg-ships-sent 4.0 \
+  --valid-win-max-do-nothing-rate 0.84 \
+  --valid-win-min-avg-ships-sent 4.0 \
+  --valid-win-min-real-moves-turn 1.0 \
+  --passive-win-terminal-reward -0.25 \
   --degenerate-noop-rate 0.90 \
   --degenerate-max-avg-ships-sent 1.75 \
   --degenerate-min-winrate 0.65 \
+  --collapse-stop-evals 2 \
+  --collapse-stop-noop-rate 0.92 \
+  --collapse-stop-max-avg-ships-sent 2.0 \
   --rollback-margin 0.22 \
   --max-opponent-regression 0.16 \
   --min-ci-promotion-games 96 \

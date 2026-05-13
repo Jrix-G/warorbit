@@ -94,9 +94,10 @@ def _weighted_eval_score(result: Dict[str, Any], weights: Dict[str, float] | Non
         if opponent not in by_opp:
             continue
         total_weight += float(weight)
-        score += float(weight) * float(by_opp.get(opponent, {}).get("winrate", 0.0))
+        record = by_opp.get(opponent, {})
+        score += float(weight) * float(record.get("valid_winrate", record.get("winrate", 0.0)))
     if total_weight <= 0.0:
-        return float(result.get("winrate", 0.0))
+        return float(result.get("valid_winrate", result.get("winrate", 0.0)))
     return score / total_weight
 
 
@@ -149,20 +150,13 @@ def _auto_tune_training(
         reasons.append("entropy_high")
 
     avg_noop_rate = float(np.mean([row.get("noop_rate", noop_rate) for row in recent]))
-    if bool(cfg.get("eval_stabilizer_enabled", True)):
-        if patch:
-            cfg.update(patch)
-            patch["auto_tune_reasons"] = ",".join(reasons)
-            patch["auto_tune_noop_rate"] = avg_noop_rate
-        return patch
-
     target_noop = float(cfg.get("train_target_do_nothing_rate", 0.45))
     if enough_history and avg_noop_rate > target_noop + 0.05:
-        patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.70)) * 1.04, 0.10, 1.40)
-        patch["train_passivity_penalty_coef"] = _clamp_float(float(cfg.get("train_passivity_penalty_coef", 0.55)) * 1.06, 0.10, 1.60)
+        patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.70)) * 1.04, 0.10, 2.20)
+        patch["train_passivity_penalty_coef"] = _clamp_float(float(cfg.get("train_passivity_penalty_coef", 0.55)) * 1.06, 0.10, 2.00)
         patch["do_nothing_logit_penalty"] = _clamp_float(float(cfg.get("do_nothing_logit_penalty", 0.50)) + 0.10, 0.0, 2.0)
-        patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.03, 0.05, 0.55)
-        patch["train_ships_sent_bonus_coef"] = _clamp_float(float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.03, 0.03, 0.40)
+        patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.03, 0.05, 0.70)
+        patch["train_ships_sent_bonus_coef"] = _clamp_float(float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.03, 0.03, float(cfg.get("stabilizer_max_ship_bonus", 0.80)))
         patch["policy_prior_strength"] = _clamp_float(float(cfg.get("policy_prior_strength", 0.0)) + 0.02, 0.0, 0.55)
         reasons.append("noop_high")
 
@@ -520,6 +514,10 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "train_action_bonus_coef": 0.28,
         "train_ships_sent_bonus_coef": 0.18,
         "train_activity_reward_clip": 0.55,
+        "train_passive_win_noop_rate": args.valid_win_max_do_nothing_rate,
+        "train_passive_win_min_avg_ships_sent": args.valid_win_min_avg_ships_sent,
+        "train_passive_win_min_real_moves_turn": args.valid_win_min_real_moves_turn,
+        "train_passive_win_terminal_reward": args.passive_win_terminal_reward,
         "train_mission_mix_bonus_coef": args.train_mission_mix_bonus_coef,
         "train_target_support_ratio": args.train_target_support_ratio,
         "train_support_ratio_band": args.train_support_ratio_band,
@@ -583,10 +581,16 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "promotion_lr_mult": args.promotion_lr_mult,
         "rollback_lr_mult": args.rollback_lr_mult,
         "max_eval_do_nothing_rate": args.max_eval_do_nothing_rate,
+        "valid_win_max_do_nothing_rate": args.valid_win_max_do_nothing_rate,
+        "valid_win_min_avg_ships_sent": args.valid_win_min_avg_ships_sent,
+        "valid_win_min_real_moves_turn": args.valid_win_min_real_moves_turn,
         "min_eval_avg_ships_sent": args.min_eval_avg_ships_sent,
         "degenerate_noop_rate": args.degenerate_noop_rate,
         "degenerate_max_avg_ships_sent": args.degenerate_max_avg_ships_sent,
         "degenerate_min_winrate": args.degenerate_min_winrate,
+        "collapse_stop_evals": args.collapse_stop_evals,
+        "collapse_stop_noop_rate": args.collapse_stop_noop_rate,
+        "collapse_stop_max_avg_ships_sent": args.collapse_stop_max_avg_ships_sent,
         "max_opponent_regression": args.max_opponent_regression,
         "min_ci_promotion_games": args.min_ci_promotion_games,
         "auto_tune_training": bool(args.auto_tune_training),
@@ -623,14 +627,18 @@ def _evaluate(
     opponents = list(pool) or ["random"]
     per_opponent: Dict[str, Any] = {}
     all_wins: List[float] = []
+    all_valid_wins: List[float] = []
     all_do_nothing_rates: List[float] = []
     all_avg_ships_sent: List[float] = []
     train_metrics = train_metrics or {}
+    valid_win_max_noop = float(config.get("valid_win_max_do_nothing_rate", config.get("max_eval_do_nothing_rate", 0.75)))
+    valid_win_min_ships = float(config.get("valid_win_min_avg_ships_sent", config.get("min_eval_avg_ships_sent", 0.0)))
 
     for opponent_idx, opponent in enumerate(opponents):
         if progress_log_path is not None:
             _log(progress_log_path, f"eval_start checkpoint={checkpoint_label} opponent={opponent} games={episodes}")
         wins: List[float] = []
+        valid_wins: List[float] = []
         do_nothing_rates: List[float] = []
         avg_ships_sent: List[float] = []
         seed_base = int(seed_start) + opponent_idx * max(100000, episodes + 1)
@@ -653,10 +661,15 @@ def _evaluate(
                 use_c_accel=bool(config.get("official_fast_c_accel", True)),
             )
             winner = int(result.get("winner", -1))
-            wins.append(float(winner == our_index))
             metrics = _action_summary(action_records)
-            do_nothing_rates.append(float(metrics.get("do_nothing_rate", 1.0)))
-            avg_ships_sent.append(float(metrics.get("avg_ships_sent", 0.0)))
+            noop = float(metrics.get("do_nothing_rate", 1.0))
+            ships = float(metrics.get("avg_ships_sent", 0.0))
+            won = float(winner == our_index)
+            valid_won = float(bool(won) and noop <= valid_win_max_noop and ships >= valid_win_min_ships)
+            wins.append(won)
+            valid_wins.append(valid_won)
+            do_nothing_rates.append(noop)
+            avg_ships_sent.append(ships)
             if progress_log_path is not None and ((i + 1) == episodes or (i + 1) % max(1, episodes // 4) == 0):
                 _log(
                     progress_log_path,
@@ -665,17 +678,23 @@ def _evaluate(
                 )
 
         win_count = int(sum(wins))
+        valid_win_count = int(sum(valid_wins))
         ci_low, ci_high = _wilson_ci(win_count, episodes)
+        valid_ci_low, valid_ci_high = _wilson_ci(valid_win_count, episodes)
         record = {
             "episode": int(episode_count),
             "checkpoint": checkpoint_label,
             "opponent": str(opponent),
             "games": int(episodes),
             "wins": win_count,
+            "valid_wins": valid_win_count,
             "losses": int(episodes - win_count),
             "winrate": float(np.mean(wins)) if wins else 0.0,
+            "valid_winrate": float(np.mean(valid_wins)) if valid_wins else 0.0,
             "ci_low": ci_low,
             "ci_high": ci_high,
+            "valid_ci_low": valid_ci_low,
+            "valid_ci_high": valid_ci_high,
             "do_nothing_rate": float(np.mean(do_nothing_rates)) if do_nothing_rates else 1.0,
             "avg_ships_sent": float(np.mean(avg_ships_sent)) if avg_ships_sent else 0.0,
             "avg_reward": float(train_metrics.get("mean_reward", 0.0)),
@@ -697,23 +716,31 @@ def _evaluate(
             _log(
                 progress_log_path,
                 f"eval_done checkpoint={checkpoint_label} opponent={opponent} "
-                f"winrate={record['winrate']:.3f} noop={record['do_nothing_rate']:.3f} ships={record['avg_ships_sent']:.2f}",
+                f"winrate={record['winrate']:.3f} valid={record['valid_winrate']:.3f} "
+                f"noop={record['do_nothing_rate']:.3f} ships={record['avg_ships_sent']:.2f}",
             )
         if eval_history_path is not None:
             append_jsonl(eval_history_path, record)
         all_wins.extend(wins)
+        all_valid_wins.extend(valid_wins)
         all_do_nothing_rates.extend(do_nothing_rates)
         all_avg_ships_sent.extend(avg_ships_sent)
 
     total_games = len(all_wins)
     total_wins = int(sum(all_wins))
+    total_valid_wins = int(sum(all_valid_wins))
     ci_low, ci_high = _wilson_ci(total_wins, total_games)
+    valid_ci_low, valid_ci_high = _wilson_ci(total_valid_wins, total_games)
     aggregate = {
         "winrate": float(np.mean(all_wins)) if all_wins else 0.0,
+        "valid_winrate": float(np.mean(all_valid_wins)) if all_valid_wins else 0.0,
         "wins": total_wins,
+        "valid_wins": total_valid_wins,
         "losses": int(total_games - total_wins),
         "ci_low": ci_low,
         "ci_high": ci_high,
+        "valid_ci_low": valid_ci_low,
+        "valid_ci_high": valid_ci_high,
         "eval_do_nothing_rate": float(np.mean(all_do_nothing_rates)) if all_do_nothing_rates else 1.0,
         "eval_avg_ships_sent": float(np.mean(all_avg_ships_sent)) if all_avg_ships_sent else 0.0,
         "eval_episodes": int(episodes),
@@ -748,18 +775,19 @@ def _promotion_decision(
     min_ci_games = int(config.get("min_ci_promotion_games", 96))
     reasons: List[str] = []
 
-    cand_wr = float(candidate_eval.get("winrate", 0.0))
-    best_wr = float(best_eval.get("winrate", 0.0))
+    cand_wr = float(candidate_eval.get("valid_winrate", candidate_eval.get("winrate", 0.0)))
+    best_wr = float(best_eval.get("valid_winrate", best_eval.get("winrate", 0.0)))
     delta = cand_wr - best_wr
     promote = True
     if delta < margin:
         promote = False
         reasons.append(f"delta {delta:.4f} < margin {margin:.4f}")
     eval_games = int(candidate_eval.get("eval_games", 0))
-    if eval_games >= min_ci_games and float(candidate_eval.get("ci_low", 0.0)) <= best_wr:
+    cand_ci_low = float(candidate_eval.get("valid_ci_low", candidate_eval.get("ci_low", 0.0)))
+    if eval_games >= min_ci_games and cand_ci_low <= best_wr:
         promote = False
         reasons.append(
-            f"candidate ci_low {float(candidate_eval.get('ci_low', 0.0)):.4f} <= best_winrate {best_wr:.4f}"
+            f"candidate valid_ci_low {cand_ci_low:.4f} <= best_valid_winrate {best_wr:.4f}"
         )
     eval_noop_rate = float(candidate_eval.get("eval_do_nothing_rate", 1.0))
     if eval_noop_rate > max_do_nothing:
@@ -785,7 +813,10 @@ def _promotion_decision(
         best_record = best_by_opp.get(opponent)
         if not best_record:
             continue
-        opp_delta = float(cand_record.get("winrate", 0.0)) - float(best_record.get("winrate", 0.0))
+        opp_delta = (
+            float(cand_record.get("valid_winrate", cand_record.get("winrate", 0.0)))
+            - float(best_record.get("valid_winrate", best_record.get("winrate", 0.0)))
+        )
         if opp_delta < -max_opp_regression:
             promote = False
             rollback = True
@@ -829,9 +860,16 @@ def main() -> None:
     parser.add_argument("--max-eval-do-nothing-rate", type=float, default=0.75)
     parser.add_argument("--rollback-on-noop-rate", type=float, default=0.0)
     parser.add_argument("--min-eval-avg-ships-sent", type=float, default=0.0)
+    parser.add_argument("--valid-win-max-do-nothing-rate", type=float, default=0.84)
+    parser.add_argument("--valid-win-min-avg-ships-sent", type=float, default=4.0)
+    parser.add_argument("--valid-win-min-real-moves-turn", type=float, default=1.0)
+    parser.add_argument("--passive-win-terminal-reward", type=float, default=-0.25)
     parser.add_argument("--degenerate-noop-rate", type=float, default=0.92)
     parser.add_argument("--degenerate-max-avg-ships-sent", type=float, default=1.50)
     parser.add_argument("--degenerate-min-winrate", type=float, default=0.70)
+    parser.add_argument("--collapse-stop-evals", type=int, default=2)
+    parser.add_argument("--collapse-stop-noop-rate", type=float, default=0.92)
+    parser.add_argument("--collapse-stop-max-avg-ships-sent", type=float, default=2.0)
     parser.add_argument("--max-opponent-regression", type=float, default=0.12)
     parser.add_argument("--min-ci-promotion-games", type=int, default=96)
     parser.add_argument("--league-archive-size", type=int, default=4)
@@ -1025,7 +1063,7 @@ def main() -> None:
     best_meta: Dict[str, Any] = {}
     if best_validated_path.exists():
         _, best_meta = load_checkpoint(best_validated_path)
-    best_winrate = float(best_meta.get("winrate", resume_meta.get("winrate", -1.0)))
+    best_winrate = float(best_meta.get("valid_winrate", best_meta.get("winrate", resume_meta.get("winrate", -1.0))))
     total_episodes = int(resume_meta.get("total_episodes", 0))
     last_eval_episode = int(resume_meta.get("last_eval_episode", 0))
     pending_episodes: List[Dict[str, Any]] = []
@@ -1034,6 +1072,7 @@ def main() -> None:
     train_history = deque(maxlen=12)
     eval_history = deque(maxlen=8)
     consecutive_regressions = 0
+    collapse_eval_count = 0
 
     try:
         while time.time() < deadline:
@@ -1111,6 +1150,7 @@ def main() -> None:
                     f"grad_norm={metrics.get('grad_norm', 0):.3f} "
                     f"reward={metrics.get('mean_reward', 0):.3f} "
                     f"terminal={metrics.get('terminal_reward_mean', 0):.3f} "
+                    f"adj_terminal={metrics.get('adjusted_terminal_reward_mean', 0):.3f} "
                     f"dense={metrics.get('dense_reward_mean', 0):.3f} "
                     f"activity={metrics.get('activity_reward_mean', 0):.3f} "
                     f"mix={metrics.get('mission_mix_reward_mean', 0):.3f} "
@@ -1119,6 +1159,7 @@ def main() -> None:
                     f"expand={metrics.get('mission_expand_ratio_mean', 0):.3f} "
                     f"passivity_penalty={metrics.get('passivity_penalty_mean', 0):.3f} "
                     f"passivity={metrics.get('do_nothing_rate_mean', 1):.3f} "
+                    f"passive_wins={metrics.get('passive_win_rate', 0):.3f} "
                     f"noop_p=[{metrics.get('noop_prob_before_cap_mean', 0):.3f}->{metrics.get('noop_prob_after_cap_mean', 0):.3f}] "
                     f"noop_cap_frac={metrics.get('noop_prob_cap_frac', 0):.3f} "
                     f"slot0_noop={metrics.get('first_slot_noop_rate', 1):.3f} "
@@ -1229,6 +1270,19 @@ def main() -> None:
                     progress_log_path=log_path,
                 )
                 eval_history.append(eval_result)
+                collapsed_eval = (
+                    float(eval_result.get("eval_do_nothing_rate", 1.0)) >= float(cfg.get("collapse_stop_noop_rate", 0.92))
+                    and float(eval_result.get("eval_avg_ships_sent", 0.0)) <= float(cfg.get("collapse_stop_max_avg_ships_sent", 2.0))
+                )
+                collapse_eval_count = collapse_eval_count + 1 if collapsed_eval else 0
+                if collapsed_eval:
+                    _log(
+                        log_path,
+                        f"COLLAPSE_DETECTED count={collapse_eval_count} "
+                        f"noop={float(eval_result.get('eval_do_nothing_rate', 1.0)):.3f} "
+                        f"ships={float(eval_result.get('eval_avg_ships_sent', 0.0)):.2f} "
+                        f"valid={float(eval_result.get('valid_winrate', eval_result.get('winrate', 0.0))):.3f}",
+                    )
                 mix_patch = _auto_tune_opponent_mix(cfg, list(eval_history))
                 if mix_patch:
                     pool = list(mix_patch["stage1_pool"])
@@ -1266,9 +1320,11 @@ def main() -> None:
                     log_path,
                     f"eval episodes={total_episodes} elapsed={elapsed:.1f}m "
                     f"winrate={eval_result['winrate']:.3f} "
+                    f"valid={eval_result.get('valid_winrate', eval_result['winrate']):.3f} "
                     f"wscore={eval_result.get('weighted_score', eval_result['winrate']):.3f} "
                     f"ci=[{eval_result['ci_low']:.3f},{eval_result['ci_high']:.3f}] "
                     f"best_eval={best_eval['winrate']:.3f} "
+                    f"best_valid={best_eval.get('valid_winrate', best_eval['winrate']):.3f} "
                     f"best_wscore={best_eval.get('weighted_score', best_eval['winrate']):.3f} "
                     f"best_ci=[{best_eval['ci_low']:.3f},{best_eval['ci_high']:.3f}] "
                     f"noop={eval_result['eval_do_nothing_rate']:.3f} "
@@ -1277,7 +1333,7 @@ def main() -> None:
                     f"best={best_winrate:.3f} target={cfg['target_winrate']}",
                 )
                 if promote:
-                    best_winrate = eval_result["winrate"]
+                    best_winrate = float(eval_result.get("valid_winrate", eval_result["winrate"]))
                     metadata = {
                         **eval_result,
                         "baseline": baseline,
@@ -1315,7 +1371,7 @@ def main() -> None:
                     consecutive_regressions = 0
                     _log(
                         log_path,
-                        f"PROMOTED winrate={best_winrate:.4f} archive={archive_path} lr={current_lr:.8f}->{new_lr:.8f}",
+                        f"PROMOTED valid_winrate={best_winrate:.4f} archive={archive_path} lr={current_lr:.8f}->{new_lr:.8f}",
                     )
                 else:
                     _log(log_path, f"not promoted reasons={promotion_reasons}")
@@ -1419,6 +1475,15 @@ def main() -> None:
                     except Exception:
                         pass
                     save_json(run_dir / "config.json", cfg)
+                if int(cfg.get("collapse_stop_evals", 0)) > 0 and collapse_eval_count >= int(cfg.get("collapse_stop_evals", 0)):
+                    _log(
+                        log_path,
+                        f"STOP collapse_detected evals={collapse_eval_count} "
+                        f"noop={float(eval_result.get('eval_do_nothing_rate', 1.0)):.3f} "
+                        f"ships={float(eval_result.get('eval_avg_ships_sent', 0.0)):.2f} "
+                        f"latest={latest_path}",
+                    )
+                    break
                 if best_winrate >= cfg["target_winrate"]:
                     _log(log_path, f"TARGET REACHED winrate={best_winrate:.4f}")
                     break

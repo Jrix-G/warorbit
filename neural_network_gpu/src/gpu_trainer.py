@@ -85,6 +85,7 @@ def train_on_episodes(
     dataset: List[Dict[str, Any]] = []
     rewards: List[float] = []
     terminal_rewards: List[float] = []
+    adjusted_terminal_rewards: List[float] = []
     dense_rewards: List[float] = []
     activity_rewards: List[float] = []
     mission_mix_rewards: List[float] = []
@@ -92,6 +93,7 @@ def train_on_episodes(
     mission_attack_ratios: List[float] = []
     mission_support_ratios: List[float] = []
     passivity_penalties: List[float] = []
+    passive_win_flags: List[float] = []
     do_nothing_rates: List[float] = []
     skipped_missing_old_log_prob = 0
     trajectory_lengths: List[int] = []
@@ -119,11 +121,29 @@ def train_on_episodes(
         passive_excess = max(0.0, do_nothing_rate - passive_limit) / max(1e-6, 1.0 - passive_limit)
         passivity_penalty = passive_coef * passive_excess
         terminal_reward = float(ep["terminal_reward"])
+        avg_ships_sent = float(action_metrics.get("avg_ships_sent", 0.0))
+        real_action_count = float(action_metrics.get("real_action_count", 0.0))
+        episode_turns = max(1.0, float(ep.get("episode_length") or 0))
+        real_moves_per_turn = real_action_count / episode_turns
+        passive_win = (
+            terminal_reward > 0.0
+            and (
+                do_nothing_rate > float(config.get("train_passive_win_noop_rate", 0.84))
+                or avg_ships_sent < float(config.get("train_passive_win_min_avg_ships_sent", 4.0))
+                or real_moves_per_turn < float(config.get("train_passive_win_min_real_moves_turn", 1.0))
+            )
+        )
+        adjusted_terminal_reward = (
+            float(config.get("train_passive_win_terminal_reward", -0.25))
+            if passive_win
+            else terminal_reward
+        )
         dense_reward = float(ep.get("dense_reward", 0.0))
-        reward = float(terminal_reward + 0.15 * dense_reward + 0.05 * activity_reward + mission_mix_reward - passivity_penalty)
+        reward = float(adjusted_terminal_reward + 0.15 * dense_reward + 0.05 * activity_reward + mission_mix_reward - passivity_penalty)
         reward = max(-1.2, min(1.2, reward))
         rewards.append(reward)
         terminal_rewards.append(terminal_reward)
+        adjusted_terminal_rewards.append(adjusted_terminal_reward)
         dense_rewards.append(dense_reward)
         activity_rewards.append(float(activity_reward))
         mission_mix_rewards.append(float(mission_mix_reward))
@@ -131,6 +151,7 @@ def train_on_episodes(
         mission_attack_ratios.append(float(mission_mix_stats["mission_attack_ratio"]))
         mission_support_ratios.append(float(mission_mix_stats["mission_support_ratio"]))
         passivity_penalties.append(float(passivity_penalty))
+        passive_win_flags.append(1.0 if passive_win else 0.0)
         do_nothing_rates.append(float(do_nothing_rate))
         valid_steps = [
             step for step in trajectory
@@ -386,6 +407,7 @@ def train_on_episodes(
         "median_reward": float(np.median(rewards)) if rewards else 0.0,
         "reward_std": float(np.std(rewards)) if rewards else 0.0,
         "terminal_reward_mean": float(np.mean(terminal_rewards)) if terminal_rewards else 0.0,
+        "adjusted_terminal_reward_mean": float(np.mean(adjusted_terminal_rewards)) if adjusted_terminal_rewards else 0.0,
         "dense_reward_mean": float(np.mean(dense_rewards)) if dense_rewards else 0.0,
         "activity_reward_mean": float(np.mean(activity_rewards)) if activity_rewards else 0.0,
         "mission_mix_reward_mean": float(np.mean(mission_mix_rewards)) if mission_mix_rewards else 0.0,
@@ -393,6 +415,7 @@ def train_on_episodes(
         "mission_attack_ratio_mean": float(np.mean(mission_attack_ratios)) if mission_attack_ratios else 0.0,
         "mission_support_ratio_mean": float(np.mean(mission_support_ratios)) if mission_support_ratios else 0.0,
         "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,
+        "passive_win_rate": float(np.mean(passive_win_flags)) if passive_win_flags else 0.0,
         "do_nothing_rate_mean": float(np.mean(do_nothing_rates)) if do_nothing_rates else 1.0,
         "noop_prob_before_cap_mean": float(np.mean(all_noop_probs_before_cap)) if all_noop_probs_before_cap else 0.0,
         "noop_prob_after_cap_mean": float(np.mean(all_noop_probs_after_cap)) if all_noop_probs_after_cap else 0.0,
