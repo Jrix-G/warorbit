@@ -518,6 +518,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "train_passive_win_min_avg_ships_sent": args.valid_win_min_avg_ships_sent,
         "train_passive_win_min_real_moves_turn": args.valid_win_min_real_moves_turn,
         "train_passive_win_terminal_reward": args.passive_win_terminal_reward,
+        "deterministic_avoid_noop_if_real": True,
         "train_mission_mix_bonus_coef": args.train_mission_mix_bonus_coef,
         "train_target_support_ratio": args.train_target_support_ratio,
         "train_support_ratio_band": args.train_support_ratio_band,
@@ -1315,6 +1316,8 @@ def main() -> None:
                     progress_log_path=log_path,
                 )
                 elapsed = (time.time() - started_at) / 60.0
+                if best_validated_path.exists() and best_winrate < 0.0:
+                    best_winrate = float(best_eval.get("valid_winrate", best_eval.get("winrate", best_winrate)))
                 promote, promotion_reasons, rollback = _promotion_decision(eval_result, best_eval, cfg)
                 _log(
                     log_path,

@@ -212,6 +212,29 @@ def _noop_prob_cap_for_slot(
     return float(default_cap)
 
 
+def _select_deterministic_index(
+    probs: torch.Tensor,
+    candidates: Sequence[ActionCandidate],
+    valid_mask: torch.Tensor,
+    noop_cap: float,
+    avoid_noop_if_real: bool,
+) -> torch.Tensor:
+    if not avoid_noop_if_real or float(noop_cap) >= 1.0 or probs.numel() <= 1 or not bool(valid_mask[0]):
+        return torch.argmax(probs)
+    real_indices = [
+        idx for idx, candidate in enumerate(candidates)
+        if idx > 0 and candidate.mission != "do_nothing" and bool(valid_mask[idx])
+    ]
+    if not real_indices:
+        return torch.argmax(probs)
+    best_idx = torch.argmax(probs)
+    if int(best_idx.item()) != 0:
+        return best_idx
+    real_idx_tensor = torch.tensor(real_indices, dtype=torch.long, device=probs.device)
+    real_probs = probs.index_select(0, real_idx_tensor)
+    return real_idx_tensor[torch.argmax(real_probs)]
+
+
 def choose_action(
     outputs: Dict[str, torch.Tensor],
     game: Dict[str, Any],
@@ -226,6 +249,7 @@ def choose_action(
     do_nothing_prob_caps_by_slot: Sequence[float] | None = None,
     action_slot: int = 0,
     allow_support: bool = True,
+    deterministic_avoid_noop_if_real: bool = True,
 ) -> Tuple[ActionCandidate, torch.Tensor] | Tuple[ActionCandidate, torch.Tensor, torch.Tensor]:
     candidates = build_action_candidates(
         game,
@@ -245,6 +269,7 @@ def choose_action(
         do_nothing_prob_cap=do_nothing_prob_cap,
         do_nothing_prob_caps_by_slot=do_nothing_prob_caps_by_slot,
         action_slot=action_slot,
+        deterministic_avoid_noop_if_real=deterministic_avoid_noop_if_real,
     )
 
 
@@ -260,6 +285,7 @@ def choose_action_from_candidates(
     do_nothing_prob_cap: float = 1.0,
     do_nothing_prob_caps_by_slot: Sequence[float] | None = None,
     action_slot: int = 0,
+    deterministic_avoid_noop_if_real: bool = True,
 ) -> Tuple[ActionCandidate, torch.Tensor] | Tuple[ActionCandidate, torch.Tensor, torch.Tensor]:
     logits = outputs["policy_logits"]
     if logits.dim() == 1:
@@ -293,7 +319,13 @@ def choose_action_from_candidates(
     cap = _noop_prob_cap_for_slot(do_nothing_prob_cap, do_nothing_prob_caps_by_slot, action_slot)
     probs = cap_do_nothing_probability(probs, valid_mask, cap)
     dist = Categorical(probs=probs)
-    idx = dist.sample() if explore else torch.argmax(probs)
+    idx = dist.sample() if explore else _select_deterministic_index(
+        probs,
+        candidates,
+        valid_mask,
+        noop_cap=cap,
+        avoid_noop_if_real=deterministic_avoid_noop_if_real,
+    )
     log_prob = dist.log_prob(idx)
     entropy = dist.entropy()
     if return_entropy:

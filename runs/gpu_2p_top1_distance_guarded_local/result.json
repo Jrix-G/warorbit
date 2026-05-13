@@ -1,0 +1,11 @@
+{
+  "best_checkpoint": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\runs\\gpu_2p_top1_distance_guarded_local\\best_validated.npz",
+  "best_winrate": -1.0,
+  "elapsed_minutes": 40.547171688079835,
+  "eval_history": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\runs\\gpu_2p_top1_distance_guarded_local\\eval_history.jsonl",
+  "legacy_best_checkpoint": "C:\\Users\\Capitaine\\Documents\\GitHub\\warorbit\\runs\\gpu_2p_top1_distance_guarded_local\\best.npz",
+  "run_name": "gpu_2p_top1_distance_guarded_local",
+  "target_reached": false,
+  "target_winrate": 0.8,
+  "total_episodes": 3585
+}

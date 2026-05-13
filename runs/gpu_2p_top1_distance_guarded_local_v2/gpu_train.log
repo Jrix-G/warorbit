@@ -1,0 +1,8 @@
+[2026-05-13 16:22:29 UTC] run_start name=gpu_2p_top1_distance_guarded_local_v2 device=cuda workers=8 target=0.8
+[2026-05-13 16:22:29 UTC] policy_prior_strength=0.1
+[2026-05-13 16:22:30 UTC] resumed from C:\Users\Capitaine\Documents\GitHub\warorbit\runs\gpu_2p_rg_nosupport_local\best_validated.npz
+[2026-05-13 16:22:30 UTC] params=1847362 lr=2.5e-05
+[2026-05-13 16:22:30 UTC] teacher_distillation checkpoint=C:\Users\Capitaine\Documents\GitHub\warorbit\runs\gpu_2p_rg_nosupport_local\best_validated.npz kl_coef=0.0200
+[2026-05-13 16:22:31 UTC] curriculum_tier=simple_2p train_pool=['random', 'random', 'greedy', 'greedy', 'greedy', 'greedy', 'greedy', 'greedy', 'starter', 'starter', 'starter', 'starter', 'starter', 'starter', 'starter', 'starter', 'distance', 'distance', 'distance', 'distance']
+[2026-05-13 16:22:35 UTC] inference_server started
+[2026-05-13 16:22:36 UTC] 8 workers started

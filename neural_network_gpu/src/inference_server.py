@@ -134,6 +134,14 @@ def inference_server_fn(
                     caps_for_action_slots(config, action_slot_t),
                 )
                 action_idxs = probs.argmax(dim=-1)
+                caps = caps_for_action_slots(config, action_slot_t)
+                if bool(config.get("deterministic_avoid_noop_if_real", True)) and bool((caps < 1.0).any()) and probs.size(-1) > 1:
+                    choose_noop = action_idxs == 0
+                    has_real_candidate = mask_t[:, 1:].any(dim=-1)
+                    needs_real = choose_noop & has_real_candidate & (caps < 1.0)
+                    if bool(needs_real.any()):
+                        real_probs = probs[:, 1:].masked_fill(~mask_t[:, 1:], float("-inf"))
+                        action_idxs[needs_real] = real_probs.argmax(dim=-1)[needs_real] + 1
             log_probs_all = torch.log(probs.clamp_min(1e-12))
             probs_all = probs
             safe_log_probs = log_probs_all.masked_fill(~mask_t, 0.0)

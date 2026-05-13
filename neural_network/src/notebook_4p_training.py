@@ -284,6 +284,7 @@ def _make_policy_agent(
                 do_nothing_prob_cap=float(config.get("do_nothing_prob_cap", 1.0)),
                 do_nothing_prob_caps_by_slot=config.get("do_nothing_prob_caps_by_slot"),
                 action_slot=action_slot,
+                deterministic_avoid_noop_if_real=bool(config.get("deterministic_avoid_noop_if_real", True)),
             )
             log_probs.append(log_prob)
             action = reconstruct_action(cand, planning_game)
