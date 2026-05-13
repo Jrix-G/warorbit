@@ -3,12 +3,17 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
+RUNNER_PATH=""
 
 if [[ -f "$REPO_ROOT/../neural_network/src/model.py" && -f "$REPO_ROOT/scripts/run_gpu.py" ]]; then
   REPO_ROOT="$(cd "$REPO_ROOT/.." && pwd)"
+  RUNNER_PATH="$REPO_ROOT/neural_network_gpu/scripts/run_gpu.py"
 elif [[ -f "$REPO_ROOT/neural_network_gpu/scripts/run_gpu.py" ]]; then
   REPO_ROOT="$(cd "$REPO_ROOT/neural_network_gpu/.." && pwd)"
-elif [[ ! -f "$REPO_ROOT/scripts/run_gpu.py" ]]; then
+  RUNNER_PATH="$REPO_ROOT/neural_network_gpu/scripts/run_gpu.py"
+elif [[ -f "$REPO_ROOT/scripts/run_gpu.py" ]]; then
+  RUNNER_PATH="$REPO_ROOT/scripts/run_gpu.py"
+else
   echo "Could not locate scripts/run_gpu.py from: $SCRIPT_DIR" >&2
   exit 1
 fi
@@ -67,7 +72,7 @@ else
   TEACHER_ARGS=(--teacher-kl-coef 0.000)
 fi
 
-python scripts/run_gpu.py \
+python "$RUNNER_PATH" \
   "${RESUME_ARGS[@]}" \
   "${TEACHER_ARGS[@]}" \
   --run-name "$RUN_NAME" \
