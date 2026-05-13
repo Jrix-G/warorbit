@@ -4,13 +4,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
 
-if [[ ! -f "$REPO_ROOT/scripts/run_gpu.py" ]]; then
-  if [[ -f "$REPO_ROOT/neural_network_gpu/scripts/run_gpu.py" ]]; then
-    REPO_ROOT="$REPO_ROOT/neural_network_gpu"
-  else
-    echo "Could not locate scripts/run_gpu.py from: $SCRIPT_DIR" >&2
-    exit 1
-  fi
+if [[ -f "$REPO_ROOT/../neural_network/src/model.py" && -f "$REPO_ROOT/scripts/run_gpu.py" ]]; then
+  REPO_ROOT="$(cd "$REPO_ROOT/.." && pwd)"
+elif [[ -f "$REPO_ROOT/neural_network_gpu/scripts/run_gpu.py" ]]; then
+  REPO_ROOT="$(cd "$REPO_ROOT/neural_network_gpu/.." && pwd)"
+elif [[ ! -f "$REPO_ROOT/scripts/run_gpu.py" ]]; then
+  echo "Could not locate scripts/run_gpu.py from: $SCRIPT_DIR" >&2
+  exit 1
 fi
 
 cd "$REPO_ROOT"
