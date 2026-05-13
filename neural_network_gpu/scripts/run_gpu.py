@@ -65,7 +65,7 @@ def _clamp_int(value: int, low: int, high: int) -> int:
     return max(low, min(high, int(value)))
 
 
-def _raise_ratio_floor(ratios: List[float], step: float = 0.05, floor_cap: float = 0.40) -> List[float]:
+def _raise_ratio_floor(ratios: List[float], step: float = 0.10, floor_cap: float = 0.55) -> List[float]:
     adjusted = []
     for ratio in ratios:
         value = float(ratio)
@@ -235,6 +235,45 @@ def _eval_stabilizer(
     cfg["stabilizer_eval_count"] = eval_count
     patch["stabilizer_eval_count"] = eval_count
 
+    latest = eval_history[-1]
+    latest_noop = float(latest.get("eval_do_nothing_rate", 1.0))
+    latest_ships = float(latest.get("eval_avg_ships_sent", 0.0))
+    latest_score = _weighted_eval_score(latest)
+    degenerate_noop = float(cfg.get("degenerate_noop_rate", 0.92))
+    degenerate_ships = float(cfg.get("degenerate_max_avg_ships_sent", 1.50))
+    if latest_noop >= degenerate_noop and latest_ships <= degenerate_ships:
+        patch.update({
+            "stabilizer_action": "emergency_activity_reset",
+            "stabilizer_reasons": "degenerate_noop_exploit",
+            "stabilizer_score": latest_score,
+            "stabilizer_noop": latest_noop,
+            "stabilizer_ships": latest_ships,
+            "stabilizer_passivity": float(latest.get("train_passivity_rate", 1.0)),
+            "stabilizer_real_moves": float(latest.get("train_real_moves_per_turn", 0.0)),
+            "stabilizer_cooldown_remaining": 0,
+            "train_noop_penalty_coef": _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.70)) * 1.30, 0.10, 2.20),
+            "train_passivity_penalty_coef": _clamp_float(float(cfg.get("train_passivity_penalty_coef", 0.55)) * 1.20, 0.10, 2.00),
+            "do_nothing_logit_penalty": _clamp_float(float(cfg.get("do_nothing_logit_penalty", 0.50)) + 0.35, 0.0, 2.50),
+            "train_action_bonus_coef": _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.12, 0.05, 0.70),
+            "train_ships_sent_bonus_coef": _clamp_float(
+                float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.25,
+                0.03,
+                float(cfg.get("stabilizer_max_ship_bonus", 0.80)),
+            ),
+            "min_expand_attack_ships": _clamp_int(
+                int(cfg.get("min_expand_attack_ships", 2)) + 1,
+                2,
+                int(cfg.get("stabilizer_max_min_ships", 8)),
+            ),
+            "send_ratios": _raise_ratio_floor(
+                list(cfg.get("send_ratios", [0.25, 0.35, 0.50, 0.65, 0.80, 0.95])),
+                step=float(cfg.get("stabilizer_ratio_floor_step", 0.10)),
+                floor_cap=float(cfg.get("stabilizer_ratio_floor_cap", 0.55)),
+            ),
+        })
+        cfg.update(patch)
+        return patch
+
     cooldown = int(cfg.get("stabilizer_cooldown_remaining", 0))
     if cooldown > 0:
         cooldown -= 1
@@ -270,7 +309,7 @@ def _eval_stabilizer(
         action = "increase_ship_volume"
         reasons.append("ships_low")
         patch["train_ships_sent_bonus_coef"] = _clamp_float(
-            float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.08,
+            float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.18,
             0.03,
             float(cfg.get("stabilizer_max_ship_bonus", 0.80)),
         )
@@ -280,7 +319,11 @@ def _eval_stabilizer(
                 2,
                 int(cfg.get("stabilizer_max_min_ships", 6)),
             )
-        patch["send_ratios"] = _raise_ratio_floor(list(cfg.get("send_ratios", [0.25, 0.35, 0.50, 0.65, 0.80, 0.95])))
+        patch["send_ratios"] = _raise_ratio_floor(
+            list(cfg.get("send_ratios", [0.25, 0.35, 0.50, 0.65, 0.80, 0.95])),
+            step=float(cfg.get("stabilizer_ratio_floor_step", 0.10)),
+            floor_cap=float(cfg.get("stabilizer_ratio_floor_cap", 0.55)),
+        )
     elif noop > target_noop and passivity > target_passivity and ships >= max(2.5, target_ships * 0.80):
         action = "reduce_noop"
         reasons.append("noop_high")
@@ -427,19 +470,27 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "train_action_bonus_coef": 0.28,
         "train_ships_sent_bonus_coef": 0.18,
         "train_activity_reward_clip": 0.55,
+        "train_mission_mix_bonus_coef": args.train_mission_mix_bonus_coef,
+        "train_target_support_ratio": args.train_target_support_ratio,
+        "train_support_ratio_band": args.train_support_ratio_band,
+        "train_min_support_ratio": args.train_min_support_ratio,
+        "train_max_attack_ratio": args.train_max_attack_ratio,
+        "train_mission_mix_reward_clip": args.train_mission_mix_reward_clip,
         # Slow eval-level stabilizer. It replaces fast train-step behavior
         # shaping when auto-tune is enabled.
         "eval_stabilizer_enabled": True,
-        "stabilizer_window_evals": 3,
-        "stabilizer_cooldown_evals": 2,
-        "stabilizer_target_noop": 0.60,
-        "stabilizer_target_passivity": 0.50,
-        "stabilizer_target_real_moves_turn": 1.20,
-        "stabilizer_target_avg_ships_sent": 3.0,
-        "stabilizer_min_weighted_score": 0.55,
-        "stabilizer_max_ship_bonus": 0.80,
-        "stabilizer_max_min_ships": 6,
-        "stabilizer_max_starter_count": 5,
+        "stabilizer_window_evals": 2,
+        "stabilizer_cooldown_evals": 1,
+        "stabilizer_target_noop": args.stabilizer_target_noop,
+        "stabilizer_target_passivity": args.stabilizer_target_passivity,
+        "stabilizer_target_real_moves_turn": args.stabilizer_target_real_moves_turn,
+        "stabilizer_target_avg_ships_sent": args.stabilizer_target_avg_ships_sent,
+        "stabilizer_min_weighted_score": args.stabilizer_min_weighted_score,
+        "stabilizer_max_ship_bonus": args.stabilizer_max_ship_bonus,
+        "stabilizer_max_min_ships": args.stabilizer_max_min_ships,
+        "stabilizer_max_starter_count": args.stabilizer_max_starter_count,
+        "stabilizer_ratio_floor_step": args.stabilizer_ratio_floor_step,
+        "stabilizer_ratio_floor_cap": args.stabilizer_ratio_floor_cap,
         "stabilizer_eval_count": 0,
         "stabilizer_cooldown_remaining": 0,
         # Temperature
@@ -479,9 +530,14 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "rollback_lr_mult": args.rollback_lr_mult,
         "max_eval_do_nothing_rate": args.max_eval_do_nothing_rate,
         "min_eval_avg_ships_sent": args.min_eval_avg_ships_sent,
+        "degenerate_noop_rate": args.degenerate_noop_rate,
+        "degenerate_max_avg_ships_sent": args.degenerate_max_avg_ships_sent,
+        "degenerate_min_winrate": args.degenerate_min_winrate,
         "max_opponent_regression": args.max_opponent_regression,
         "min_ci_promotion_games": args.min_ci_promotion_games,
         "auto_tune_training": bool(args.auto_tune_training),
+        "teacher_kl_coef": args.teacher_kl_coef,
+        "teacher_checkpoint": args.teacher_checkpoint,
     }
 
 
@@ -631,6 +687,9 @@ def _promotion_decision(
     max_do_nothing = float(config.get("max_eval_do_nothing_rate", 0.75))
     rollback_noop_rate = float(config.get("rollback_on_noop_rate", 0.0))
     min_avg_ships = float(config.get("min_eval_avg_ships_sent", 0.0))
+    degenerate_noop = float(config.get("degenerate_noop_rate", 0.92))
+    degenerate_ships = float(config.get("degenerate_max_avg_ships_sent", 1.50))
+    degenerate_winrate = float(config.get("degenerate_min_winrate", 0.70))
     max_opp_regression = float(config.get("max_opponent_regression", 0.12))
     min_ci_games = int(config.get("min_ci_promotion_games", 96))
     reasons: List[str] = []
@@ -657,6 +716,12 @@ def _promotion_decision(
         reasons.append("avg_ships_sent gate failed")
 
     rollback = delta <= -rollback_margin
+    if cand_wr >= degenerate_winrate and eval_noop_rate >= degenerate_noop and float(candidate_eval.get("eval_avg_ships_sent", 0.0)) <= degenerate_ships:
+        promote = False
+        rollback = True
+        reasons.append(
+            f"degenerate noop exploit winrate={cand_wr:.4f} noop={eval_noop_rate:.4f} ships={float(candidate_eval.get('eval_avg_ships_sent', 0.0)):.2f}"
+        )
     if rollback_noop_rate > 0.0 and eval_noop_rate > rollback_noop_rate:
         rollback = True
         reasons.append(f"noop rollback {eval_noop_rate:.4f} > {rollback_noop_rate:.4f}")
@@ -710,6 +775,9 @@ def main() -> None:
     parser.add_argument("--max-eval-do-nothing-rate", type=float, default=0.75)
     parser.add_argument("--rollback-on-noop-rate", type=float, default=0.0)
     parser.add_argument("--min-eval-avg-ships-sent", type=float, default=0.0)
+    parser.add_argument("--degenerate-noop-rate", type=float, default=0.92)
+    parser.add_argument("--degenerate-max-avg-ships-sent", type=float, default=1.50)
+    parser.add_argument("--degenerate-min-winrate", type=float, default=0.70)
     parser.add_argument("--max-opponent-regression", type=float, default=0.12)
     parser.add_argument("--min-ci-promotion-games", type=int, default=96)
     parser.add_argument("--league-archive-size", type=int, default=4)
@@ -719,6 +787,24 @@ def main() -> None:
     parser.add_argument("--auto-tune-training", action="store_true")
     parser.add_argument("--policy-prior-strength", type=float, default=0.20)
     parser.add_argument("--temperature-decay-updates", type=int, default=200)
+    parser.add_argument("--teacher-checkpoint", default="", help="Optional frozen teacher checkpoint for KL distillation")
+    parser.add_argument("--teacher-kl-coef", type=float, default=0.0)
+    parser.add_argument("--train-mission-mix-bonus-coef", type=float, default=0.0)
+    parser.add_argument("--train-target-support-ratio", type=float, default=0.30)
+    parser.add_argument("--train-support-ratio-band", type=float, default=0.20)
+    parser.add_argument("--train-min-support-ratio", type=float, default=0.12)
+    parser.add_argument("--train-max-attack-ratio", type=float, default=0.58)
+    parser.add_argument("--train-mission-mix-reward-clip", type=float, default=0.20)
+    parser.add_argument("--stabilizer-target-noop", type=float, default=0.60)
+    parser.add_argument("--stabilizer-target-passivity", type=float, default=0.50)
+    parser.add_argument("--stabilizer-target-real-moves-turn", type=float, default=1.20)
+    parser.add_argument("--stabilizer-target-avg-ships-sent", type=float, default=3.0)
+    parser.add_argument("--stabilizer-min-weighted-score", type=float, default=0.55)
+    parser.add_argument("--stabilizer-max-ship-bonus", type=float, default=1.20)
+    parser.add_argument("--stabilizer-max-min-ships", type=int, default=6)
+    parser.add_argument("--stabilizer-max-starter-count", type=int, default=5)
+    parser.add_argument("--stabilizer-ratio-floor-step", type=float, default=0.10)
+    parser.add_argument("--stabilizer-ratio-floor-cap", type=float, default=0.55)
     parser.add_argument("--resume-checkpoint", default="")
     parser.add_argument("--run-name", default=None)
     parser.add_argument("--runs-root", default="", help="Override output directory for runs, useful on Kaggle")
@@ -747,6 +833,12 @@ def main() -> None:
                 "train_passivity_penalty_coef",
                 "train_action_bonus_coef",
                 "train_ships_sent_bonus_coef",
+                "train_mission_mix_bonus_coef",
+                "train_target_support_ratio",
+                "train_support_ratio_band",
+                "train_min_support_ratio",
+                "train_max_attack_ratio",
+                "train_mission_mix_reward_clip",
                 "min_expand_attack_ships",
                 "send_ratios",
                 "eval_stabilizer_enabled",
@@ -793,6 +885,13 @@ def main() -> None:
 
     optimizer = torch.optim.Adam(model.parameters(), lr=float(cfg["learning_rate"]))
     _log(log_path, f"params={count_parameters(model)} lr={cfg['learning_rate']}")
+    teacher_model = None
+    teacher_checkpoint = Path(str(cfg.get("teacher_checkpoint", "")))
+    if float(cfg.get("teacher_kl_coef", 0.0)) > 0.0 and teacher_checkpoint.exists():
+        teacher_model = _load_model_from_checkpoint(teacher_checkpoint, cfg, device)
+        _log(log_path, f"teacher_distillation checkpoint={teacher_checkpoint} kl_coef={float(cfg.get('teacher_kl_coef', 0.0)):.4f}")
+    elif float(cfg.get("teacher_kl_coef", 0.0)) > 0.0:
+        _log(log_path, f"teacher_distillation disabled missing_checkpoint={teacher_checkpoint}")
     if not best_validated_path.exists():
         save_checkpoint(
             best_validated_path,
@@ -894,6 +993,7 @@ def main() -> None:
                 baseline, metrics = train_on_episodes(
                     model, optimizer, pending_episodes, cfg, device,
                     baseline, float(cfg["baseline_momentum"]),
+                    teacher_model=teacher_model,
                 )
                 train_seconds = max(1e-6, time.time() - train_started)
                 elapsed = (time.time() - started_at) / 60.0
@@ -942,6 +1042,7 @@ def main() -> None:
                     f"policy_loss={metrics.get('policy_loss', 0):.3f} "
                     f"value_loss={metrics.get('value_loss', 0):.3f} "
                     f"total_loss={metrics.get('total_loss', 0):.3f} "
+                    f"teacher_kl={metrics.get('teacher_kl', 0):.4f} "
                     f"entropy={metrics.get('entropy', 0):.3f} "
                     f"kl={metrics.get('approx_kl', 0):.4f} "
                     f"clip_frac={metrics.get('clip_frac', 0):.3f} "
@@ -954,6 +1055,10 @@ def main() -> None:
                     f"terminal={metrics.get('terminal_reward_mean', 0):.3f} "
                     f"dense={metrics.get('dense_reward_mean', 0):.3f} "
                     f"activity={metrics.get('activity_reward_mean', 0):.3f} "
+                    f"mix={metrics.get('mission_mix_reward_mean', 0):.3f} "
+                    f"support={metrics.get('mission_support_ratio_mean', 0):.3f} "
+                    f"attack={metrics.get('mission_attack_ratio_mean', 0):.3f} "
+                    f"expand={metrics.get('mission_expand_ratio_mean', 0):.3f} "
                     f"passivity_penalty={metrics.get('passivity_penalty_mean', 0):.3f} "
                     f"passivity={metrics.get('do_nothing_rate_mean', 1):.3f} "
                     f"noop_p=[{metrics.get('noop_prob_before_cap_mean', 0):.3f}->{metrics.get('noop_prob_after_cap_mean', 0):.3f}] "
@@ -1172,6 +1277,43 @@ def main() -> None:
                         policy_version = 0
                         cfg["temperature_start"] = float(cfg.get("temperature_start_initial", 1.05))
                         train_history.clear()
+                        rollback_metadata = {
+                            "winrate": best_winrate,
+                            "baseline": baseline,
+                            "total_episodes": total_episodes,
+                            "last_eval_episode": last_eval_episode,
+                            "run_name": run_name,
+                            "policy_version": policy_version,
+                            "adaptive_config": {
+                                "learning_rate": new_lr,
+                                "entropy_coef_start": float(cfg.get("entropy_coef_start", 0.10)),
+                                "temperature_start": float(cfg.get("temperature_start", 1.05)),
+                                "temperature_end": float(cfg.get("temperature_end", 0.18)),
+                                "policy_prior_strength": float(cfg.get("policy_prior_strength", 0.0)),
+                                "do_nothing_logit_penalty": float(cfg.get("do_nothing_logit_penalty", 0.0)),
+                                "do_nothing_prob_cap": float(cfg.get("do_nothing_prob_cap", 1.0)),
+                                "do_nothing_prob_caps_by_slot": list(cfg.get("do_nothing_prob_caps_by_slot", [])),
+                                "train_noop_penalty_coef": float(cfg.get("train_noop_penalty_coef", 0.0)),
+                                "train_passivity_penalty_coef": float(cfg.get("train_passivity_penalty_coef", 0.0)),
+                                "train_action_bonus_coef": float(cfg.get("train_action_bonus_coef", 0.0)),
+                                "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
+                                "train_mission_mix_bonus_coef": float(cfg.get("train_mission_mix_bonus_coef", 0.0)),
+                                "train_target_support_ratio": float(cfg.get("train_target_support_ratio", 0.0)),
+                                "train_support_ratio_band": float(cfg.get("train_support_ratio_band", 0.0)),
+                                "train_min_support_ratio": float(cfg.get("train_min_support_ratio", 0.0)),
+                                "train_max_attack_ratio": float(cfg.get("train_max_attack_ratio", 0.0)),
+                                "train_mission_mix_reward_clip": float(cfg.get("train_mission_mix_reward_clip", 0.0)),
+                                "min_expand_attack_ships": int(cfg.get("min_expand_attack_ships", 2)),
+                                "send_ratios": list(cfg.get("send_ratios", [])),
+                                "eval_stabilizer_enabled": bool(cfg.get("eval_stabilizer_enabled", True)),
+                                "stabilizer_eval_count": int(cfg.get("stabilizer_eval_count", 0)),
+                                "stabilizer_cooldown_remaining": int(cfg.get("stabilizer_cooldown_remaining", 0)),
+                                "opponent_mix_counts": dict(cfg.get("opponent_mix_counts", {})),
+                            },
+                            "note": "latest reset to best_validated after rollback",
+                        }
+                        save_checkpoint(latest_path, _model_state_np(model), rollback_metadata)
+                        save_checkpoint(checkpoint_path, _model_state_np(model), rollback_metadata)
                         try:
                             model_update_queue.put_nowait({"state": _model_state_np(model), "policy_version": policy_version})
                         except Exception:

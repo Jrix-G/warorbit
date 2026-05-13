@@ -25,7 +25,7 @@ if ($LASTEXITCODE -ne 0) {
 python neural_network_gpu\scripts\run_gpu.py `
   @ResumeArgs `
   --device cuda `
-  --duration-minutes 480 `
+  --duration-minutes 540 `
   --workers 10 `
   --train-every 32 `
   --eval-every 512 `
@@ -43,7 +43,7 @@ python neural_network_gpu\scripts\run_gpu.py `
   --auto-tune-training `
   --policy-prior-strength 0.20 `
   --target-winrate 0.80 `
-  --max-eval-do-nothing-rate 0.45 `
+  --max-eval-do-nothing-rate 0.60 `
   --rollback-on-noop-rate 0.65 `
   --min-eval-avg-ships-sent 3.0 `
   --rollback-margin 0.35 `

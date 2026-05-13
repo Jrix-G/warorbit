@@ -496,12 +496,16 @@ def main() -> None:
                         default=Path("replay_dataset/v14_bc_top1.npz"))
     parser.add_argument("--bc-data-4p", type=Path, default=None,
                         help="Optional 4p-only BC warmstart dataset.")
-    parser.add_argument("--bc-weight-4p", type=float, default=0.25)
-    parser.add_argument("--bc-weight-2p", type=float, default=0.0)
-    parser.add_argument("--warmstart-batches", type=int, default=4,
-                        help="Number of initial batches that use BC-only warmstart.")
+    parser.add_argument("--bc-weight-4p", type=float, default=0.0,
+                        help="Deprecated RL-stage BC anchor weight; prefer --rl-bc-weight.")
+    parser.add_argument("--bc-weight-2p", type=float, default=0.0,
+                        help="Deprecated and ignored in the 4p-first recipe.")
+    parser.add_argument("--warmstart-batches", type=int, default=8,
+                        help="Number of initial batches that use supervised 4p pretraining.")
     parser.add_argument("--warmstart-bc-multiplier", type=float, default=2.5,
-                        help="Extra BC weight during warmstart batches.")
+                        help="BC weight during the supervised 4p pretraining stage.")
+    parser.add_argument("--rl-bc-weight", type=float, default=None,
+                        help="Optional BC anchor weight used after warmstart; default is no BC.")
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--lr", type=float, default=5e-5)
@@ -661,6 +665,7 @@ def main() -> None:
                     ))
 
             warmstart_mode = batch < max(0, int(args.warmstart_batches))
+            stage_name = "pretrain" if warmstart_mode else "rl"
             if warmstart_mode:
                 metrics = {
                     "pg_loss": 0.0, "v_loss": 0.0, "entropy": 0.0,
@@ -687,14 +692,12 @@ def main() -> None:
                 actor_grads = metrics.pop("_actor_grads", None)
                 critic_grads = metrics.pop("_critic_grads", None)
 
-            # BC anchor (mixed weight by mode share)
-            n4p = sum(1 for x in nps if x == 4)
-            n2p = sum(1 for x in nps if x == 2)
-            bc_w = 0.0 if args.no_bc else (
-                (n4p * args.bc_weight_4p + n2p * args.bc_weight_2p) / max(1, len(nps))
-            )
+            # BC anchor: strong supervised pretrain, then optional small RL anchor.
             if warmstart_mode:
-                bc_w *= float(args.warmstart_bc_multiplier)
+                bc_w = 0.0 if args.no_bc else float(args.warmstart_bc_multiplier)
+            else:
+                rl_bc_w = args.bc_weight_4p if args.rl_bc_weight is None else args.rl_bc_weight
+                bc_w = 0.0 if args.no_bc else float(rl_bc_w)
             bc_source = None
             if X4 is not None and len(y4) > 0:
                 bc_source = (X4, mask4, y4)
@@ -801,8 +804,8 @@ def main() -> None:
                     for i in range(max(1, int(args.eval_games)))
                 ]
                 val_results = list(pool.map(_play_episode_task, val_tasks))
-                val_wins = [r[2] for r in val_results]
-                val_terminals = [r[1] for r in val_results]
+                val_wins = [r[3] for r in val_results]
+                val_terminals = [r[2] for r in val_results]
                 val_wr = sum(val_wins) / max(1, len(val_wins))
                 val_wr4 = val_wr
                 val_reward = float(np.mean(val_terminals)) if val_terminals else 0.0
@@ -818,6 +821,7 @@ def main() -> None:
             elapsed = time.time() - started
             print(
                 f"[{elapsed:6.0f}s b{batch:04d}] games={games_total} "
+                f"stage={stage_name} "
                 f"wr={sum(wins)}/{len(wins)} ({wr:.3f}) "
                 f"wr2={wr2:.3f}(best={best_train_wr2:.3f}) "
                 f"wr4={wr4:.3f} ma={wr4_ma:.3f}(best={best_train_wr4:.3f}) "
@@ -825,7 +829,7 @@ def main() -> None:
                 f"valma={'' if val_wr4_ma is None else f'{val_wr4_ma:.3f}'} "
                 f"reward={float(np.mean(terminals)):+.3f} "
                 f"valreward={'' if val_reward is None else f'{val_reward:+.3f}'} "
-                f"dec={len(all_triples)} sp={len(selfplay_pool)} "
+                f"dec={len(triples)} sp={len(selfplay_pool)} "
                 f"pg={metrics['pg_loss']:+.3f} v={metrics['v_loss']:.3f} "
                 f"H={metrics['entropy']:.3f} kl={metrics['kl']:+.4f} "
                 f"postkl={change['post_kl']:.5f} dlogit={change['logit_delta']:.5f} "

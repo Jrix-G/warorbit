@@ -18,6 +18,47 @@ from neural_network.src.notebook_4p_training import _action_summary
 from neural_network_gpu.src.probability import cap_do_nothing_probability_with_info, caps_for_action_slots
 
 
+def _mission_mix_shaping_reward(action_metrics: Dict[str, Any], config: Dict[str, Any]) -> Tuple[float, Dict[str, float]]:
+    counts = action_metrics.get("mission_counts", {}) or {}
+    expand = float(counts.get("expand", 0))
+    attack = float(counts.get("attack", 0))
+    support = float(counts.get("support", 0))
+    real = expand + attack + support
+    if real <= 0.0:
+        return 0.0, {
+            "mission_mix_reward": 0.0,
+            "mission_expand_ratio": 0.0,
+            "mission_attack_ratio": 0.0,
+            "mission_support_ratio": 0.0,
+        }
+
+    expand_ratio = expand / real
+    attack_ratio = attack / real
+    support_ratio = support / real
+    coef = max(0.0, float(config.get("train_mission_mix_bonus_coef", 0.0)))
+    target_support = max(0.0, min(1.0, float(config.get("train_target_support_ratio", 0.30))))
+    support_band = max(1e-6, float(config.get("train_support_ratio_band", 0.20)))
+    min_support = max(0.0, min(1.0, float(config.get("train_min_support_ratio", 0.12))))
+    max_attack = max(0.0, min(1.0, float(config.get("train_max_attack_ratio", 0.58))))
+    clip = max(0.0, float(config.get("train_mission_mix_reward_clip", 0.20)))
+
+    support_shape = max(0.0, 1.0 - abs(support_ratio - target_support) / support_band)
+    reward = coef * support_shape
+    if support_ratio < min_support:
+        reward -= coef * ((min_support - support_ratio) / max(1e-6, min_support))
+    if attack_ratio > max_attack:
+        reward -= coef * ((attack_ratio - max_attack) / max(1e-6, 1.0 - max_attack))
+    if clip > 0.0:
+        reward = max(-clip, min(clip, reward))
+
+    return float(reward), {
+        "mission_mix_reward": float(reward),
+        "mission_expand_ratio": float(expand_ratio),
+        "mission_attack_ratio": float(attack_ratio),
+        "mission_support_ratio": float(support_ratio),
+    }
+
+
 def train_on_episodes(
     model: NeuralNetworkModel,
     optimizer: torch.optim.Optimizer,
@@ -26,6 +67,7 @@ def train_on_episodes(
     device: torch.device,
     baseline: float,
     baseline_momentum: float,
+    teacher_model: NeuralNetworkModel | None = None,
 ) -> Tuple[float, Dict[str, float]]:
     if not episodes:
         return baseline, {}
@@ -36,6 +78,7 @@ def train_on_episodes(
     ppo_clip_eps = float(config.get("ppo_clip_eps", 0.2))
     ppo_epochs = int(config.get("ppo_epochs", 3))
     minibatch_size = max(1, int(config.get("ppo_minibatch_size", 512)))
+    teacher_kl_coef = max(0.0, float(config.get("teacher_kl_coef", 0.0))) if teacher_model is not None else 0.0
     advantage_eps = 1e-6
 
     # Build per-step dataset across all episodes
@@ -44,6 +87,10 @@ def train_on_episodes(
     terminal_rewards: List[float] = []
     dense_rewards: List[float] = []
     activity_rewards: List[float] = []
+    mission_mix_rewards: List[float] = []
+    mission_expand_ratios: List[float] = []
+    mission_attack_ratios: List[float] = []
+    mission_support_ratios: List[float] = []
     passivity_penalties: List[float] = []
     do_nothing_rates: List[float] = []
     skipped_missing_old_log_prob = 0
@@ -65,6 +112,7 @@ def train_on_episodes(
             continue
         action_metrics = ep.get("action_metrics", {})
         activity_reward = _activity_shaping_reward(action_metrics, config)
+        mission_mix_reward, mission_mix_stats = _mission_mix_shaping_reward(action_metrics, config)
         do_nothing_rate = max(0.0, min(1.0, float(action_metrics.get("do_nothing_rate", 1.0))))
         passive_limit = max(0.0, min(1.0, float(config.get("train_target_do_nothing_rate", 0.45))))
         passive_coef = max(0.0, float(config.get("train_passivity_penalty_coef", 0.55)))
@@ -72,12 +120,16 @@ def train_on_episodes(
         passivity_penalty = passive_coef * passive_excess
         terminal_reward = float(ep["terminal_reward"])
         dense_reward = float(ep.get("dense_reward", 0.0))
-        reward = float(terminal_reward + 0.15 * dense_reward + 0.05 * activity_reward - passivity_penalty)
+        reward = float(terminal_reward + 0.15 * dense_reward + 0.05 * activity_reward + mission_mix_reward - passivity_penalty)
         reward = max(-1.2, min(1.2, reward))
         rewards.append(reward)
         terminal_rewards.append(terminal_reward)
         dense_rewards.append(dense_reward)
         activity_rewards.append(float(activity_reward))
+        mission_mix_rewards.append(float(mission_mix_reward))
+        mission_expand_ratios.append(float(mission_mix_stats["mission_expand_ratio"]))
+        mission_attack_ratios.append(float(mission_mix_stats["mission_attack_ratio"]))
+        mission_support_ratios.append(float(mission_mix_stats["mission_support_ratio"]))
         passivity_penalties.append(float(passivity_penalty))
         do_nothing_rates.append(float(do_nothing_rate))
         valid_steps = [
@@ -145,9 +197,12 @@ def train_on_episodes(
     all_noop_probs_before_cap: List[float] = []
     all_noop_probs_after_cap: List[float] = []
     all_noop_cap_fracs: List[float] = []
+    all_teacher_kls: List[float] = []
     minibatch_updates = 0
 
     model.train()
+    if teacher_model is not None:
+        teacher_model.eval()
     before_params = [p.detach().clone() for p in model.parameters() if p.requires_grad]
 
     for _epoch in range(max(1, ppo_epochs)):
@@ -229,7 +284,35 @@ def train_on_episodes(
             policy_loss = policy_loss_vec.sum()
             value_loss = value_loss_vec.sum()
             entropy_loss = entropy_loss_vec.sum()
-            loss = policy_loss + value_coef * value_loss - entropy_coef * entropy_loss
+            teacher_kl = torch.zeros((), dtype=torch.float32, device=device)
+            if teacher_kl_coef > 0.0 and teacher_model is not None:
+                with torch.no_grad():
+                    teacher_outputs = teacher_model(state_t, cand_t)
+                    teacher_logits = teacher_outputs["policy_logits"]
+                    if prior_strength:
+                        teacher_logits = teacher_logits + prior_strength * cand_t[..., -1] * 3.0
+                    if noop_penalty > 0.0:
+                        teacher_has_real = (
+                            mask_t[:, 1:].any(dim=-1)
+                            if mask_t.size(-1) > 1
+                            else torch.zeros(mask_t.size(0), dtype=torch.bool, device=device)
+                        )
+                        teacher_logits[:, 0] = teacher_logits[:, 0] - noop_penalty * teacher_has_real.to(dtype=teacher_logits.dtype)
+                    teacher_logits = teacher_logits.masked_fill(~mask_t, float("-inf"))
+                    teacher_raw_probs = torch.softmax(teacher_logits / temp_t.unsqueeze(-1), dim=-1)
+                    teacher_probs, _ = cap_do_nothing_probability_with_info(
+                        teacher_raw_probs,
+                        mask_t,
+                        noop_cap,
+                    )
+                    teacher_probs = teacher_probs.nan_to_num(0.0) * mask_t.to(dtype=teacher_probs.dtype)
+                    teacher_probs = teacher_probs / teacher_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+                    teacher_log_probs = torch.log(teacher_probs.clamp_min(1e-12))
+                teacher_kl_vec = (teacher_probs * (teacher_log_probs - log_probs_all)).sum(dim=-1) * weight_t
+                teacher_kl = teacher_kl_vec.sum()
+                all_teacher_kls.append(float(teacher_kl.detach().item()))
+
+            loss = policy_loss + value_coef * value_loss - entropy_coef * entropy_loss + teacher_kl_coef * teacher_kl
 
             optimizer.zero_grad()
             loss.backward()
@@ -305,6 +388,10 @@ def train_on_episodes(
         "terminal_reward_mean": float(np.mean(terminal_rewards)) if terminal_rewards else 0.0,
         "dense_reward_mean": float(np.mean(dense_rewards)) if dense_rewards else 0.0,
         "activity_reward_mean": float(np.mean(activity_rewards)) if activity_rewards else 0.0,
+        "mission_mix_reward_mean": float(np.mean(mission_mix_rewards)) if mission_mix_rewards else 0.0,
+        "mission_expand_ratio_mean": float(np.mean(mission_expand_ratios)) if mission_expand_ratios else 0.0,
+        "mission_attack_ratio_mean": float(np.mean(mission_attack_ratios)) if mission_attack_ratios else 0.0,
+        "mission_support_ratio_mean": float(np.mean(mission_support_ratios)) if mission_support_ratios else 0.0,
         "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,
         "do_nothing_rate_mean": float(np.mean(do_nothing_rates)) if do_nothing_rates else 1.0,
         "noop_prob_before_cap_mean": float(np.mean(all_noop_probs_before_cap)) if all_noop_probs_before_cap else 0.0,
@@ -337,5 +424,7 @@ def train_on_episodes(
         "train_samples": float(len(dataset)),
         "train_minibatches": float(minibatch_updates),
         "ppo_minibatch_size": float(minibatch_size),
+        "teacher_kl": float(np.mean(all_teacher_kls)) if all_teacher_kls else 0.0,
+        "teacher_kl_coef": float(teacher_kl_coef),
     }
     return baseline, metrics
