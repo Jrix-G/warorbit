@@ -75,9 +75,19 @@ def _raise_ratio_floor(ratios: List[float], step: float = 0.10, floor_cap: float
     return sorted(set(adjusted))
 
 
+def _lower_ratio_ceiling(ratios: List[float], step: float = 0.08, ceiling_floor: float = 0.65) -> List[float]:
+    adjusted = []
+    for ratio in ratios:
+        value = float(ratio)
+        if value > ceiling_floor:
+            value = max(ceiling_floor, value - step)
+        adjusted.append(round(value, 3))
+    return sorted(set(adjusted))
+
+
 def _weighted_eval_score(result: Dict[str, Any], weights: Dict[str, float] | None = None) -> float:
     by_opp = result.get("by_opponent", {})
-    weights = weights or {"random": 0.35, "greedy": 0.35, "starter": 0.30}
+    weights = weights or {"random": 0.15, "greedy": 0.25, "starter": 0.40, "distance": 0.20}
     total_weight = 0.0
     score = 0.0
     for opponent, weight in weights.items():
@@ -165,9 +175,9 @@ def _auto_tune_training(
 
 def _weighted_pool_from_counts(counts: Dict[str, int]) -> List[str]:
     pool: List[str] = []
-    for name in ("random", "greedy", "starter"):
+    for name in ("random", "greedy", "starter", "distance"):
         pool.extend([name] * max(0, int(counts.get(name, 0))))
-    return pool or ["random", "greedy", "starter"]
+    return pool or ["random", "greedy", "starter", "distance"]
 
 
 def _auto_tune_opponent_mix(
@@ -179,26 +189,26 @@ def _auto_tune_opponent_mix(
     if bool(cfg.get("eval_stabilizer_enabled", True)):
         return {}
 
-    current_counts = dict(cfg.get("opponent_mix_counts", {"random": 6, "greedy": 13, "starter": 1}))
+    current_counts = dict(cfg.get("opponent_mix_counts", {"random": 2, "greedy": 6, "starter": 8, "distance": 4}))
     latest = eval_history[-1]
     by_opp = latest.get("by_opponent", {})
-    wr = {name: float(by_opp.get(name, {}).get("winrate", 0.0)) for name in ("random", "greedy", "starter")}
+    wr = {name: float(by_opp.get(name, {}).get("winrate", 0.0)) for name in ("random", "greedy", "starter", "distance")}
     noop = float(latest.get("eval_do_nothing_rate", 1.0))
 
     new_counts = dict(current_counts)
     reasons: List[str] = []
 
     if wr["random"] >= 0.70 and wr["greedy"] < 0.55:
-        new_counts = {"random": 4, "greedy": 15, "starter": 1}
+        new_counts = {"random": 2, "greedy": 8, "starter": 7, "distance": 3}
         reasons.append("focus_greedy")
     elif wr["random"] >= 0.70 and wr["greedy"] >= 0.60 and wr["starter"] < 0.35:
-        new_counts = {"random": 4, "greedy": 14, "starter": 2}
+        new_counts = {"random": 2, "greedy": 6, "starter": 9, "distance": 3}
         reasons.append("introduce_starter")
     elif wr["random"] >= 0.75 and wr["greedy"] >= 0.70 and wr["starter"] >= 0.35:
-        new_counts = {"random": 3, "greedy": 13, "starter": 4}
+        new_counts = {"random": 2, "greedy": 5, "starter": 8, "distance": 5}
         reasons.append("starter_ramp")
     elif wr["random"] < 0.45:
-        new_counts = {"random": 8, "greedy": 11, "starter": 1}
+        new_counts = {"random": 4, "greedy": 7, "starter": 6, "distance": 3}
         reasons.append("repair_random")
 
     if noop > float(cfg.get("max_eval_do_nothing_rate", 0.55)):
@@ -224,7 +234,11 @@ def _eval_stabilizer(
     cfg: Dict[str, Any],
     eval_history: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    if not bool(cfg.get("auto_tune_training", False)) or not bool(cfg.get("eval_stabilizer_enabled", True)):
+    if (
+        not bool(cfg.get("auto_tune_training", False))
+        or not bool(cfg.get("eval_stabilizer_enabled", True))
+        or not bool(cfg.get("behavior_supervisor_enabled", True))
+    ):
         return {}
     if not eval_history:
         return {}
@@ -239,6 +253,8 @@ def _eval_stabilizer(
     latest_noop = float(latest.get("eval_do_nothing_rate", 1.0))
     latest_ships = float(latest.get("eval_avg_ships_sent", 0.0))
     latest_score = _weighted_eval_score(latest)
+    latest_by_opp = latest.get("by_opponent", {})
+    latest_wr = {name: float(latest_by_opp.get(name, {}).get("winrate", 0.0)) for name in ("random", "greedy", "starter")}
     degenerate_noop = float(cfg.get("degenerate_noop_rate", 0.92))
     degenerate_ships = float(cfg.get("degenerate_max_avg_ships_sent", 1.50))
     if latest_noop >= degenerate_noop and latest_ships <= degenerate_ships:
@@ -274,6 +290,29 @@ def _eval_stabilizer(
         cfg.update(patch)
         return patch
 
+    max_supervised_ships = float(cfg.get("supervisor_max_avg_ships_sent", 24.0))
+    if latest_ships >= max_supervised_ships and (latest_wr["starter"] < 0.40 or latest_wr["greedy"] < 0.55):
+        patch.update({
+            "stabilizer_action": "reduce_ship_volume",
+            "stabilizer_reasons": "overcommit_push",
+            "stabilizer_score": latest_score,
+            "stabilizer_noop": latest_noop,
+            "stabilizer_ships": latest_ships,
+            "stabilizer_passivity": float(latest.get("train_passivity_rate", 1.0)),
+            "stabilizer_real_moves": float(latest.get("train_real_moves_per_turn", 0.0)),
+            "stabilizer_cooldown_remaining": 1,
+            "train_ships_sent_bonus_coef": _clamp_float(float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 0.70, 0.03, float(cfg.get("stabilizer_max_ship_bonus", 0.80))),
+            "train_action_bonus_coef": _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 0.94, 0.05, 0.70),
+            "min_expand_attack_ships": _clamp_int(int(cfg.get("min_expand_attack_ships", 2)) - 1, 2, int(cfg.get("stabilizer_max_min_ships", 8))),
+            "send_ratios": _lower_ratio_ceiling(
+                list(cfg.get("send_ratios", [0.25, 0.35, 0.50, 0.65, 0.80, 0.95])),
+                step=float(cfg.get("supervisor_ratio_ceiling_step", 0.08)),
+                ceiling_floor=float(cfg.get("supervisor_ratio_ceiling_floor", 0.65)),
+            ),
+        })
+        cfg.update(patch)
+        return patch
+
     cooldown = int(cfg.get("stabilizer_cooldown_remaining", 0))
     if cooldown > 0:
         cooldown -= 1
@@ -303,9 +342,18 @@ def _eval_stabilizer(
     target_ships = float(cfg.get("stabilizer_target_avg_ships_sent", 3.0))
     target_real_moves = float(cfg.get("stabilizer_target_real_moves_turn", 1.20))
     poor_score = score < float(cfg.get("stabilizer_min_weighted_score", 0.55))
+    passive_disguised = real_moves < target_real_moves * 0.75 and ships < target_ships * 0.70
 
     action = "hold"
-    if ships < target_ships and noop <= target_noop + 0.20:
+    if passive_disguised:
+        action = "increase_action_availability"
+        reasons.append("passive_disguised")
+        patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.70)) * 1.08, 0.10, 1.80)
+        patch["train_passivity_penalty_coef"] = _clamp_float(float(cfg.get("train_passivity_penalty_coef", 0.55)) * 1.08, 0.10, 1.80)
+        patch["do_nothing_logit_penalty"] = _clamp_float(float(cfg.get("do_nothing_logit_penalty", 0.50)) + 0.12, 0.0, 2.20)
+        patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.08, 0.05, 0.65)
+        patch["min_expand_attack_ships"] = _clamp_int(int(cfg.get("min_expand_attack_ships", 2)) - 1, 2, 6)
+    elif ships < target_ships and noop <= target_noop + 0.20:
         action = "increase_ship_volume"
         reasons.append("ships_low")
         patch["train_ships_sent_bonus_coef"] = _clamp_float(
@@ -341,13 +389,15 @@ def _eval_stabilizer(
         reasons.append("moves_low_noop_high")
         patch["min_expand_attack_ships"] = _clamp_int(int(cfg.get("min_expand_attack_ships", 2)) - 1, 2, 6)
         patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.03, 0.05, 0.55)
-    elif wr["random"] >= 0.65 and wr["greedy"] >= 0.60 and wr["starter"] < 0.30 and ships >= target_ships * 0.75:
+    elif wr["random"] >= 0.65 and wr["greedy"] >= 0.60 and wr["starter"] < 0.34:
         action = "starter_focus"
         reasons.append("starter_low")
-        counts = dict(cfg.get("opponent_mix_counts", {"random": 6, "greedy": 13, "starter": 1}))
-        counts["starter"] = min(int(counts.get("starter", 1)) + 1, int(cfg.get("stabilizer_max_starter_count", 5)))
+        counts = dict(cfg.get("opponent_mix_counts", {"random": 2, "greedy": 6, "starter": 8, "distance": 4}))
+        counts["starter"] = min(int(counts.get("starter", 1)) + 2, int(cfg.get("stabilizer_max_starter_count", 5)))
         if int(counts.get("greedy", 0)) > 8:
             counts["greedy"] = int(counts.get("greedy", 0)) - 1
+        if int(counts.get("random", 0)) > 3:
+            counts["random"] = int(counts.get("random", 0)) - 1
         patch["opponent_mix_counts"] = {str(k): int(v) for k, v in counts.items()}
         patch["stage1_pool"] = _weighted_pool_from_counts(patch["opponent_mix_counts"])
 
@@ -416,10 +466,10 @@ def _parse_opponent_list(raw_value: str, fallback: List[str]) -> List[str]:
 
 
 def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
-    default_opponents = ["random", "greedy", "starter"]
+    default_opponents = ["random", "greedy", "starter", "distance"]
     simple_opponents = _parse_opponent_list(args.simple_opponents, default_opponents)
     eval_opponents = _parse_opponent_list(args.eval_opponents, list(dict.fromkeys(simple_opponents)))
-    opponent_mix_counts = {name: simple_opponents.count(name) for name in ("random", "greedy", "starter")}
+    opponent_mix_counts = {name: simple_opponents.count(name) for name in ("random", "greedy", "starter", "distance")}
     return {
         # Game
         "game_engine": "official_fast",
@@ -479,6 +529,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         # Slow eval-level stabilizer. It replaces fast train-step behavior
         # shaping when auto-tune is enabled.
         "eval_stabilizer_enabled": True,
+        "behavior_supervisor_enabled": not bool(args.disable_behavior_supervisor),
         "stabilizer_window_evals": 2,
         "stabilizer_cooldown_evals": 1,
         "stabilizer_target_noop": args.stabilizer_target_noop,
@@ -491,6 +542,9 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "stabilizer_max_starter_count": args.stabilizer_max_starter_count,
         "stabilizer_ratio_floor_step": args.stabilizer_ratio_floor_step,
         "stabilizer_ratio_floor_cap": args.stabilizer_ratio_floor_cap,
+        "supervisor_max_avg_ships_sent": args.supervisor_max_avg_ships_sent,
+        "supervisor_ratio_ceiling_step": args.supervisor_ratio_ceiling_step,
+        "supervisor_ratio_ceiling_floor": args.supervisor_ratio_ceiling_floor,
         "stabilizer_eval_count": 0,
         "stabilizer_cooldown_remaining": 0,
         # Temperature
@@ -781,7 +835,7 @@ def main() -> None:
     parser.add_argument("--max-opponent-regression", type=float, default=0.12)
     parser.add_argument("--min-ci-promotion-games", type=int, default=96)
     parser.add_argument("--league-archive-size", type=int, default=4)
-    parser.add_argument("--simple-opponents", default="random,greedy,starter")
+    parser.add_argument("--simple-opponents", default="random,greedy,starter,distance")
     parser.add_argument("--eval-opponents", default="")
     parser.add_argument("--disable-support-actions", action="store_true")
     parser.add_argument("--auto-tune-training", action="store_true")
@@ -805,6 +859,10 @@ def main() -> None:
     parser.add_argument("--stabilizer-max-starter-count", type=int, default=5)
     parser.add_argument("--stabilizer-ratio-floor-step", type=float, default=0.10)
     parser.add_argument("--stabilizer-ratio-floor-cap", type=float, default=0.55)
+    parser.add_argument("--disable-behavior-supervisor", action="store_true")
+    parser.add_argument("--supervisor-max-avg-ships-sent", type=float, default=24.0)
+    parser.add_argument("--supervisor-ratio-ceiling-step", type=float, default=0.08)
+    parser.add_argument("--supervisor-ratio-ceiling-floor", type=float, default=0.65)
     parser.add_argument("--resume-checkpoint", default="")
     parser.add_argument("--run-name", default=None)
     parser.add_argument("--runs-root", default="", help="Override output directory for runs, useful on Kaggle")
@@ -1125,6 +1183,7 @@ def main() -> None:
                             "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
                             "min_expand_attack_ships": int(cfg.get("min_expand_attack_ships", 2)),
                             "send_ratios": list(cfg.get("send_ratios", [])),
+                            "behavior_supervisor_enabled": bool(cfg.get("behavior_supervisor_enabled", True)),
                             "eval_stabilizer_enabled": bool(cfg.get("eval_stabilizer_enabled", True)),
                             "stabilizer_eval_count": int(cfg.get("stabilizer_eval_count", 0)),
                             "stabilizer_cooldown_remaining": int(cfg.get("stabilizer_cooldown_remaining", 0)),
@@ -1305,6 +1364,7 @@ def main() -> None:
                                 "train_mission_mix_reward_clip": float(cfg.get("train_mission_mix_reward_clip", 0.0)),
                                 "min_expand_attack_ships": int(cfg.get("min_expand_attack_ships", 2)),
                                 "send_ratios": list(cfg.get("send_ratios", [])),
+                                "behavior_supervisor_enabled": bool(cfg.get("behavior_supervisor_enabled", True)),
                                 "eval_stabilizer_enabled": bool(cfg.get("eval_stabilizer_enabled", True)),
                                 "stabilizer_eval_count": int(cfg.get("stabilizer_eval_count", 0)),
                                 "stabilizer_cooldown_remaining": int(cfg.get("stabilizer_cooldown_remaining", 0)),
@@ -1327,7 +1387,7 @@ def main() -> None:
                 if stabilizer_patch:
                     _log(
                         log_path,
-                        "AUTO_STABILIZE "
+                        "SUPERVISOR "
                         f"action={stabilizer_patch.get('stabilizer_action', '')} "
                         f"reasons={stabilizer_patch.get('stabilizer_reasons', '')} "
                         f"score={float(stabilizer_patch.get('stabilizer_score', eval_result.get('weighted_score', 0.0))):.3f} "

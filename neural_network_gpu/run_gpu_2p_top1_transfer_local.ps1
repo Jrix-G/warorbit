@@ -3,15 +3,15 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Resolve-Path (Join-Path $ScriptDir "..")
 $SourceRunName = "gpu_2p_rg_nosupport_local"
-$RunName = "gpu_2p_top1_transfer_local"
+$RunName = "gpu_2p_top1_distance_guarded_local"
 $SourceRunDir = Join-Path $RepoRoot.Path "runs\$SourceRunName"
 $RunDir = Join-Path $RepoRoot.Path "runs\$RunName"
 $SourceBest = Join-Path $SourceRunDir "best_validated.npz"
 $SourceLatest = Join-Path $SourceRunDir "latest.npz"
 $LatestCheckpoint = Join-Path $RunDir "latest.npz"
 
-$TrainOpponents = "random,random,random,random,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,greedy,starter,starter,starter,starter,starter,starter,starter"
-$EvalOpponents = "random,greedy,starter"
+$TrainOpponents = "random,random,greedy,greedy,greedy,greedy,greedy,greedy,starter,starter,starter,starter,starter,starter,starter,starter,distance,distance,distance,distance"
+$EvalOpponents = "random,greedy,starter,distance"
 $ResumeArgs = @()
 $TeacherCheckpoint = $SourceBest
 
@@ -44,7 +44,7 @@ python neural_network_gpu\scripts\run_gpu.py `
   --teacher-kl-coef 0.020 `
   --device cuda `
   --duration-minutes 540 `
-  --workers 10 `
+  --workers 8 `
   --train-every 32 `
   --eval-every 512 `
   --eval-episodes 32 `
@@ -67,9 +67,12 @@ python neural_network_gpu\scripts\run_gpu.py `
   --train-max-attack-ratio 0.58 `
   --train-mission-mix-reward-clip 0.20 `
   --target-winrate 0.80 `
-  --max-eval-do-nothing-rate 0.82 `
-  --rollback-on-noop-rate 0.90 `
+  --max-eval-do-nothing-rate 0.74 `
+  --rollback-on-noop-rate 0.84 `
   --min-eval-avg-ships-sent 4.0 `
+  --degenerate-noop-rate 0.90 `
+  --degenerate-max-avg-ships-sent 1.75 `
+  --degenerate-min-winrate 0.65 `
   --rollback-margin 0.22 `
   --max-opponent-regression 0.16 `
   --min-ci-promotion-games 96 `
@@ -83,4 +86,7 @@ python neural_network_gpu\scripts\run_gpu.py `
   --stabilizer-max-starter-count 8 `
   --stabilizer-ratio-floor-step 0.06 `
   --stabilizer-ratio-floor-cap 0.65 `
+  --supervisor-max-avg-ships-sent 24.0 `
+  --supervisor-ratio-ceiling-step 0.08 `
+  --supervisor-ratio-ceiling-floor 0.65 `
   --run-name $RunName
