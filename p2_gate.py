@@ -44,7 +44,8 @@ def _v7(obs, config):
 
 def _search(obs, config):
     obs = v14_core.obs_as_dict(obs)
-    m = v15_search.search(obs, config)
+    # Modest params for a fast sanity benchmark of the numba-free rewrite.
+    m = v15_search.search(obs, config, n_rollouts=40, horizon=20, time_budget=20.0)
     return m if isinstance(m, list) else []
 
 
