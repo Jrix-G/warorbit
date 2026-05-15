@@ -1,0 +1,42 @@
+{
+  "source_root": "D:\\warorbit_kaggle_raw\\orbit-wars-top10-episodes-2026-05-04",
+  "output_dir": ".tmp\\imitation_test",
+  "episodes_scanned": 2,
+  "episodes_with_samples": 1,
+  "samples": 120,
+  "shards": 4,
+  "missions": {
+    "support": 32,
+    "expand": 39,
+    "attack": 49
+  },
+  "skipped": {
+    "unmatched_action": 14
+  },
+  "encoder_config": {
+    "max_planets": 64,
+    "max_fleets": 128,
+    "max_players": 4,
+    "board_scale": 100.0,
+    "ship_scale": 2000.0,
+    "production_scale": 10.0,
+    "radius_scale": 10.0,
+    "horizon_scale": 100.0,
+    "planet_id_scale": 100.0
+  },
+  "args": {
+    "source_root": "D:\\warorbit_kaggle_raw\\orbit-wars-top10-episodes-2026-05-04",
+    "output_dir": ".\\.tmp\\imitation_test",
+    "max_turns": 250,
+    "max_episodes": 2,
+    "max_samples": 120,
+    "max_candidates": 2048,
+    "max_angle_error": 0.28,
+    "shard_size": 32,
+    "noop_keep_rate": 0.0,
+    "noop_weight": 0.1,
+    "include_non_winners": false,
+    "seed": 7,
+    "log_every": 1
+  }
+}

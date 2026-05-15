@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 
 from neural_network.src.model import NeuralNetworkModel
 from neural_network.src.population_4p_training import _activity_shaping_reward
-from neural_network.src.notebook_4p_training import _action_summary
+from neural_network_gpu.src.action_metrics import summarize_action_records
 from neural_network_gpu.src.probability import cap_do_nothing_probability_with_info, caps_for_action_slots
 
 
@@ -95,9 +95,19 @@ def train_on_episodes(
     passivity_penalties: List[float] = []
     passive_win_flags: List[float] = []
     do_nothing_rates: List[float] = []
+    legal_noop_rates: List[float] = []
+    forced_noop_rates: List[float] = []
+    per_step_shape_sums: List[float] = []
     skipped_missing_old_log_prob = 0
     trajectory_lengths: List[int] = []
     episode_turn_lengths: List[int] = []
+    all_ships_sent: List[float] = []
+    all_real_ships_sent: List[float] = []
+    all_real_ships_by_slot: Dict[int, List[float]] = {}
+    all_real_ships_by_mission: Dict[str, List[float]] = {}
+    episode_ship_medians: List[float] = []
+    episode_ship_p90s: List[float] = []
+    episode_ship_maxes: List[float] = []
     slot_real_actions: Dict[int, List[float]] = {}
     slot_noop_actions: Dict[int, List[float]] = {}
     inference_noop_probs_before_cap: Dict[int, List[float]] = {}
@@ -116,19 +126,28 @@ def train_on_episodes(
         activity_reward = _activity_shaping_reward(action_metrics, config)
         mission_mix_reward, mission_mix_stats = _mission_mix_shaping_reward(action_metrics, config)
         do_nothing_rate = max(0.0, min(1.0, float(action_metrics.get("do_nothing_rate", 1.0))))
-        passive_limit = max(0.0, min(1.0, float(config.get("train_target_do_nothing_rate", 0.45))))
-        passive_coef = max(0.0, float(config.get("train_passivity_penalty_coef", 0.55)))
-        passive_excess = max(0.0, do_nothing_rate - passive_limit) / max(1e-6, 1.0 - passive_limit)
-        passivity_penalty = passive_coef * passive_excess
+        legal_noop_rate = max(0.0, min(1.0, float(action_metrics.get("legal_noop_rate", do_nothing_rate))))
+        forced_noop_rate = max(0.0, min(1.0, float(action_metrics.get("forced_noop_rate", 0.0))))
+        # Passivity penalty now reads the legal (avoidable) no-op rate so it
+        # cannot be driven by states with no real candidate. The episodic term
+        # is gated off by default in favour of per-step shaping below.
+        passive_limit = max(0.0, min(1.0, float(config.get("train_target_legal_noop_rate", 0.10))))
+        passive_coef = max(0.0, float(config.get("train_passivity_penalty_coef", 0.0)))
+        episodic_passivity_enabled = bool(config.get("train_episodic_passivity_penalty_enabled", False))
+        passive_excess = max(0.0, legal_noop_rate - passive_limit) / max(1e-6, 1.0 - passive_limit)
+        passivity_penalty = passive_coef * passive_excess if episodic_passivity_enabled else 0.0
         terminal_reward = float(ep["terminal_reward"])
         avg_ships_sent = float(action_metrics.get("avg_ships_sent", 0.0))
         real_action_count = float(action_metrics.get("real_action_count", 0.0))
         episode_turns = max(1.0, float(ep.get("episode_length") or 0))
         real_moves_per_turn = real_action_count / episode_turns
+        # Passive-win gate switches to legal rate: a "win while idling" is now
+        # only flagged when the agent was idling on decisions it could have acted on.
+        passive_win_legal_threshold = float(config.get("train_passive_win_legal_noop_rate", 0.30))
         passive_win = (
             terminal_reward > 0.0
             and (
-                do_nothing_rate > float(config.get("train_passive_win_noop_rate", 0.84))
+                legal_noop_rate > passive_win_legal_threshold
                 or avg_ships_sent < float(config.get("train_passive_win_min_avg_ships_sent", 4.0))
                 or real_moves_per_turn < float(config.get("train_passive_win_min_real_moves_turn", 1.0))
             )
@@ -153,6 +172,8 @@ def train_on_episodes(
         passivity_penalties.append(float(passivity_penalty))
         passive_win_flags.append(1.0 if passive_win else 0.0)
         do_nothing_rates.append(float(do_nothing_rate))
+        legal_noop_rates.append(float(legal_noop_rate))
+        forced_noop_rates.append(float(forced_noop_rate))
         valid_steps = [
             step for step in trajectory
             if step.get("old_log_prob") is not None and int(step.get("action_idx", -1)) >= 0
@@ -163,8 +184,50 @@ def train_on_episodes(
         step_weight = 1.0 / float(len(valid_steps))
         trajectory_lengths.append(len(valid_steps))
         episode_turn_lengths.append(max(1, int(ep.get("episode_length") or 0)))
+        step_summary = summarize_action_records(valid_steps)
+        episode_ship_medians.append(float(step_summary.get("median_ships_sent", 0.0)))
+        episode_ship_p90s.append(float(step_summary.get("ships_sent_p90", 0.0)))
+        episode_ship_maxes.append(float(step_summary.get("ships_sent_max", 0.0)))
+
+        # ─── Per-step shaping (credit assignment) ─────────────────────────────
+        # Reward decomposition: each step receives
+        #   r_step = (adjusted_terminal + 0.15*dense + 0.05*activity + mix) / T
+        #            + per_step_shape - passivity_penalty/T
+        # where per_step_shape penalises ONLY avoidable no-ops and rewards real
+        # actions. Forced no-ops (no real candidate) contribute 0. The episode-
+        # level passivity_penalty is gated off by default; the entire signal
+        # against avoidable inactivity comes from per_step_shape.
+        per_step_legal_noop_coef = float(config.get("train_per_step_legal_noop_penalty", 0.020))
+        per_step_real_action_coef = float(config.get("train_per_step_real_action_bonus", 0.008))
+        per_step_ship_volume_coef = float(config.get("train_per_step_ship_volume_bonus", 0.0))
+        per_step_ship_volume_target = max(1.0, float(config.get("train_per_step_ship_volume_target", 8.0)))
+        per_step_shape_clip = float(config.get("train_per_step_shape_clip", 0.04))
+        episodic_share = reward / float(len(valid_steps))
+        episode_per_step_shape_total = 0.0
         for step in valid_steps:
             action_slot = int(step.get("action_slot") or 0)
+            mission = str(step.get("mission") or "do_nothing")
+            ships = int(step.get("ships") or 0)
+            had_real_step = bool(step.get("noop_has_real_candidate", False))
+            is_noop_step = mission == "do_nothing" or ships <= 0
+            all_ships_sent.append(float(ships))
+            if is_noop_step and had_real_step:
+                per_step_shape = -per_step_legal_noop_coef  # avoidable no-op
+            elif not is_noop_step:
+                # Flat action bonus + volume bonus proportional to ships sent.
+                # Volume bonus: linear up to target, capped at 1x coef beyond target.
+                volume_bonus = per_step_ship_volume_coef * min(1.0, float(ships) / per_step_ship_volume_target)
+                per_step_shape = per_step_real_action_coef + volume_bonus
+                all_real_ships_sent.append(float(ships))
+                all_real_ships_by_slot.setdefault(action_slot, []).append(float(ships))
+                all_real_ships_by_mission.setdefault(mission, []).append(float(ships))
+            else:
+                per_step_shape = 0.0  # forced no-op → no signal
+            if per_step_shape_clip > 0.0:
+                per_step_shape = max(-per_step_shape_clip, min(per_step_shape_clip, per_step_shape))
+            step_reward = episodic_share + per_step_shape
+            episode_per_step_shape_total += per_step_shape
+
             dataset.append({
                 "state": step["state"],
                 "candidates": step["candidates"],
@@ -174,7 +237,7 @@ def train_on_episodes(
                 "temperature": float(step.get("temperature") or 0.0),
                 "policy_version": int(step.get("policy_version") or 0),
                 "action_slot": action_slot,
-                "reward": reward,
+                "reward": float(step_reward),
                 "step_weight": step_weight,
             })
             mission = str(step.get("mission") or "do_nothing")
@@ -197,6 +260,7 @@ def train_on_episodes(
                 inference_real_noop_probs_before_cap.setdefault(action_slot, []).append(float(noop_before))
             if has_real_candidate and noop_after is not None:
                 inference_real_noop_probs_after_cap.setdefault(action_slot, []).append(float(noop_after))
+        per_step_shape_sums.append(float(episode_per_step_shape_total))
 
     if not dataset:
         return baseline, {"skipped_missing_old_log_prob": float(skipped_missing_old_log_prob)}
@@ -388,6 +452,9 @@ def train_on_episodes(
         values = values_by_slot.get(slot)
         return float(np.mean(values)) if values else default
 
+    def _quantile(values: List[float], q: float, default: float = 0.0) -> float:
+        return float(np.quantile(np.asarray(values, dtype=np.float32), q)) if values else default
+
     metrics = {
         "policy_loss": float(np.mean(all_policy_losses)) if all_policy_losses else 0.0,
         "value_loss": float(np.mean(all_value_losses)) if all_value_losses else 0.0,
@@ -417,9 +484,28 @@ def train_on_episodes(
         "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,
         "passive_win_rate": float(np.mean(passive_win_flags)) if passive_win_flags else 0.0,
         "do_nothing_rate_mean": float(np.mean(do_nothing_rates)) if do_nothing_rates else 1.0,
+        "legal_noop_rate_mean": float(np.mean(legal_noop_rates)) if legal_noop_rates else 0.0,
+        "forced_noop_rate_mean": float(np.mean(forced_noop_rates)) if forced_noop_rates else 0.0,
+        "per_step_shape_sum_mean": float(np.mean(per_step_shape_sums)) if per_step_shape_sums else 0.0,
         "noop_prob_before_cap_mean": float(np.mean(all_noop_probs_before_cap)) if all_noop_probs_before_cap else 0.0,
         "noop_prob_after_cap_mean": float(np.mean(all_noop_probs_after_cap)) if all_noop_probs_after_cap else 0.0,
         "noop_prob_cap_frac": float(np.mean(all_noop_cap_fracs)) if all_noop_cap_fracs else 0.0,
+        "ships_sent_mean_all_steps": float(np.mean(all_ships_sent)) if all_ships_sent else 0.0,
+        "ships_sent_median": _quantile(all_real_ships_sent, 0.50),
+        "ships_sent_p25": _quantile(all_real_ships_sent, 0.25),
+        "ships_sent_p75": _quantile(all_real_ships_sent, 0.75),
+        "ships_sent_p90": _quantile(all_real_ships_sent, 0.90),
+        "ships_sent_max": float(np.max(all_real_ships_sent)) if all_real_ships_sent else 0.0,
+        "episode_ships_median_mean": float(np.mean(episode_ship_medians)) if episode_ship_medians else 0.0,
+        "episode_ships_p90_mean": float(np.mean(episode_ship_p90s)) if episode_ship_p90s else 0.0,
+        "episode_ships_max_mean": float(np.mean(episode_ship_maxes)) if episode_ship_maxes else 0.0,
+        "slot0_ships_mean": _slot_mean(all_real_ships_by_slot, 0),
+        "slot0_ships_p90": _quantile(all_real_ships_by_slot.get(0, []), 0.90),
+        "slot1_ships_mean": _slot_mean(all_real_ships_by_slot, 1),
+        "slot1_ships_p90": _quantile(all_real_ships_by_slot.get(1, []), 0.90),
+        "mission_expand_ships_mean": float(np.mean(all_real_ships_by_mission.get("expand", []))) if all_real_ships_by_mission.get("expand") else 0.0,
+        "mission_attack_ships_mean": float(np.mean(all_real_ships_by_mission.get("attack", []))) if all_real_ships_by_mission.get("attack") else 0.0,
+        "mission_support_ships_mean": float(np.mean(all_real_ships_by_mission.get("support", []))) if all_real_ships_by_mission.get("support") else 0.0,
         "first_slot_noop_rate": float(np.mean(slot_noop_actions.get(0, [1.0]))),
         "first_slot_real_action_rate": float(np.mean(slot_real_actions.get(0, [0.0]))),
         "mean_real_actions_per_game": float(total_real_actions / max(1, len(episodes))),

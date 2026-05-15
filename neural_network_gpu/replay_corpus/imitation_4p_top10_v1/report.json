@@ -1,0 +1,43 @@
+{
+  "source_root": "D:\\warorbit_kaggle_raw",
+  "output_dir": "replay_corpus\\imitation_4p_top10_v1",
+  "episodes_scanned": 2631,
+  "episodes_with_samples": 542,
+  "samples": 50000,
+  "shards": 13,
+  "missions": {
+    "support": 19738,
+    "expand": 7905,
+    "attack": 22357
+  },
+  "skipped": {
+    "unmatched_action": 4978,
+    "too_many_turns": 340
+  },
+  "encoder_config": {
+    "max_planets": 64,
+    "max_fleets": 128,
+    "max_players": 4,
+    "board_scale": 100.0,
+    "ship_scale": 2000.0,
+    "production_scale": 10.0,
+    "radius_scale": 10.0,
+    "horizon_scale": 100.0,
+    "planet_id_scale": 100.0
+  },
+  "args": {
+    "source_root": "D:\\warorbit_kaggle_raw",
+    "output_dir": ".\\replay_corpus\\imitation_4p_top10_v1",
+    "max_turns": 250,
+    "max_episodes": 0,
+    "max_samples": 50000,
+    "max_candidates": 2048,
+    "max_angle_error": 0.28,
+    "shard_size": 4096,
+    "noop_keep_rate": 0.0,
+    "noop_weight": 0.1,
+    "include_non_winners": false,
+    "seed": 7,
+    "log_every": 50
+  }
+}

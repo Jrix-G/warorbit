@@ -31,6 +31,7 @@ from neural_network.src.population_4p_training import configure_run_logging
 from neural_network_gpu.src.vec_worker import worker_fn
 from neural_network_gpu.src.inference_server import inference_server_fn
 from neural_network_gpu.src.gpu_trainer import train_on_episodes
+from neural_network_gpu.src.action_metrics import summarize_action_records
 
 
 def _now() -> str:
@@ -140,17 +141,21 @@ def _auto_tune_training(
         patch["learning_rate"] = new_lr
 
     if enough_history and entropy > 0.0 and entropy < 1.70:
-        patch["entropy_coef_start"] = _clamp_float(float(cfg.get("entropy_coef_start", 0.10)) * 1.05, 0.04, 0.18)
+        patch["entropy_coef_start"] = _clamp_float(float(cfg.get("entropy_coef_start", 0.10)) * 1.05, 0.010, 0.18)
         patch["temperature_end"] = _clamp_float(float(cfg.get("temperature_end", 0.18)) * 1.05, 0.18, 0.65)
         patch["temperature_start"] = _clamp_float(float(cfg.get("temperature_start", 1.05)) * 1.02, 0.75, 1.35)
         reasons.append("entropy_low")
     elif enough_history and entropy > 2.90 and clip_frac > 0.020:
-        patch["entropy_coef_start"] = _clamp_float(float(cfg.get("entropy_coef_start", 0.10)) * 0.96, 0.04, 0.18)
+        patch["entropy_coef_start"] = _clamp_float(float(cfg.get("entropy_coef_start", 0.10)) * 0.96, 0.010, 0.18)
         patch["temperature_start"] = _clamp_float(float(cfg.get("temperature_start", 1.05)) * 0.98, 0.75, 1.35)
         reasons.append("entropy_high")
 
-    avg_noop_rate = float(np.mean([row.get("noop_rate", noop_rate) for row in recent]))
-    target_noop = float(cfg.get("train_target_do_nothing_rate", 0.45))
+    # Prefer the legal (avoidable) no-op rate as the auto-tune driver. Falls
+    # back to raw rate for warm-up evals or rows missing the new metric.
+    avg_noop_rate = float(np.mean([
+        row.get("legal_noop_rate", row.get("noop_rate", noop_rate)) for row in recent
+    ]))
+    target_noop = float(cfg.get("train_target_legal_noop_rate", 0.10))
     if enough_history and avg_noop_rate > target_noop + 0.05:
         patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.70)) * 1.04, 0.10, 2.20)
         patch["train_passivity_penalty_coef"] = _clamp_float(float(cfg.get("train_passivity_penalty_coef", 0.55)) * 1.06, 0.10, 2.00)
@@ -244,14 +249,17 @@ def _eval_stabilizer(
     patch["stabilizer_eval_count"] = eval_count
 
     latest = eval_history[-1]
-    latest_noop = float(latest.get("eval_do_nothing_rate", 1.0))
+    latest_raw_noop = float(latest.get("eval_do_nothing_rate", 1.0))
+    latest_noop = float(latest.get("eval_legal_noop_rate", latest_raw_noop))
     latest_ships = float(latest.get("eval_avg_ships_sent", 0.0))
     latest_score = _weighted_eval_score(latest)
     latest_by_opp = latest.get("by_opponent", {})
     latest_wr = {name: float(latest_by_opp.get(name, {}).get("winrate", 0.0)) for name in ("random", "greedy", "starter")}
     degenerate_noop = float(cfg.get("degenerate_noop_rate", 0.92))
     degenerate_ships = float(cfg.get("degenerate_max_avg_ships_sent", 1.50))
-    if latest_noop >= degenerate_noop and latest_ships <= degenerate_ships:
+    # Degenerate-noop exploit detection uses the *raw* rate: an agent that
+    # genuinely produces no actions is degenerate regardless of legal/forced.
+    if latest_raw_noop >= degenerate_noop and latest_ships <= degenerate_ships:
         patch.update({
             "stabilizer_action": "emergency_activity_reset",
             "stabilizer_reasons": "degenerate_noop_exploit",
@@ -324,15 +332,24 @@ def _eval_stabilizer(
         return patch
 
     score = float(np.mean([_weighted_eval_score(row) for row in recent]))
-    noop = float(np.mean([row.get("eval_do_nothing_rate", 1.0) for row in recent]))
+    # Stabilizer reads legal_noop (avoidable-only) and the legal train rate so
+    # decisions are not dictated by forced no-ops.
+    noop = float(np.mean([
+        row.get("eval_legal_noop_rate", row.get("eval_do_nothing_rate", 1.0)) for row in recent
+    ]))
     ships = float(np.mean([row.get("eval_avg_ships_sent", 0.0) for row in recent]))
-    passivity = float(np.mean([row.get("train_passivity_rate", 1.0) for row in recent]))
+    passivity = float(np.mean([
+        row.get("train_legal_noop_rate", row.get("train_passivity_rate", 1.0)) for row in recent
+    ]))
     real_moves = float(np.mean([row.get("train_real_moves_per_turn", 0.0) for row in recent]))
     latest_by_opp = recent[-1].get("by_opponent", {})
     wr = {name: float(latest_by_opp.get(name, {}).get("winrate", 0.0)) for name in ("random", "greedy", "starter")}
 
-    target_noop = float(cfg.get("stabilizer_target_noop", 0.60))
-    target_passivity = float(cfg.get("stabilizer_target_passivity", 0.50))
+    # Targets now refer to legal_noop (avoidable). Defaults moved from raw
+    # thresholds (~0.60) to legal thresholds (~0.15) — the raw plancher of
+    # forced no-ops is no longer in the signal.
+    target_noop = float(cfg.get("stabilizer_target_legal_noop", cfg.get("stabilizer_target_noop", 0.15)))
+    target_passivity = float(cfg.get("stabilizer_target_legal_passivity", cfg.get("stabilizer_target_passivity", 0.12)))
     target_ships = float(cfg.get("stabilizer_target_avg_ships_sent", 3.0))
     target_real_moves = float(cfg.get("stabilizer_target_real_moves_turn", 1.20))
     poor_score = score < float(cfg.get("stabilizer_min_weighted_score", 0.55))
@@ -490,7 +507,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "learning_rate": args.learning_rate,
         "gamma": 0.99,
         "value_loss_coef": 0.25,
-        "entropy_coef_start": 0.10,
+        "entropy_coef_start": args.entropy_coef_start,
         "baseline_momentum": 0.10,
         "max_grad_norm": 1.0,
         # PPO
@@ -499,15 +516,24 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "ppo_minibatch_size": args.ppo_minibatch_size,
         # Activity shaping
         "dense_reward_enabled": True,
-        "dense_planet_coef": 0.05,
-        "dense_production_coef": 0.04,
-        "dense_ship_share_coef": 0.14,
-        "dense_score_coef": 0.10,
+        "dense_planet_coef": args.dense_planet_coef,
+        "dense_production_coef": args.dense_production_coef,
+        "dense_ship_share_coef": args.dense_ship_share_coef,
+        "dense_score_coef": args.dense_score_coef,
         "dense_survival_coef": 0.05,
-        "dense_reward_clip": 0.40,
-        "train_target_do_nothing_rate": 0.45,
+        "dense_reward_clip": args.dense_reward_clip,
+        "train_target_do_nothing_rate": 0.35,  # raw (legacy), kept for fallback
+        "train_target_legal_noop_rate": args.train_target_legal_noop_rate,
         "train_noop_penalty_coef": 0.70,
-        "train_passivity_penalty_coef": 0.55,
+        "train_passivity_penalty_coef": 0.30,
+        # Per-step shaping (replaces the broadcast episodic passivity penalty)
+        "train_episodic_passivity_penalty_enabled": bool(args.enable_episodic_passivity_penalty),
+        "train_per_step_legal_noop_penalty": args.per_step_legal_noop_penalty,
+        "train_per_step_real_action_bonus": args.per_step_real_action_bonus,
+        "train_per_step_ship_volume_bonus": args.per_step_ship_volume_bonus,
+        "train_per_step_ship_volume_target": args.per_step_ship_volume_target,
+        "train_per_step_shape_clip": args.per_step_shape_clip,
+        "train_passive_win_legal_noop_rate": args.passive_win_legal_noop_rate,
         "do_nothing_logit_penalty": 0.50,
         "do_nothing_prob_cap": 0.45,
         "do_nothing_prob_caps_by_slot": [0.05, 0.08, 0.12, 0.20, 0.32, 0.45, 0.55, 0.65],
@@ -582,7 +608,12 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "promotion_lr_mult": args.promotion_lr_mult,
         "rollback_lr_mult": args.rollback_lr_mult,
         "max_eval_do_nothing_rate": args.max_eval_do_nothing_rate,
+        "max_eval_legal_noop_rate": args.max_eval_legal_noop_rate,
         "valid_win_max_do_nothing_rate": args.valid_win_max_do_nothing_rate,
+        "valid_win_max_legal_noop_rate": args.valid_win_max_legal_noop_rate,
+        "rollback_on_legal_noop_rate": args.rollback_on_legal_noop_rate,
+        "stabilizer_target_legal_noop": args.stabilizer_target_legal_noop,
+        "stabilizer_target_legal_passivity": args.stabilizer_target_legal_passivity,
         "valid_win_min_avg_ships_sent": args.valid_win_min_avg_ships_sent,
         "valid_win_min_real_moves_turn": args.valid_win_min_real_moves_turn,
         "min_eval_avg_ships_sent": args.min_eval_avg_ships_sent,
@@ -592,6 +623,8 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "collapse_stop_evals": args.collapse_stop_evals,
         "collapse_stop_noop_rate": args.collapse_stop_noop_rate,
         "collapse_stop_max_avg_ships_sent": args.collapse_stop_max_avg_ships_sent,
+        "collapse_max_recoveries": args.collapse_max_recoveries,
+        "max_consecutive_regressions": args.max_consecutive_regressions,
         "max_opponent_regression": args.max_opponent_regression,
         "min_ci_promotion_games": args.min_ci_promotion_games,
         "auto_tune_training": bool(args.auto_tune_training),
@@ -615,9 +648,7 @@ def _evaluate(
     train_metrics: Dict[str, float] | None = None,
     progress_log_path: Path | None = None,
 ) -> Dict[str, Any]:
-    from neural_network.src.notebook_4p_training import (
-        _build_agents, run_match, _action_summary,
-    )
+    from neural_network.src.notebook_4p_training import _build_agents, run_match
 
     model.eval()
     eval_cfg = dict(config)
@@ -630,10 +661,14 @@ def _evaluate(
     all_wins: List[float] = []
     all_valid_wins: List[float] = []
     all_do_nothing_rates: List[float] = []
+    all_legal_noop_rates: List[float] = []
+    all_forced_noop_rates: List[float] = []
     all_avg_ships_sent: List[float] = []
     train_metrics = train_metrics or {}
     valid_win_max_noop = float(config.get("valid_win_max_do_nothing_rate", config.get("max_eval_do_nothing_rate", 0.75)))
+    valid_win_max_legal_noop = float(config.get("valid_win_max_legal_noop_rate", 0.30))
     valid_win_min_ships = float(config.get("valid_win_min_avg_ships_sent", config.get("min_eval_avg_ships_sent", 0.0)))
+    valid_win_min_real_moves = float(config.get("valid_win_min_real_moves_turn", 0.0))
 
     for opponent_idx, opponent in enumerate(opponents):
         if progress_log_path is not None:
@@ -641,6 +676,8 @@ def _evaluate(
         wins: List[float] = []
         valid_wins: List[float] = []
         do_nothing_rates: List[float] = []
+        legal_noop_rates: List[float] = []
+        forced_noop_rates: List[float] = []
         avg_ships_sent: List[float] = []
         seed_base = int(seed_start) + opponent_idx * max(100000, episodes + 1)
         for i in range(episodes):
@@ -662,14 +699,28 @@ def _evaluate(
                 use_c_accel=bool(config.get("official_fast_c_accel", True)),
             )
             winner = int(result.get("winner", -1))
-            metrics = _action_summary(action_records)
+            episode_steps = max(1, int(result.get("steps", 1)))
+            metrics = summarize_action_records(action_records)
             noop = float(metrics.get("do_nothing_rate", 1.0))
+            legal_noop = float(metrics.get("legal_noop_rate", noop))
+            forced_noop = float(metrics.get("forced_noop_rate", 0.0))
             ships = float(metrics.get("avg_ships_sent", 0.0))
+            real_moves_per_turn = float(metrics.get("real_action_count", 0.0)) / episode_steps
             won = float(winner == our_index)
-            valid_won = float(bool(won) and noop <= valid_win_max_noop and ships >= valid_win_min_ships)
+            # Promotion-validity gate uses legal_noop (avoidable-only) so wins on
+            # idle-by-necessity states are not penalised.
+            valid_won = float(
+                bool(won)
+                and legal_noop <= valid_win_max_legal_noop
+                and noop <= valid_win_max_noop
+                and ships >= valid_win_min_ships
+                and (valid_win_min_real_moves <= 0.0 or real_moves_per_turn >= valid_win_min_real_moves)
+            )
             wins.append(won)
             valid_wins.append(valid_won)
             do_nothing_rates.append(noop)
+            legal_noop_rates.append(legal_noop)
+            forced_noop_rates.append(forced_noop)
             avg_ships_sent.append(ships)
             if progress_log_path is not None and ((i + 1) == episodes or (i + 1) % max(1, episodes // 4) == 0):
                 _log(
@@ -697,7 +748,20 @@ def _evaluate(
             "valid_ci_low": valid_ci_low,
             "valid_ci_high": valid_ci_high,
             "do_nothing_rate": float(np.mean(do_nothing_rates)) if do_nothing_rates else 1.0,
+            "legal_noop_rate": float(np.mean(legal_noop_rates)) if legal_noop_rates else 0.0,
+            "forced_noop_rate": float(np.mean(forced_noop_rates)) if forced_noop_rates else 0.0,
             "avg_ships_sent": float(np.mean(avg_ships_sent)) if avg_ships_sent else 0.0,
+            "avg_ships_per_action": float(metrics.get("avg_ships_per_action", 0.0)),
+            "median_ships_sent": float(metrics.get("median_ships_sent", 0.0)),
+            "ships_sent_p25": float(metrics.get("ships_sent_p25", 0.0)),
+            "ships_sent_p75": float(metrics.get("ships_sent_p75", 0.0)),
+            "ships_sent_p90": float(metrics.get("ships_sent_p90", 0.0)),
+            "ships_sent_max": float(metrics.get("ships_sent_max", 0.0)),
+            "mission_expand_ships_mean": float(metrics.get("mission_expand_ships_mean", 0.0)),
+            "mission_attack_ships_mean": float(metrics.get("mission_attack_ships_mean", 0.0)),
+            "mission_support_ships_mean": float(metrics.get("mission_support_ships_mean", 0.0)),
+            "slot0_ships_mean": float(metrics.get("slot0_ships_mean", 0.0)),
+            "slot1_ships_mean": float(metrics.get("slot1_ships_mean", 0.0)),
             "avg_reward": float(train_metrics.get("mean_reward", 0.0)),
             "terminal_reward": float(train_metrics.get("terminal_reward_mean", 0.0)),
             "dense_reward": float(train_metrics.get("dense_reward_mean", 0.0)),
@@ -718,13 +782,19 @@ def _evaluate(
                 progress_log_path,
                 f"eval_done checkpoint={checkpoint_label} opponent={opponent} "
                 f"winrate={record['winrate']:.3f} valid={record['valid_winrate']:.3f} "
-                f"noop={record['do_nothing_rate']:.3f} ships={record['avg_ships_sent']:.2f}",
-            )
+                f"noop={record['do_nothing_rate']:.3f} ships={record['avg_ships_sent']:.2f} "
+                f"ships_p50={record.get('median_ships_sent', 0.0):.2f} "
+                f"ships_p75={record.get('ships_sent_p75', 0.0):.2f} "
+                f"ships_p90={record.get('ships_sent_p90', 0.0):.2f} "
+                f"ships_max={record.get('ships_sent_max', 0.0):.2f}",
+                )
         if eval_history_path is not None:
             append_jsonl(eval_history_path, record)
         all_wins.extend(wins)
         all_valid_wins.extend(valid_wins)
         all_do_nothing_rates.extend(do_nothing_rates)
+        all_legal_noop_rates.extend(legal_noop_rates)
+        all_forced_noop_rates.extend(forced_noop_rates)
         all_avg_ships_sent.extend(avg_ships_sent)
 
     total_games = len(all_wins)
@@ -743,6 +813,8 @@ def _evaluate(
         "valid_ci_low": valid_ci_low,
         "valid_ci_high": valid_ci_high,
         "eval_do_nothing_rate": float(np.mean(all_do_nothing_rates)) if all_do_nothing_rates else 1.0,
+        "eval_legal_noop_rate": float(np.mean(all_legal_noop_rates)) if all_legal_noop_rates else 0.0,
+        "eval_forced_noop_rate": float(np.mean(all_forced_noop_rates)) if all_forced_noop_rates else 0.0,
         "eval_avg_ships_sent": float(np.mean(all_avg_ships_sent)) if all_avg_ships_sent else 0.0,
         "eval_episodes": int(episodes),
         "eval_games": int(total_games),
@@ -750,6 +822,8 @@ def _evaluate(
         "seed_count": int(episodes),
         "by_opponent": per_opponent,
         "train_passivity_rate": float(train_metrics.get("do_nothing_rate_mean", 1.0)),
+        "train_legal_noop_rate": float(train_metrics.get("legal_noop_rate_mean", train_metrics.get("do_nothing_rate_mean", 1.0))),
+        "train_forced_noop_rate": float(train_metrics.get("forced_noop_rate_mean", 0.0)),
         "train_real_moves_per_turn": float(train_metrics.get("mean_real_actions_per_turn", 0.0)),
         "train_real_moves_per_game": float(train_metrics.get("mean_real_actions_per_game", 0.0)),
     }
@@ -767,7 +841,9 @@ def _promotion_decision(
     margin = float(config.get("promotion_margin", 0.03))
     rollback_margin = float(config.get("rollback_margin", 0.08))
     max_do_nothing = float(config.get("max_eval_do_nothing_rate", 0.75))
+    max_legal_noop = float(config.get("max_eval_legal_noop_rate", 0.30))
     rollback_noop_rate = float(config.get("rollback_on_noop_rate", 0.0))
+    rollback_legal_noop_rate = float(config.get("rollback_on_legal_noop_rate", 0.0))
     min_avg_ships = float(config.get("min_eval_avg_ships_sent", 0.0))
     degenerate_noop = float(config.get("degenerate_noop_rate", 0.92))
     degenerate_ships = float(config.get("degenerate_max_avg_ships_sent", 1.50))
@@ -791,9 +867,13 @@ def _promotion_decision(
             f"candidate valid_ci_low {cand_ci_low:.4f} <= best_valid_winrate {best_wr:.4f}"
         )
     eval_noop_rate = float(candidate_eval.get("eval_do_nothing_rate", 1.0))
+    eval_legal_noop = float(candidate_eval.get("eval_legal_noop_rate", eval_noop_rate))
     if eval_noop_rate > max_do_nothing:
         promote = False
         reasons.append("do_nothing gate failed")
+    if eval_legal_noop > max_legal_noop:
+        promote = False
+        reasons.append(f"legal_noop gate failed {eval_legal_noop:.3f} > {max_legal_noop:.3f}")
     if float(candidate_eval.get("eval_avg_ships_sent", 0.0)) < min_avg_ships:
         promote = False
         reasons.append("avg_ships_sent gate failed")
@@ -808,6 +888,9 @@ def _promotion_decision(
     if rollback_noop_rate > 0.0 and eval_noop_rate > rollback_noop_rate:
         rollback = True
         reasons.append(f"noop rollback {eval_noop_rate:.4f} > {rollback_noop_rate:.4f}")
+    if rollback_legal_noop_rate > 0.0 and eval_legal_noop > rollback_legal_noop_rate:
+        rollback = True
+        reasons.append(f"legal_noop rollback {eval_legal_noop:.4f} > {rollback_legal_noop_rate:.4f}")
     cand_by_opp = candidate_eval.get("by_opponent", {})
     best_by_opp = best_eval.get("by_opponent", {})
     for opponent, cand_record in cand_by_opp.items():
@@ -859,7 +942,35 @@ def main() -> None:
     parser.add_argument("--promotion-lr-mult", type=float, default=1.05)
     parser.add_argument("--rollback-lr-mult", type=float, default=0.5)
     parser.add_argument("--max-eval-do-nothing-rate", type=float, default=0.75)
+    parser.add_argument("--max-eval-legal-noop-rate", type=float, default=0.30,
+                        help="Promotion gate: max avoidable-noop rate. The raw gate is now a backstop.")
     parser.add_argument("--rollback-on-noop-rate", type=float, default=0.0)
+    parser.add_argument("--rollback-on-legal-noop-rate", type=float, default=0.0,
+                        help="Hard rollback when avoidable-noop rate exceeds this. 0 = disabled.")
+    parser.add_argument("--train-target-legal-noop-rate", type=float, default=0.10,
+                        help="Auto-tune / stabilizer target for the avoidable-noop rate (legal). Defaults moved from 0.35 raw to 0.10 legal because forced no-ops are removed from the metric.")
+    parser.add_argument("--passive-win-legal-noop-rate", type=float, default=0.30,
+                        help="Wins flagged as passive when legal_noop_rate exceeds this threshold.")
+    parser.add_argument("--per-step-legal-noop-penalty", type=float, default=0.020,
+                        help="Per-step penalty applied to each avoidable no-op decision.")
+    parser.add_argument("--per-step-real-action-bonus", type=float, default=0.008,
+                        help="Per-step bonus applied to each real action decision.")
+    parser.add_argument("--per-step-ship-volume-bonus", type=float, default=0.0,
+                        help="Extra per-step bonus proportional to ships sent (linear up to target, capped). 0=disabled.")
+    parser.add_argument("--per-step-ship-volume-target", type=float, default=8.0,
+                        help="Ship count at which the volume bonus is maxed out.")
+    parser.add_argument("--per-step-shape-clip", type=float, default=0.04,
+                        help="Hard clip on per-step shaping magnitude.")
+    parser.add_argument("--enable-episodic-passivity-penalty", action="store_true",
+                        help="Re-enable the legacy episode-broadcast passivity penalty (default: off, per-step shaping replaces it).")
+    parser.add_argument("--stabilizer-target-legal-noop", type=float, default=0.15,
+                        help="Stabilizer target for eval legal_noop_rate.")
+    parser.add_argument("--stabilizer-target-legal-passivity", type=float, default=0.12,
+                        help="Stabilizer target for train legal_noop_rate.")
+    parser.add_argument("--valid-win-max-legal-noop-rate", type=float, default=0.30,
+                        help="Validity gate for promotion: max avoidable-noop rate per game.")
+    parser.add_argument("--reset-shaping-coefs", action="store_true",
+                        help="On resume, ignore saturated shaping coefficients from adaptive_config and start fresh from CLI defaults.")
     parser.add_argument("--min-eval-avg-ships-sent", type=float, default=0.0)
     parser.add_argument("--valid-win-max-do-nothing-rate", type=float, default=0.84)
     parser.add_argument("--valid-win-min-avg-ships-sent", type=float, default=4.0)
@@ -871,6 +982,10 @@ def main() -> None:
     parser.add_argument("--collapse-stop-evals", type=int, default=2)
     parser.add_argument("--collapse-stop-noop-rate", type=float, default=0.92)
     parser.add_argument("--collapse-stop-max-avg-ships-sent", type=float, default=2.0)
+    parser.add_argument("--collapse-max-recoveries", type=int, default=0,
+                        help="Max collapse recoveries before hard stop. 0=unlimited recovery.")
+    parser.add_argument("--max-consecutive-regressions", type=int, default=0,
+                        help="Trigger STUCK_RECOVERY after N consecutive rollbacks. 0=disabled.")
     parser.add_argument("--max-opponent-regression", type=float, default=0.12)
     parser.add_argument("--min-ci-promotion-games", type=int, default=96)
     parser.add_argument("--league-archive-size", type=int, default=4)
@@ -882,6 +997,12 @@ def main() -> None:
     parser.add_argument("--temperature-decay-updates", type=int, default=200)
     parser.add_argument("--teacher-checkpoint", default="", help="Optional frozen teacher checkpoint for KL distillation")
     parser.add_argument("--teacher-kl-coef", type=float, default=0.0)
+    parser.add_argument("--entropy-coef-start", type=float, default=0.10)
+    parser.add_argument("--dense-planet-coef", type=float, default=0.05)
+    parser.add_argument("--dense-production-coef", type=float, default=0.04)
+    parser.add_argument("--dense-ship-share-coef", type=float, default=0.14)
+    parser.add_argument("--dense-score-coef", type=float, default=0.10)
+    parser.add_argument("--dense-reward-clip", type=float, default=0.40)
     parser.add_argument("--train-mission-mix-bonus-coef", type=float, default=0.0)
     parser.add_argument("--train-target-support-ratio", type=float, default=0.30)
     parser.add_argument("--train-support-ratio-band", type=float, default=0.20)
@@ -916,6 +1037,20 @@ def main() -> None:
     if args.resume_checkpoint and Path(args.resume_checkpoint).exists():
         _, resume_meta = load_checkpoint(args.resume_checkpoint)
         adaptive_config = resume_meta.get("adaptive_config", {})
+        # Keys that drive shaping/penalty intensity. If --reset-shaping-coefs is
+        # set we drop these so the run starts from CLI defaults instead of
+        # inheriting saturated values from the previous run's supervisor.
+        shaping_keys = {
+            "do_nothing_logit_penalty",
+            "do_nothing_prob_cap",
+            "do_nothing_prob_caps_by_slot",
+            "train_noop_penalty_coef",
+            "train_passivity_penalty_coef",
+            "train_action_bonus_coef",
+            "train_ships_sent_bonus_coef",
+            "policy_prior_strength",
+            "entropy_coef_start",
+        }
         if isinstance(adaptive_config, dict):
             for key in (
                 "learning_rate",
@@ -943,15 +1078,14 @@ def main() -> None:
                 "stabilizer_cooldown_remaining",
             ):
                 if key in adaptive_config:
+                    if args.reset_shaping_coefs and key in shaping_keys:
+                        continue
                     cfg[key] = adaptive_config[key]
-            mix_counts = adaptive_config.get("opponent_mix_counts")
-            if isinstance(mix_counts, dict):
-                cfg["opponent_mix_counts"] = {str(k): int(v) for k, v in mix_counts.items()}
-                cfg["stage1_pool"] = _weighted_pool_from_counts(cfg["opponent_mix_counts"])
-                if cfg.get("curriculum_tiers"):
-                    cfg["curriculum_tiers"][0]["opponents"] = list(cfg["stage1_pool"])
+            # opponent_mix_counts from checkpoint is intentionally NOT restored:
+            # --simple-opponents always wins so the caller controls the training pool.
 
     run_name = args.run_name or (Path(args.resume_checkpoint).resolve().parent.name if args.resume_checkpoint and Path(args.resume_checkpoint).exists() else _run_tag())
+    cfg["resume_checkpoint"] = args.resume_checkpoint or ""
 
     runs_root = Path(args.runs_root).expanduser() if args.runs_root else PACKAGE_DIR / "runs"
     run_dir = runs_root / run_name
@@ -1074,6 +1208,7 @@ def main() -> None:
     eval_history = deque(maxlen=8)
     consecutive_regressions = 0
     collapse_eval_count = 0
+    collapse_recovery_count = 0
 
     try:
         while time.time() < deadline:
@@ -1108,6 +1243,8 @@ def main() -> None:
                 total_missions = max(1, sum(int(v) for v in mission_counts.values()))
                 train_record = dict(metrics)
                 train_record["noop_rate"] = float(mission_counts.get("do_nothing", 0)) / float(total_missions)
+                train_record["legal_noop_rate"] = float(metrics.get("legal_noop_rate_mean", train_record["noop_rate"]))
+                train_record["forced_noop_rate"] = float(metrics.get("forced_noop_rate_mean", 0.0))
                 train_record["train_winrate"] = float(np.mean(wins)) if wins else 0.0
                 train_history.append(train_record)
                 config_patch = _auto_tune_training(cfg, optimizer, list(train_history), metrics, mission_counts)
@@ -1160,6 +1297,9 @@ def main() -> None:
                     f"expand={metrics.get('mission_expand_ratio_mean', 0):.3f} "
                     f"passivity_penalty={metrics.get('passivity_penalty_mean', 0):.3f} "
                     f"passivity={metrics.get('do_nothing_rate_mean', 1):.3f} "
+                    f"legal_noop={metrics.get('legal_noop_rate_mean', 0):.3f} "
+                    f"forced_noop={metrics.get('forced_noop_rate_mean', 0):.3f} "
+                    f"step_shape={metrics.get('per_step_shape_sum_mean', 0):.3f} "
                     f"passive_wins={metrics.get('passive_win_rate', 0):.3f} "
                     f"noop_p=[{metrics.get('noop_prob_before_cap_mean', 0):.3f}->{metrics.get('noop_prob_after_cap_mean', 0):.3f}] "
                     f"noop_cap_frac={metrics.get('noop_prob_cap_frac', 0):.3f} "
@@ -1176,6 +1316,19 @@ def main() -> None:
                     f"slot1_cap_frac={metrics.get('slot1_noop_cap_frac', 0):.3f} "
                     f"real_moves_game={metrics.get('mean_real_actions_per_game', 0):.2f} "
                     f"real_moves_turn={metrics.get('mean_real_actions_per_turn', 0):.2f} "
+                    f"ships_mean_all={metrics.get('ships_sent_mean_all_steps', 0):.2f} "
+                    f"ships_p50={metrics.get('ships_sent_median', 0):.2f} "
+                    f"ships_p75={metrics.get('ships_sent_p75', 0):.2f} "
+                    f"ships_p90={metrics.get('ships_sent_p90', 0):.2f} "
+                    f"ships_max={metrics.get('ships_sent_max', 0):.2f} "
+                    f"ep_ship_p50={metrics.get('episode_ships_median_mean', 0):.2f} "
+                    f"ep_ship_p90={metrics.get('episode_ships_p90_mean', 0):.2f} "
+                    f"ep_ship_max={metrics.get('episode_ships_max_mean', 0):.2f} "
+                    f"slot0_ships={metrics.get('slot0_ships_mean', 0):.2f} "
+                    f"slot1_ships={metrics.get('slot1_ships_mean', 0):.2f} "
+                    f"expand_ships={metrics.get('mission_expand_ships_mean', 0):.2f} "
+                    f"attack_ships={metrics.get('mission_attack_ships_mean', 0):.2f} "
+                    f"support_ships={metrics.get('mission_support_ships_mean', 0):.2f} "
                     f"temp={metrics.get('mean_sample_temperature', 0):.3f} "
                     f"skipped_oldlp={metrics.get('skipped_missing_old_log_prob', 0):.0f} "
                     f"missions={mission_counts} "
@@ -1331,6 +1484,8 @@ def main() -> None:
                     f"best_wscore={best_eval.get('weighted_score', best_eval['winrate']):.3f} "
                     f"best_ci=[{best_eval['ci_low']:.3f},{best_eval['ci_high']:.3f}] "
                     f"noop={eval_result['eval_do_nothing_rate']:.3f} "
+                    f"legal_noop={eval_result.get('eval_legal_noop_rate', 0):.3f} "
+                    f"forced_noop={eval_result.get('eval_forced_noop_rate', 0):.3f} "
                     f"ships={eval_result['eval_avg_ships_sent']:.2f} "
                     f"lr={current_lr:.8f} "
                     f"best={best_winrate:.3f} target={cfg['target_winrate']}",
@@ -1442,6 +1597,23 @@ def main() -> None:
                             f"ROLLBACK failed={failed_path} regressions={consecutive_regressions} "
                             f"lr={current_lr:.8f}->{new_lr:.8f}",
                         )
+                        max_stuck_regressions = int(cfg.get("max_consecutive_regressions", 0))
+                        if max_stuck_regressions > 0 and consecutive_regressions >= max_stuck_regressions:
+                            cfg["entropy_coef_start"] = min(0.35, float(cfg.get("entropy_coef_start", 0.10)) * 1.25)
+                            cfg["train_per_step_legal_noop_penalty"] = max(0.0001, float(cfg.get("train_per_step_legal_noop_penalty", 0.0012)) * 0.75)
+                            cfg["train_per_step_real_action_bonus"] = max(0.0001, float(cfg.get("train_per_step_real_action_bonus", 0.0008)) * 0.75)
+                            # Reset LR partway back up so gradient updates are effective.
+                            stuck_lr = min(float(cfg["max_lr"]), float(cfg.get("learning_rate", current_lr)) * 0.5)
+                            stuck_lr = max(float(cfg["min_lr"]), stuck_lr)
+                            _set_optimizer_lr(optimizer, stuck_lr)
+                            consecutive_regressions = 0
+                            _log(
+                                log_path,
+                                f"STUCK_RECOVERY entropy={cfg['entropy_coef_start']:.3f} "
+                                f"shaping_noop={cfg['train_per_step_legal_noop_penalty']:.5f} "
+                                f"shaping_action={cfg['train_per_step_real_action_bonus']:.5f} "
+                                f"lr={current_lr:.8f}->{stuck_lr:.8f}",
+                            )
                 stabilizer_patch = _eval_stabilizer(cfg, list(eval_history))
                 if stabilizer_patch:
                     _log(
@@ -1478,15 +1650,48 @@ def main() -> None:
                     except Exception:
                         pass
                     save_json(run_dir / "config.json", cfg)
+                max_collapse_recoveries = int(cfg.get("collapse_max_recoveries", 0))
                 if int(cfg.get("collapse_stop_evals", 0)) > 0 and collapse_eval_count >= int(cfg.get("collapse_stop_evals", 0)):
+                    collapse_recovery_count += 1
+                    if max_collapse_recoveries > 0 and collapse_recovery_count > max_collapse_recoveries:
+                        _log(
+                            log_path,
+                            f"STOP collapse_max_recoveries reached recoveries={collapse_recovery_count} "
+                            f"noop={float(eval_result.get('eval_do_nothing_rate', 1.0)):.3f} "
+                            f"ships={float(eval_result.get('eval_avg_ships_sent', 0.0)):.2f}",
+                        )
+                        break
+                    # Recovery: roll back to best checkpoint, increase entropy, reduce shaping.
+                    recovery_checkpoint = best_validated_path if best_validated_path.exists() else Path(cfg.get("resume_checkpoint", ""))
+                    if recovery_checkpoint.exists():
+                        state, _ = load_checkpoint(recovery_checkpoint)
+                        load_compatible_state_dict(model, state)
+                        model = model.to(device)
+                        model.eval()
+                        policy_version = 0
+                    cfg["entropy_coef_start"] = min(0.35, float(cfg.get("entropy_coef_start", 0.10)) * 1.50)
+                    cfg["train_per_step_legal_noop_penalty"] = max(0.001, float(cfg.get("train_per_step_legal_noop_penalty", 0.006)) * 0.60)
+                    cfg["train_per_step_real_action_bonus"] = max(0.001, float(cfg.get("train_per_step_real_action_bonus", 0.004)) * 0.60)
+                    cfg["train_per_step_shape_clip"] = max(0.005, float(cfg.get("train_per_step_shape_clip", 0.02)) * 0.60)
+                    new_lr = max(float(cfg["min_lr"]), current_lr * float(cfg.get("rollback_lr_mult", 0.5)))
+                    optimizer = torch.optim.Adam(model.parameters(), lr=new_lr)
+                    train_history.clear()
+                    eval_history.clear()
+                    collapse_eval_count = 0
+                    consecutive_regressions = 0
+                    try:
+                        model_update_queue.put_nowait({"state": _model_state_np(model), "policy_version": policy_version})
+                    except Exception:
+                        pass
                     _log(
                         log_path,
-                        f"STOP collapse_detected evals={collapse_eval_count} "
-                        f"noop={float(eval_result.get('eval_do_nothing_rate', 1.0)):.3f} "
-                        f"ships={float(eval_result.get('eval_avg_ships_sent', 0.0)):.2f} "
-                        f"latest={latest_path}",
+                        f"COLLAPSE_RECOVERY count={collapse_recovery_count}/{max_collapse_recoveries or 'inf'} "
+                        f"entropy={cfg['entropy_coef_start']:.3f} "
+                        f"shaping_noop={cfg['train_per_step_legal_noop_penalty']:.4f} "
+                        f"shaping_action={cfg['train_per_step_real_action_bonus']:.4f} "
+                        f"lr={current_lr:.8f}->{new_lr:.8f} "
+                        f"checkpoint={recovery_checkpoint}",
                     )
-                    break
                 if best_winrate >= cfg["target_winrate"]:
                     _log(log_path, f"TARGET REACHED winrate={best_winrate:.4f}")
                     break

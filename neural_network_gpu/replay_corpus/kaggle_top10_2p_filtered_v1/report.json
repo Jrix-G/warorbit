@@ -1,0 +1,21 @@
+{
+  "source_type": "local",
+  "scan_root": "D:\\warorbit_kaggle_raw\\orbit-wars-top10-episodes-2026-05-04",
+  "output_root": "replay_corpus\\kaggle_top10_2p_filtered_v1",
+  "accepted": 0,
+  "skipped": 2631,
+  "raw_bytes_written": 0,
+  "max_turns": 250,
+  "max_file_mb": 50.0,
+  "limit": 5000,
+  "ranks": [
+    1,
+    2,
+    3
+  ],
+  "keep_raw": true,
+  "kaggle_ids": [],
+  "source_roots": [
+    "D:\\warorbit_kaggle_raw\\orbit-wars-top10-episodes-2026-05-04"
+  ]
+}

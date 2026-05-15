@@ -5,7 +5,13 @@
       "Bash(Get-ChildItem C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\neural_network_gpu *)",
       "Bash(awk -F'[= ]' '{print $3, $5}')",
       "Bash(awk 'NR%20==0 || NR<=5')",
-      "PowerShell([System.IO.Directory]::GetFiles\\(\"C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\local_simulator\"\\))"
+      "PowerShell([System.IO.Directory]::GetFiles\\(\"C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\local_simulator\"\\))",
+      "Bash(grep -iE \"^\\(analyze|extract|run_extract\\).*\\\\.\\(py|ps1\\)$\")",
+      "Bash(grep \"^\\\\\\\\[.*\\\\\\\\] train episodes=\" \"C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\runs\\\\gpu_2p_curriculum_phase1_from_imitation\\\\gpu_train.log\")",
+      "Bash(awk '{print $1,$2,$3,$4}')",
+      "Bash(Get-Item \"C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\runs\\\\gpu_2p_overnight_9h\\\\gpu_train.log\")",
+      "Bash(Select-Object Length, LastWriteTime)",
+      "PowerShell(Select-String -Path \"C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\runs\\\\gpu_2p_overnight_9h\\\\gpu_train.log\" -Pattern \"promoted|ROLLBACK|eval episodes\" | Select-Object -Last 40 | ForEach-Object { $_.Line })"
     ]
   }
 }

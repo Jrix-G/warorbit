@@ -31,7 +31,7 @@ from neural_network.src.notebook_4p_training import (
     run_match,
 )
 from neural_network.src.population_4p_training import _strategic_dense_reward
-from neural_network.src.notebook_4p_training import _action_summary
+from neural_network_gpu.src.action_metrics import summarize_action_records
 
 
 def _agent_for_pool_name(name: str, config: Dict[str, Any], cache: Dict[str, Any]):
@@ -239,7 +239,15 @@ def worker_fn(
             if config.get("dense_reward_enabled", True)
             else 0.0
         )
-        action_records = [{"mission": s["mission"], "ships": s["ships"]} for s in trajectory]
+        action_records = [
+            {
+                "mission": s["mission"],
+                "ships": s["ships"],
+                "noop_has_real_candidate": bool(s.get("noop_has_real_candidate", False)),
+                "action_slot": int(s.get("action_slot", 0)),
+            }
+            for s in trajectory
+        ]
 
         result_queue.put({
             "worker_id": worker_id,
@@ -250,7 +258,7 @@ def worker_fn(
             "opponents": list(opp_names),
             "episode_length": int(result.get("steps", 0)),
             "seed": seed,
-            "action_metrics": _action_summary(action_records),
+            "action_metrics": summarize_action_records(action_records),
         })
 
         episode += 1

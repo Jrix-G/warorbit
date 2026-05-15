@@ -1,0 +1,4 @@
+V15 overnight benchmark — VF-on vs VF-off (value fn isolates 4p)
+2p: VF-on W=1/2 WR=0.500 95%CI=[0.095,0.905]  -> inconclusive
+4p: VF-on W=0/2 WR=0.000 95%CI=[0.000,0.658]  -> inconclusive
+elapsed 4 min

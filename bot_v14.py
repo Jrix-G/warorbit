@@ -67,6 +67,36 @@ _FOUR_PLAYER_PROFILES: dict[str, dict[str, float | int | bool]] = {
         "WEAK_ENEMY_THRESHOLD": 60,
         "ELIMINATION_BONUS": 26.0,
     },
+    "top10_mimic": {
+        # Derived from analysis/V15_FINDINGS.md (D1 audit of 2630 top-10 4p replays).
+        # Patterns: (1) multi-source coordination 0.40-0.52 vs 0.24-0.27 in losers,
+        # (2) winners route 35-44% of ships to support (not neutrals),
+        # (3) first-attack timing not a lever (winners and losers attack at turn 29-35),
+        # (4) winners commit 90-100% of source ships in 82% of moves.
+        "FOUR_PLAYER_ROTATING_REACTION_GAP": 1,
+        "FOUR_PLAYER_ROTATING_SEND_RATIO": 0.90,           # D1#4: commit hard
+        "FOUR_PLAYER_ROTATING_TURN_LIMIT": 18,             # D1#3: late first attack OK
+        "FOUR_PLAYER_ROTATING_NEUTRAL_SCORE_MULT": 0.86,   # D1#2: stop over-expanding
+        "BEHIND_ROTATING_NEUTRAL_VALUE_MULT": 0.80,        # don't fork when losing
+        "FOUR_PLAYER_TARGET_MARGIN": 1,
+        "HOSTILE_MARGIN_BASE": 2,
+        "HOSTILE_MARGIN_CAP": 8,
+        "SAFE_NEUTRAL_MARGIN": 1,
+        "CONTESTED_NEUTRAL_MARGIN": 1,
+        "MULTI_SOURCE_TOP_K": 14,                          # D1#1: multi-source bias
+        "MULTI_SOURCE_ETA_TOLERANCE": 3,
+        "MULTI_SOURCE_PLAN_PENALTY": 0.99,
+        "THREE_SOURCE_MIN_TARGET_SHIPS": 12,
+        "THREE_SOURCE_ETA_TOLERANCE": 3,
+        "THREE_SOURCE_PLAN_PENALTY": 0.97,
+        "FOUR_SOURCE_PLAN_PENALTY": 0.95,
+        "FINISHING_HOSTILE_SEND_BONUS": 7,
+        "WEAK_ENEMY_THRESHOLD": 75,
+        "ELIMINATION_BONUS": 42.0,
+        "AHEAD_ATTACK_MARGIN_BONUS": 0.16,
+        "BEHIND_ATTACK_MARGIN_PENALTY": 0.03,
+        "FINISHING_ATTACK_MARGIN_BONUS": 0.18,
+    },
     "deep_eco": {
         "HORIZON": 180,
         "SIM_HORIZON": 180,

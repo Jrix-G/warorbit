@@ -290,10 +290,12 @@ def _make_policy_agent(
             action = reconstruct_action(cand, planning_game)
             move = _candidate_move(planning_game, action)
             executed_ships = int(move[0][2]) if move else 0
+            noop_has_real_candidate = any(c.mission != "do_nothing" for c in candidates)
             action_records.append(
                 {
                     "mission": cand.mission if move else "do_nothing",
                     "ships": executed_ships,
+                    "noop_has_real_candidate": bool(noop_has_real_candidate),
                     "_value": outputs["value"].reshape(-1)[0],
                     "_entropy": entropy,
                 }
@@ -520,10 +522,39 @@ def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     real_actions = [a for a in action_records if a.get("mission") != "do_nothing" and int(a.get("ships", 0)) > 0]
     ships_sent = [int(a.get("ships", 0)) for a in real_actions]
     missions = Counter(str(a.get("mission", "unknown")) for a in action_records)
+    # Disentangle forced no-ops (no real candidate available) from legal no-ops
+    # (real candidate existed -> avoidable). Records missing the flag fall back
+    # to had_real=True so legal_noop_rate == raw do_nothing_rate for legacy
+    # callers.
+    had_real_flags = [bool(a.get("noop_has_real_candidate", True)) for a in action_records]
+    legal_decision_count = int(sum(had_real_flags))
+    forced_decision_count = int(action_count - legal_decision_count)
+    legal_noop_count = 0
+    forced_noop_count = 0
+    for record, had_real in zip(action_records, had_real_flags):
+        is_noop = record.get("mission") == "do_nothing" or int(record.get("ships", 0)) <= 0
+        if not is_noop:
+            continue
+        if had_real:
+            legal_noop_count += 1
+        else:
+            forced_noop_count += 1
+    raw_noop_rate = float(1.0 - (len(real_actions) / action_count)) if action_count else 1.0
+    legal_noop_rate = float(legal_noop_count / legal_decision_count) if legal_decision_count > 0 else 0.0
+    forced_noop_rate = float(forced_noop_count / action_count) if action_count else 0.0
+    real_action_rate_legal = float(1.0 - legal_noop_rate)
     return {
         "action_count": action_count,
         "real_action_count": len(real_actions),
-        "do_nothing_rate": float(1.0 - (len(real_actions) / action_count)) if action_count else 1.0,
+        "do_nothing_rate": raw_noop_rate,
+        "raw_noop_rate": raw_noop_rate,
+        "legal_noop_rate": legal_noop_rate,
+        "forced_noop_rate": forced_noop_rate,
+        "real_action_rate_legal": real_action_rate_legal,
+        "legal_decision_count": legal_decision_count,
+        "forced_decision_count": forced_decision_count,
+        "legal_noop_count": int(legal_noop_count),
+        "forced_noop_count": int(forced_noop_count),
         "avg_ships_sent": float(np.mean(ships_sent) if ships_sent else 0.0),
         "mission_counts": dict(missions),
         "mission_expand_count": int(missions.get("expand", 0)),

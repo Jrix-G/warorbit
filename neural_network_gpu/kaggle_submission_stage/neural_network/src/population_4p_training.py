@@ -247,17 +247,24 @@ def _composite_score(record: Dict[str, Any]) -> float:
 
 
 def _activity_shaping_reward(action_metrics: Dict[str, Any], config: Dict[str, Any]) -> float:
-    do_nothing = _clip01(float(action_metrics.get("do_nothing_rate", 1.0)))
+    # Prefer legal_noop_rate (avoidable no-ops only) when available; fall back
+    # to raw do_nothing_rate for legacy callers. This decouples the activity
+    # penalty from forced no-ops (states with no real candidate available).
+    if "legal_noop_rate" in action_metrics:
+        noop = _clip01(float(action_metrics.get("legal_noop_rate", 0.0)))
+        target_noop = _clip01(float(config.get("train_target_legal_noop_rate", 0.10)))
+    else:
+        noop = _clip01(float(action_metrics.get("do_nothing_rate", 1.0)))
+        target_noop = _clip01(float(config.get("train_target_do_nothing_rate", 0.55)))
     real_action_count = float(action_metrics.get("real_action_count", 0.0))
     avg_ships_sent = float(action_metrics.get("avg_ships_sent", 0.0))
-    target_noop = _clip01(float(config.get("train_target_do_nothing_rate", 0.55)))
     noop_penalty_coef = max(0.0, float(config.get("train_noop_penalty_coef", 0.30)))
     action_bonus_coef = max(0.0, float(config.get("train_action_bonus_coef", 0.08)))
     ships_bonus_coef = max(0.0, float(config.get("train_ships_sent_bonus_coef", 0.04)))
     limit = max(0.0, float(config.get("train_activity_reward_clip", 0.35)))
     reward = 0.0
-    if do_nothing > target_noop:
-        reward -= noop_penalty_coef * ((do_nothing - target_noop) / max(1e-6, 1.0 - target_noop))
+    if noop > target_noop:
+        reward -= noop_penalty_coef * ((noop - target_noop) / max(1e-6, 1.0 - target_noop))
     reward += action_bonus_coef * _clip01(real_action_count / max(1.0, float(config.get("max_actions_per_turn", 4))))
     reward += ships_bonus_coef * _clip01(avg_ships_sent / 40.0)
     return float(max(-limit, min(limit, reward)))
