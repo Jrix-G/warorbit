@@ -9,6 +9,7 @@ stdout/stderr around every agent call.
 
 from __future__ import annotations
 
+import random
 import sys
 import time
 from dataclasses import dataclass
@@ -134,6 +135,12 @@ class OfficialFastGame:
         self.done = False
         self.info = {}
         self.configuration.seed = self.seed
+        # orbit_wars.interpreter generates the board via the global `random`
+        # module on its first call. Seed it here so a given `seed` always
+        # yields the same game — reproducibility the engine itself does not
+        # provide (kaggle_environments does not wire config.seed to random).
+        if self.seed is not None:
+            random.seed(self.seed)
         self.state = structify(
             [
                 {
