@@ -61,12 +61,18 @@ def agent(obs, config=None):
         return bot_v7.agent(obs, config)
 
     overrides = cfg.overrides_dict()
+
+    # Layer 4 — Monte-Carlo search (opt-in). V7 patches apply to the candidate
+    # generator inside the search; the search itself falls back to V7 on error.
+    if cfg.enable_layer4_search:
+        import v15_search
+        with _patched_v7(overrides):
+            return v15_search.search(obs, config)
+
     with _patched_v7(overrides):
         result = bot_v7.agent(obs, config)
 
     # Logic-level patches (Layer 2a §M1, à câbler progressivement).
-    # Pour l'instant : aucune modification du résultat. Les flags sont
-    # acceptés mais no-op tant que la logique n'est pas implémentée.
     # TODO M1 : enable_multi_source_early_bonus, enable_opportunistic_expand_gate.
 
     return result
