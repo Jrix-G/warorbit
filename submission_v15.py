@@ -47,8 +47,8 @@ if _SEARCH_OK:
 def agent(obs, config=None):
     if _SEARCH_OK:
         try:
-            return _vs.search(obs, config, time_budget=45.0,
-                              n_rollouts=200, horizon=25)
+            return _vs.search(obs, config, time_budget=0.7,
+                              n_rollouts=400, horizon=18)
         except Exception:
             pass
     try:

@@ -87,9 +87,11 @@ def build() -> str:
     parts.append("def agent(obs, config=None):\n")
     parts.append("    if _SEARCH_OK:\n")
     parts.append("        try:\n")
-    # 45s budget << Kaggle's 60s/move; 200 rollouts is a strong search.
-    parts.append("            return _vs.search(obs, config, time_budget=45.0,\n")
-    parts.append("                              n_rollouts=200, horizon=25)\n")
+    # ~0.7s/move: Kaggle's per-move base limit is ~1s, with a 60s-per-GAME
+    # overage bank. Staying under 1s/move keeps the bank intact for the whole
+    # game. n_rollouts is just a cap; the time budget cuts it.
+    parts.append("            return _vs.search(obs, config, time_budget=0.7,\n")
+    parts.append("                              n_rollouts=400, horizon=18)\n")
     parts.append("        except Exception:\n            pass\n")
     parts.append("    try:\n")
     parts.append("        return _v7.agent(obs, config)\n")
