@@ -16,11 +16,16 @@ Run (resumable):
 
 from __future__ import annotations
 
+# torch and numpy each ship their own OpenMP runtime; on Windows the second
+# to load aborts with "OMP: Error #15". Allow the duplicate — must be set
+# before numpy / torch are imported (i.e. before importing v15_* below).
+import os
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 import argparse
 import glob
 import json
 import math
-import os
 import time
 
 import numpy as np
@@ -64,15 +69,21 @@ def _winner(sc_row, n_players):
 
 # --- stage 1: generate ------------------------------------------------------
 
-def generate(gen, games, chunk):
-    """Play self-play games in fixed-size chunks; checkpoint each chunk."""
+def generate(gen, games, chunk, frac4p):
+    """Play self-play games in fixed-size chunks; checkpoint each chunk.
+
+    frac4p — fraction of games played as 4p (the bot's weak mode). 2p and 4p
+    train SEPARATE value functions, so 2p only needs enough data to stay
+    stable while the bulk goes to 4p."""
     d = _ckpt_dir(gen)
     prev = _prev_weights(gen)
-    half = games // 2
+    g4 = int(round(games * frac4p))
+    g2 = games - g4
     t0 = time.time()
-    for n_players, seed_base in ((2, 1_000_000 + gen * 100000),
-                                 (4, 2_000_000 + gen * 100000)):
-        n_chunks = max(1, math.ceil(half / chunk))
+    for n_players, count, seed_base in (
+            (2, g2, 1_000_000 + gen * 100000),
+            (4, g4, 2_000_000 + gen * 100000)):
+        n_chunks = max(1, math.ceil(count / chunk))
         for i in range(n_chunks):
             path = os.path.join(d, f"sp_{n_players}p_{i}.npz")
             if os.path.exists(path):
@@ -85,7 +96,7 @@ def generate(gen, games, chunk):
             nps = np.array([s[0] for s in samples], dtype=np.int64)
             X = np.array([s[1] for s in samples], dtype=np.float64)
             y = np.array([s[2] for s in samples], dtype=np.float64)
-            tmp = path + ".tmp"
+            tmp = path + ".tmp.npz"          # .npz: np.savez won't re-append
             np.savez(tmp, n_players=nps, X=X, y=y)
             os.replace(tmp, path)            # atomic — Ctrl-C safe
             print(f"  [{n_players}p chunk {i}/{n_chunks}] {len(y)} samples "
@@ -131,7 +142,7 @@ def train(gen, d):
     w4, m4, s4 = res["4p"] or (esc.w4p, esc.mean4p, esc.std4p)
     ew = v15_eval.EvalWeights(w2p=w2, w4p=w4, mean2p=m2, std2p=s2,
                               mean4p=m4, std4p=s4, tag=f"vf_gen{gen}")
-    tmp = out + ".tmp"
+    tmp = out + ".tmp.npz"
     ew.save(tmp)
     os.replace(tmp, out)
     print(f"[train] -> {out}")
@@ -196,13 +207,15 @@ def main():
     ap.add_argument("--games", type=int, default=1500)
     ap.add_argument("--bench", type=int, default=120)
     ap.add_argument("--chunk", type=int, default=384)
+    ap.add_argument("--frac4p", type=float, default=0.65,
+                    help="fraction of self-play games played as 4p")
     args = ap.parse_args()
 
     os.makedirs(ANALYSIS, exist_ok=True)
     print(f"=== Generation {args.gen} (GPU) "
           f"prev={'ESC' if args.gen <= 1 else f'vf_gen{args.gen-1}'} ===")
 
-    d = generate(args.gen, args.games, args.chunk)
+    d = generate(args.gen, args.games, args.chunk, args.frac4p)
     wN = train(args.gen, d)
     wP = _prev_weights(args.gen)
     res = benchmark(args.gen, wN, wP, args.bench, args.chunk)
