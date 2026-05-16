@@ -191,7 +191,7 @@ def _candidates(v7_move: list) -> list[list]:
 
 def search(obs, config=None, *, time_budget: float = 0.7,
            horizon: int = 18, n_policy_samples: int = 6,
-           seed: int = 0, use_value_fn: bool = True) -> list:
+           seed: int = 0, use_value_fn: bool = False) -> list:
     """V15.1-A — flat Monte-Carlo with sequential-halving budget allocation.
 
     Candidates are pruned in rounds: every survivor gets a slice of rollouts,

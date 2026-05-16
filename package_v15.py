@@ -90,8 +90,7 @@ def build() -> str:
     # ~0.7s/move: Kaggle's per-move base limit is ~1s, with a 60s-per-GAME
     # overage bank. Staying under 1s/move keeps the bank intact for the whole
     # game. n_rollouts is just a cap; the time budget cuts it.
-    parts.append("            return _vs.search(obs, config, time_budget=0.7,\n")
-    parts.append("                              n_rollouts=400, horizon=18)\n")
+    parts.append("            return _vs.search(obs, config, time_budget=0.7, horizon=18)\n")
     parts.append("        except Exception:\n            pass\n")
     parts.append("    try:\n")
     parts.append("        return _v7.agent(obs, config)\n")
