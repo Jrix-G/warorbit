@@ -253,8 +253,15 @@ def _combo_actions(combos: torch.Tensor, player: int,
 
 
 def gpu_search(batch: gsim.GpuBatch, player: int, weights, *,
-               horizon: int = 24) -> torch.Tensor:
-    """Best move for `player` across all B games. Returns [B, A_SLOTS, 3]."""
+               horizon: int = 24, explore: float = 0.0) -> torch.Tensor:
+    """Best move for `player` across all B games. Returns [B, A_SLOTS, 3].
+
+    explore — with this per-game probability, a random combo is played
+    instead of the best one. Needed in self-play data generation: identical
+    deterministic policies on a symmetric map make mirror moves and the game
+    ends in a tie (no winner, no training label). Exploration breaks the
+    symmetry and diversifies the value-function training distribution. Keep
+    it 0 for benchmarking (measure true strength)."""
     B = batch.B
     P = batch.n_players
     dev = batch.device
@@ -312,6 +319,13 @@ def gpu_search(batch: gsim.GpuBatch, player: int, weights, *,
     # --- pick: best combo if it beats the do-nothing baseline ---
     best_val, best_pat = torch.max(s2, dim=1)
     bidx = torch.arange(B, device=dev)
+    explored = torch.zeros(B, dtype=torch.bool, device=dev)
+    if explore > 0.0:
+        explored = torch.rand(B, device=dev) < explore
+        rand_pat = torch.randint(0, S, (B,), device=dev)
+        best_pat = torch.where(explored, rand_pat, best_pat)
     chosen = combos[bidx, best_pat]                          # [B,A,3]
-    take = (best_val > baseline).view(B, 1, 1)
+    # explored games always play their (random) combo; others play it only
+    # if it beats doing nothing
+    take = (explored | (best_val > baseline)).view(B, 1, 1)
     return torch.where(take, chosen, torch.zeros_like(chosen))

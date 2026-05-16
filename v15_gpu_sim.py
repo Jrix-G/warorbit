@@ -74,17 +74,20 @@ class GpuBatch:
 
 
 def from_faststates(states: list[fsim.FastState], *, device="cpu",
-                    m_max: int = 256, dtype=torch.float32) -> GpuBatch:
+                    m_max: int = 256, dtype=torch.float32,
+                    n_fixed: int = 0) -> GpuBatch:
     """Pack a list of FastState (all same n_players, comet-free) into a batch.
     Planet/fleet slots are padded to the batch maxima; masks track validity.
 
-    dtype — float32 for fast self-play on consumer GPUs (their float64 path is
-    ~32x slower); float64 for the bit-exact equivalence test."""
+    dtype  — float32 for fast self-play on consumer GPUs (their float64 path
+             is ~32x slower); float64 for the bit-exact equivalence test.
+    n_fixed — pad the planet dimension to (at least) this many slots, so every
+             chunk has identical shape and torch.compile compiles only once."""
     B = len(states)
     n_players = states[0].n_players
     episode_steps = states[0].episode_steps
     ship_speed = states[0].ship_speed
-    N = max(len(s.planets) for s in states)
+    N = max(n_fixed, max(len(s.planets) for s in states))
     M = m_max
 
     planets = torch.zeros((B, N, 7), dtype=dtype)
