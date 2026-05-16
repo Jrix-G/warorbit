@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "submission_v15.py"
 
-MODULES = ["bot_v7", "v15_config", "v15_fast_sim", "v15_search"]
+MODULES = ["bot_v7", "v15_fast_sim", "v15_eval", "v15_bc", "v15_search"]
 WEIGHTS = ROOT / "evaluations" / "scorer_v7_kaggle.npz"
 
 
@@ -73,10 +73,11 @@ def build() -> str:
     parts.append("    return m\n\n")
 
     parts.append("_register('bot_v7', inject={'__v15_weights_path__': __v15_weights_path__})\n")
-    parts.append("_register('v15_config')\n")
     parts.append("_SEARCH_OK = False\n")
     parts.append("try:\n")
     parts.append("    _register('v15_fast_sim')\n")
+    parts.append("    _register('v15_eval')\n")
+    parts.append("    _register('v15_bc')\n")
     parts.append("    _register('v15_search')\n")
     parts.append("    _SEARCH_OK = True\n")
     parts.append("except Exception:\n    _SEARCH_OK = False\n\n")
@@ -90,7 +91,7 @@ def build() -> str:
     # ~0.7s/move: Kaggle's per-move base limit is ~1s, with a 60s-per-GAME
     # overage bank. Staying under 1s/move keeps the bank intact for the whole
     # game. n_rollouts is just a cap; the time budget cuts it.
-    parts.append("            return _vs.search(obs, config, time_budget=0.7, horizon=18)\n")
+    parts.append("            return _vs.search(obs, config, time_budget=0.7, horizon=24)\n")
     parts.append("        except Exception:\n            pass\n")
     parts.append("    try:\n")
     parts.append("        return _v7.agent(obs, config)\n")
