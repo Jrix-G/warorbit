@@ -63,14 +63,21 @@ def fitness(w: np.ndarray, mode_np: int, opponent: v15_eval.EvalWeights,
     states = sp.initial_states(mode_np, n_games, seed)
     _, sc = sp.play_batch(states, wbp, collect=False, horizon=horizon,
                           max_steps=max_steps)
-    wins = 0
+    # Tie-aware expected reward: the prize (+1) is split among k joint
+    # leaders, so a k-way tie scores 1/k. Without this, identical
+    # deterministic policies tie on symmetric maps and the signal collapses
+    # (an all-ESC game would score ~0, not the correct 0.25).
+    score = 0.0
+    counted = 0
     for b in range(n_games):
         best = sc[b].max()
-        winners = [p for p in range(mode_np)
-                   if sc[b, p] == best and best > 0]
-        if len(winners) == 1 and winners[0] == 0:
-            wins += 1
-    return wins / n_games
+        if best <= 0:
+            continue                       # dead game — no winner
+        leaders = [p for p in range(mode_np) if sc[b, p] == best]
+        counted += 1
+        if 0 in leaders:
+            score += 1.0 / len(leaders)
+    return score / counted if counted else 0.0
 
 
 def _rank_shape(F: np.ndarray) -> np.ndarray:
