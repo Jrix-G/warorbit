@@ -151,7 +151,7 @@ def test_eliminated_scores_near_zero():
 
 def test_4p_weights_favour_production():
     """In 4p, a production lead matters more than the same lead in 2p."""
-    f = np.array([0.25, 0.25, 0.25, 0.5, 0.5])  # neutral-ish features
+    f = np.full(v15_eval.N_FEATURES, 0.25)  # neutral-ish features
     f_prod = f.copy()
     f_prod[1] += 0.3  # +0.3 prod_share
     gain_2p = float((f_prod - f) @ v15_eval._W_2P)
