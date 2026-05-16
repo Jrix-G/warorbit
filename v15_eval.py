@@ -1,8 +1,7 @@
-"""v15_eval — Composite Static Evaluator (ESC) for the V15.3 RCC search.
+"""v15_eval — position evaluator for the V15.3 RCC search.
 
-Scores a FastState from one player's perspective WITHOUT any rollout. The
-score is a deterministic function of five position signals, each mapped to
-[0,1], combined with mode-specific weights:
+Scores a FastState from one player's perspective WITHOUT any rollout, from
+five position signals (each mapped to [0,1]):
 
   ship_share    my ships / total ships            (immediate strength)
   prod_share    my production / total production  (economic / snowball power)
@@ -10,16 +9,23 @@ score is a deterministic function of five position signals, each mapped to
   domination    (my_ships - max_opp_ships) norm.  (relative dominance)
   prod_margin   (my_prod - max_opp_prod) norm.    (economic edge vs leader)
 
-2p weights favour immediate strength (direct confrontation); 4p weights
-favour production, because the snowball is the dominant 4p win factor — this
-is confirmed empirically by the logistic value-function coefficients fitted
-on 2631 top-10 replays (prod_share = +1.67 was the strongest winning signal).
+Two weight sets share the same five features:
 
-The evaluator is deterministic: same state always yields the same score. It
-introduces zero variance, unlike a Monte-Carlo rollout estimate.
+  ESC  — hand-tuned weights (the V15.3 baseline / generation 0). 2p favours
+         immediate strength, 4p favours production (snowball).
+  learned — weights fitted by the self-play value-iteration loop. Same five
+         features, but the weights (and per-feature standardisation) are
+         learned from self-play game outcomes instead of guessed.
+
+`evaluate` is given the weight set explicitly (default ESC) so generation N
+and generation N-1 can be compared in the same process with zero global
+state. The score is a monotone linear function — RCC only needs the ranking,
+so no sigmoid is applied (it would not change any argmax).
 """
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -29,10 +35,52 @@ OWNER, SHIPS, PROD = fsim.OWNER, fsim.SHIPS, fsim.PROD
 F_OWNER, F_SHIPS = fsim.F_OWNER, fsim.F_SHIPS
 
 _EPS = 1e-9
+N_FEATURES = 5
 
-# weight vector order: ship_share, prod_share, planet_share, domination, prod_margin
+# hand-tuned ESC weights — feature order:
+# ship_share, prod_share, planet_share, domination, prod_margin
 _W_2P = np.array([0.40, 0.30, 0.05, 0.15, 0.10])
 _W_4P = np.array([0.25, 0.35, 0.05, 0.20, 0.15])
+
+
+@dataclass
+class EvalWeights:
+    """A weight set for the evaluator. score = ((features - mean)/std) @ w.
+
+    For the hand-tuned ESC, mean=0 and std=1 (no standardisation). For a
+    learned value function, all three are fitted on self-play data."""
+    w2p: np.ndarray
+    w4p: np.ndarray
+    mean2p: np.ndarray
+    std2p: np.ndarray
+    mean4p: np.ndarray
+    std4p: np.ndarray
+    tag: str = "esc"
+
+    def save(self, path: str) -> None:
+        np.savez(path, w2p=self.w2p, w4p=self.w4p,
+                 mean2p=self.mean2p, std2p=self.std2p,
+                 mean4p=self.mean4p, std4p=self.std4p,
+                 tag=np.array(self.tag))
+
+    @staticmethod
+    def load(path: str) -> "EvalWeights":
+        d = np.load(path, allow_pickle=True)
+        return EvalWeights(
+            w2p=d["w2p"], w4p=d["w4p"],
+            mean2p=d["mean2p"], std2p=d["std2p"],
+            mean4p=d["mean4p"], std4p=d["std4p"],
+            tag=str(d["tag"]) if "tag" in d.files else "learned",
+        )
+
+
+# generation-0 weights: the hand-tuned ESC, no standardisation
+ESC = EvalWeights(
+    w2p=_W_2P.copy(), w4p=_W_4P.copy(),
+    mean2p=np.zeros(N_FEATURES), std2p=np.ones(N_FEATURES),
+    mean4p=np.zeros(N_FEATURES), std4p=np.ones(N_FEATURES),
+    tag="esc",
+)
 
 
 def player_totals(fs: fsim.FastState):
@@ -96,8 +144,14 @@ def features(fs: fsim.FastState, player: int) -> np.ndarray:
     ])
 
 
-def evaluate(fs: fsim.FastState, player: int) -> float:
-    """ESC score in [0,1]. Higher means a better position for `player`."""
+def evaluate(fs: fsim.FastState, player: int,
+             weights: EvalWeights = ESC) -> float:
+    """Position score for `player`. Higher = better. Monotone linear; with
+    `weights=ESC` it lies in [0,1], with learned weights it is a logit-scale
+    score (only the ranking is used by RCC)."""
     f = features(fs, player)
-    w = _W_4P if fs.n_players >= 4 else _W_2P
-    return float(f @ w)
+    if fs.n_players >= 4:
+        w, m, s = weights.w4p, weights.mean4p, weights.std4p
+    else:
+        w, m, s = weights.w2p, weights.mean2p, weights.std2p
+    return float(((f - m) / s) @ w)

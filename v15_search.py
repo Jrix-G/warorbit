@@ -54,6 +54,29 @@ def _infer_n_players(planets: np.ndarray) -> int:
     return 4 if planets[:, OWNER].max() >= 2 else 2
 
 
+def state_to_obs(fs: fsim.FastState, player: int) -> dict:
+    """Convert a FastState back into an obs dict (the format agents consume).
+    Used by the self-play loop to feed FastState positions to RCC / V7."""
+    planets = [[int(p[ID]), int(p[OWNER]), float(p[X]), float(p[Y]),
+                float(p[R]), float(p[SHIPS]), float(p[PROD])]
+               for p in fs.planets]
+    init = [[int(fs.planets[i][ID]), int(fs.planets[i][OWNER]),
+             float(fs.p_init[i][0]), float(fs.p_init[i][1]),
+             float(fs.planets[i][R]), float(fs.planets[i][SHIPS]),
+             float(fs.planets[i][PROD])]
+            for i in range(len(fs.planets))]
+    fleets = [[int(f[0]), int(f[1]), float(f[2]), float(f[3]),
+               float(f[4]), int(f[5]), float(f[6])] for f in fs.fleets]
+    comet_ids = [pid for g in fs.comets for pid in g["planet_ids"]]
+    return {
+        "player": player, "step": fs.step,
+        "angular_velocity": fs.angular_velocity,
+        "planets": planets, "initial_planets": init, "fleets": fleets,
+        "next_fleet_id": fs.next_fleet_id, "comets": fs.comets,
+        "comet_planet_ids": comet_ids, "remainingOverageTime": 60.0,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Deterministic continuation policy
 # ---------------------------------------------------------------------------
@@ -164,7 +187,8 @@ def _enumerate_shots(fs: fsim.FastState, player: int,
 # ---------------------------------------------------------------------------
 
 def _eval_combo(fs: fsim.FastState, player: int, combo: list,
-                horizon: int, bc_cont: bool = False) -> float:
+                horizon: int, bc_cont: bool = False,
+                weights: "v15_eval.EvalWeights" = None) -> float:
     """Apply `combo` at step 1, then run a continuation for `horizon` steps so
     the combo's fleets travel, arrive and resolve combat; return the ESC score
     of the leaf.
@@ -188,7 +212,8 @@ def _eval_combo(fs: fsim.FastState, player: int, combo: list,
             break
         cont = v15_bc.bc_policy(st) if bc_cont else [[] for _ in range(n)]
         st = fsim.step(st, cont)
-    return v15_eval.evaluate(st, player)
+    return v15_eval.evaluate(st, player,
+                             weights if weights is not None else v15_eval.ESC)
 
 
 def _valid_combo(combo: list) -> bool:
@@ -199,12 +224,15 @@ def _valid_combo(combo: list) -> bool:
 
 def search(obs, config=None, *, time_budget: float = 0.7,
            horizon: int = 24, bc_cont: bool = False,
+           weights: "v15_eval.EvalWeights" = None,
            n_policy_samples: int = 0, seed: int = 0,
            use_value_fn: bool = False) -> list:
     """V15.3 RCC — coordinated-combination search.
 
     bc_cont — if True, combos are scored with a behavioral-cloning continuation
     (models opponent counter-play); if False, a passive quiescence continuation.
+    weights — evaluator weight set (default ESC); a learned value function is
+    supplied here by the self-play value-iteration loop.
 
     `n_policy_samples` / `seed` / `use_value_fn` are accepted for call-site
     compatibility but unused (RCC is deterministic)."""
@@ -230,14 +258,15 @@ def search(obs, config=None, *, time_budget: float = 0.7,
         h1 = max(4, horizon // 2)
 
         # --- baseline: the do-nothing move ---
-        baseline = _eval_combo(fs, our, [], horizon, bc_cont)
+        baseline = _eval_combo(fs, our, [], horizon, bc_cont, weights)
 
         # --- stage 1: score each atomic shot in isolation ---
         scored = []
         for shot in atomic:
             if time.monotonic() > deadline:
                 break
-            scored.append((shot, _eval_combo(fs, our, [shot], h1, bc_cont)))
+            scored.append(
+                (shot, _eval_combo(fs, our, [shot], h1, bc_cont, weights)))
         if not scored:
             return v7_move
         scored.sort(key=lambda kv: kv[1], reverse=True)
@@ -257,7 +286,7 @@ def search(obs, config=None, *, time_budget: float = 0.7,
         for combo in subsets:
             if time.monotonic() > deadline:
                 break
-            sc = _eval_combo(fs, our, combo, horizon, bc_cont)
+            sc = _eval_combo(fs, our, combo, horizon, bc_cont, weights)
             if sc > best_score:
                 best_score = sc
                 best_combo = combo
