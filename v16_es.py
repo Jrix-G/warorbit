@@ -1,22 +1,24 @@
-"""v16_es — Evolution-Strategies optimisation of the RCC evaluator.
+"""v16_es — Evolution-Strategies training of the V16 (MLP + SCR) evaluator.
 
-The V15.4 self-play value-function loop failed by the optimizer's curse: a
-win-PREDICTOR maximised inside an argmax search gets Goodharted. The fix is to
-optimise the deployed pipeline's WIN-RATE directly — the objective IS the
-metric, so there is nothing to Goodhart and (with elitism) no regression.
+OpenAI-ES (Salimans et al. 2017) over the v16 parameter vector theta (MLP
+weights + spread head + z_gain). Fitness = win-rate of the v16 search vs a
+league, played on the GPU batched engine. The objective IS the metric, so
+there is no Goodhart; elitism guarantees no regression (theta_0 = ESC).
 
-This module implements OpenAI-ES (Salimans et al. 2017) over the evaluator
-weights:
-  * antithetic Gaussian perturbations of theta,
-  * fitness = win-rate of RCC(theta) vs a fixed opponent league, played on
-    the GPU batched engine,
-  * rank-based fitness shaping (robust to noisy win-rate / outliers),
-  * gradient estimate -> Adam-free step,
-  * the best theta on a held-out seed set is kept (never deploy worse).
+Key properties:
+  * fitness blends 2p and 4p so 2p cannot be sacrificed for 4p,
+  * common random numbers — every candidate in a generation is scored on the
+    SAME maps, so the rank signal ES needs is far cleaner than the absolute
+    win-rate noise,
+  * tie-aware scoring (a k-way tie = 1/k of the prize),
+  * a league that grows with past champions (fictitious self-play) — rank-
+    aware champions naturally gang up on the leader, which is the signal that
+    teaches coalition-safe 4p play,
+  * CHECKPOINT/RESUME — the ES state is saved every generation; re-launching
+    the same command resumes (an ES run takes hours).
 
-Phase 1 (this file's default): the LINEAR evaluator, 11 weights for one mode.
-A de-risking step — it proves the ES loop is correct and monotone before the
-non-linear evaluator and the Standing-Conditioned-Risk search are added.
+Run (resumable):
+    python -u v16_es.py --generations 24 --hidden 6 --horizon 10
 """
 
 from __future__ import annotations
@@ -26,131 +28,139 @@ import os
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import argparse
+import pickle
 import time
 
 import numpy as np
 
-import v15_eval
-import v15_gpu_selfplay as sp
+import v16_eval
+from v16_selfplay import initial_states, play_batch_v16
+
+CKPT = "analysis/v16_es_ckpt.pkl"
+BEST = "analysis/v16_best.npy"
+W_2P, W_4P = 0.40, 0.60        # fitness blend weight (4p is the weak mode)
 
 
-def _weights_for(mode_np: int, w: np.ndarray) -> v15_eval.EvalWeights:
-    """Build an EvalWeights whose `mode_np`-player linear weights are `w`
-    (no standardisation); the other mode keeps ESC."""
-    esc = v15_eval.ESC
-    z = np.zeros(v15_eval.N_FEATURES)
-    o = np.ones(v15_eval.N_FEATURES)
-    if mode_np == 4:
-        return v15_eval.EvalWeights(w2p=esc.w2p.copy(), w4p=w.copy(),
-                                    mean2p=z.copy(), std2p=o.copy(),
-                                    mean4p=z.copy(), std4p=o.copy(),
-                                    tag="es")
-    return v15_eval.EvalWeights(w2p=w.copy(), w4p=esc.w4p.copy(),
-                                mean2p=z.copy(), std2p=o.copy(),
-                                mean4p=z.copy(), std4p=o.copy(), tag="es")
-
-
-def fitness(w: np.ndarray, mode_np: int, opponent: v15_eval.EvalWeights,
-            n_games: int, seed: int, horizon: int,
-            max_steps: int = 500) -> float:
-    """Win-rate of RCC(w) against `opponent` filling the other seats.
-
-    The candidate occupies seat 0; opponents fill 1..mode_np-1. A win is a
-    strict 1st place. Seeds are fixed per call so two candidates are compared
-    on the SAME maps (paired / common-random-numbers variance reduction)."""
-    cand = _weights_for(mode_np, w)
-    wbp = [cand] + [opponent] * (mode_np - 1)
-    states = sp.initial_states(mode_np, n_games, seed)
-    _, sc = sp.play_batch(states, wbp, collect=False, horizon=horizon,
-                          max_steps=max_steps)
-    # Tie-aware expected reward: the prize (+1) is split among k joint
-    # leaders, so a k-way tie scores 1/k. Without this, identical
-    # deterministic policies tie on symmetric maps and the signal collapses
-    # (an all-ESC game would score ~0, not the correct 0.25).
+def _tie_score(sc, n_players):
+    """Tie-aware win-rate for seat 0: a k-way tie for 1st scores 1/k."""
     score = 0.0
     counted = 0
-    for b in range(n_games):
+    for b in range(len(sc)):
         best = sc[b].max()
         if best <= 0:
-            continue                       # dead game — no winner
-        leaders = [p for p in range(mode_np) if sc[b, p] == best]
+            continue
+        leaders = [p for p in range(n_players) if sc[b, p] == best]
         counted += 1
         if 0 in leaders:
             score += 1.0 / len(leaders)
     return score / counted if counted else 0.0
 
 
-def _rank_shape(F: np.ndarray) -> np.ndarray:
-    """Centered rank transform in [-0.5, 0.5] — standard ES fitness shaping,
-    robust to the scale and outliers of a noisy win-rate signal."""
+def fitness(theta, hidden, league, n2, n4, seed, horizon, max_steps):
+    """Blended 2p+4p win-rate of v16(theta) vs the league.
+
+    Candidate is seat 0; the other seats cycle through `league`. Seeds are
+    fixed per call (common random numbers)."""
+    res = {}
+    for n_players, n_games, base in ((2, n2, 0), (4, n4, 500000)):
+        if n_games <= 0:
+            res[n_players] = 0.0
+            continue
+        opps = [league[i % len(league)] for i in range(n_players - 1)]
+        tbp = [theta] + opps
+        states = initial_states(n_players, n_games, seed + base)
+        sc = play_batch_v16(states, tbp, hidden, horizon=horizon,
+                            max_steps=max_steps)
+        res[n_players] = _tie_score(sc, n_players)
+    return W_2P * res[2] + W_4P * res[4], res[2], res[4]
+
+
+def _rank_shape(F):
+    """Centered rank transform in [-0.5, 0.5] — robust ES fitness shaping."""
     order = np.argsort(F)
     ranks = np.empty(len(F))
     ranks[order] = np.arange(len(F))
     return ranks / (len(F) - 1) - 0.5
 
 
-def run_es(mode_np, generations, pop_pairs, sigma, lr, n_games,
-           horizon, seed0, max_steps=500):
-    """OpenAI-ES on the linear evaluator weights for `mode_np` players."""
-    esc = v15_eval.ESC
-    theta = (esc.w4p if mode_np == 4 else esc.w2p).astype(np.float64).copy()
-    opponent = esc                          # league = {RCC(ESC)} for phase 1
-    rng = np.random.default_rng(seed0)
+def run_es(hidden, generations, pop_pairs, sigma, lr, n2, n4,
+           horizon, max_steps, seed0, league_every):
+    dim = v16_eval.n_params(hidden)
 
-    base = fitness(theta, mode_np, opponent, n_games, seed0, horizon,
-                   max_steps)
-    best_theta, best_fit = theta.copy(), base
-    print(f"[es] {mode_np}p start: ESC fitness vs ESC = {base:.3f} "
-          f"(n={n_games})")
+    # --- resume from checkpoint if present ---
+    if os.path.exists(CKPT):
+        with open(CKPT, "rb") as f:
+            st = pickle.load(f)
+        theta, best_theta, best_fit = st["theta"], st["best"], st["best_fit"]
+        league, start_gen = st["league"], st["gen"] + 1
+        rng = np.random.default_rng()
+        rng.bit_generator.state = st["rng"]
+        print(f"[es] resumed at generation {start_gen} (best {best_fit:.3f})")
+    else:
+        theta = v16_eval.initial_theta(hidden)        # == ESC
+        league = [theta.copy()]                       # league starts with ESC
+        rng = np.random.default_rng(seed0)
+        f0, f2, f4 = fitness(theta, hidden, league, n2, n4, seed0,
+                             horizon, max_steps)
+        best_theta, best_fit, start_gen = theta.copy(), f0, 1
+        print(f"[es] start: ESC fitness={f0:.3f} (2p={f2:.3f} 4p={f4:.3f}) "
+              f"dim={dim}")
 
-    for g in range(1, generations + 1):
+    for g in range(start_gen, generations + 1):
         t0 = time.time()
-        eps = rng.standard_normal((pop_pairs, len(theta)))
+        eps = rng.standard_normal((pop_pairs, dim))
         F = np.zeros(2 * pop_pairs)
-        # common-random-numbers: every candidate this generation is scored
-        # on the same maps, so differences reflect theta, not luck.
-        eval_seed = seed0 + g * 100000
+        eval_seed = seed0 + g * 100000               # CRN: same maps for all
         for i in range(pop_pairs):
-            F[i] = fitness(theta + sigma * eps[i], mode_np, opponent,
-                           n_games, eval_seed, horizon, max_steps)
-            F[pop_pairs + i] = fitness(theta - sigma * eps[i], mode_np,
-                                       opponent, n_games, eval_seed, horizon,
-                                       max_steps)
+            F[i] = fitness(theta + sigma * eps[i], hidden, league,
+                           n2, n4, eval_seed, horizon, max_steps)[0]
+            F[pop_pairs + i] = fitness(theta - sigma * eps[i], hidden, league,
+                                       n2, n4, eval_seed, horizon,
+                                       max_steps)[0]
         shaped = _rank_shape(F)
-        sp_plus, sp_minus = shaped[:pop_pairs], shaped[pop_pairs:]
-        grad = ((sp_plus - sp_minus)[:, None] * eps).sum(axis=0) \
-            / (pop_pairs * sigma)
+        grad = ((shaped[:pop_pairs] - shaped[pop_pairs:])[:, None] * eps
+                ).sum(axis=0) / (pop_pairs * sigma)
         theta = theta + lr * grad
 
-        fit = fitness(theta, mode_np, opponent, n_games, eval_seed, horizon,
-                      max_steps)
-        if fit > best_fit:
-            best_fit, best_theta = fit, theta.copy()
-        print(f"[es] gen {g}/{generations}: fitness={fit:.3f} "
-              f"best={best_fit:.3f} ({(time.time()-t0)/60:.1f} min)")
+        f0, f2, f4 = fitness(theta, hidden, league, n2, n4, eval_seed,
+                             horizon, max_steps)
+        if f0 > best_fit:
+            best_fit, best_theta = f0, theta.copy()
+            np.save(BEST, best_theta)
+        # fictitious self-play: periodically add the champion to the league
+        if g % league_every == 0 and best_fit > 0:
+            league.append(best_theta.copy())
 
-    out = _weights_for(mode_np, best_theta)
-    out.save(f"analysis/es_{mode_np}p.npz")
-    print(f"[es] {mode_np}p done: best fitness {best_fit:.3f} "
-          f"(ESC baseline {base:.3f}) -> analysis/es_{mode_np}p.npz")
-    return best_theta, best_fit, base
+        with open(CKPT, "wb") as f:
+            pickle.dump({"theta": theta, "best": best_theta,
+                         "best_fit": best_fit, "league": league, "gen": g,
+                         "rng": rng.bit_generator.state}, f)
+        print(f"[es] gen {g}/{generations}: fitness={f0:.3f} "
+              f"(2p={f2:.3f} 4p={f4:.3f}) best={best_fit:.3f} "
+              f"league={len(league)} ({(time.time()-t0)/60:.1f} min)")
+
+    np.save(BEST, best_theta)
+    print(f"[es] done: best fitness {best_fit:.3f} -> {BEST}")
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", type=int, default=4, choices=(2, 4))
-    ap.add_argument("--generations", type=int, default=15)
-    ap.add_argument("--pop-pairs", type=int, default=6)   # 2x = population
-    ap.add_argument("--sigma", type=float, default=0.08)
-    ap.add_argument("--lr", type=float, default=0.05)
-    ap.add_argument("--n-games", type=int, default=192)
-    ap.add_argument("--horizon", type=int, default=14)
-    ap.add_argument("--max-steps", type=int, default=500)
+    ap.add_argument("--hidden", type=int, default=6)
+    ap.add_argument("--generations", type=int, default=24)
+    ap.add_argument("--pop-pairs", type=int, default=8)
+    ap.add_argument("--sigma", type=float, default=0.06)
+    ap.add_argument("--lr", type=float, default=0.04)
+    ap.add_argument("--games-2p", type=int, default=48)
+    ap.add_argument("--games-4p", type=int, default=80)
+    ap.add_argument("--horizon", type=int, default=10)
+    ap.add_argument("--max-steps", type=int, default=220)
+    ap.add_argument("--league-every", type=int, default=6)
     ap.add_argument("--seed", type=int, default=7_000_000)
     args = ap.parse_args()
     os.makedirs("analysis", exist_ok=True)
-    run_es(args.mode, args.generations, args.pop_pairs, args.sigma,
-           args.lr, args.n_games, args.horizon, args.seed, args.max_steps)
+    run_es(args.hidden, args.generations, args.pop_pairs, args.sigma,
+           args.lr, args.games_2p, args.games_4p, args.horizon,
+           args.max_steps, args.seed, args.league_every)
 
 
 if __name__ == "__main__":
