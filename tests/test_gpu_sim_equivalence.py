@@ -112,7 +112,7 @@ def run(n_players, n_states, rng):
     # CPU reference
     cpu_next = [fsim.step(s, a) for s, a in zip(states, actions)]
     # GPU batched
-    batch = gsim.from_faststates(states, device="cpu")
+    batch = gsim.from_faststates(states, device="cpu", dtype=torch.float64)
     at = _actions_tensor(actions, n_players)
     gpu_batch = gsim.step(batch, at)
     gpu_next = [gsim.to_faststate(gpu_batch, b) for b in range(len(states))]

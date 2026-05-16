@@ -74,9 +74,12 @@ class GpuBatch:
 
 
 def from_faststates(states: list[fsim.FastState], *, device="cpu",
-                    m_max: int = 256) -> GpuBatch:
+                    m_max: int = 256, dtype=torch.float32) -> GpuBatch:
     """Pack a list of FastState (all same n_players, comet-free) into a batch.
-    Planet/fleet slots are padded to the batch maxima; masks track validity."""
+    Planet/fleet slots are padded to the batch maxima; masks track validity.
+
+    dtype — float32 for fast self-play on consumer GPUs (their float64 path is
+    ~32x slower); float64 for the bit-exact equivalence test."""
     B = len(states)
     n_players = states[0].n_players
     episode_steps = states[0].episode_steps
@@ -84,27 +87,27 @@ def from_faststates(states: list[fsim.FastState], *, device="cpu",
     N = max(len(s.planets) for s in states)
     M = m_max
 
-    planets = torch.zeros((B, N, 7), dtype=torch.float64)
-    p_init = torch.zeros((B, N, 2), dtype=torch.float64)
+    planets = torch.zeros((B, N, 7), dtype=dtype)
+    p_init = torch.zeros((B, N, 2), dtype=dtype)
     pmask = torch.zeros((B, N), dtype=torch.bool)
-    fleets = torch.zeros((B, M, 7), dtype=torch.float64)
+    fleets = torch.zeros((B, M, 7), dtype=dtype)
     fmask = torch.zeros((B, M), dtype=torch.bool)
     step = torch.zeros(B, dtype=torch.int64)
-    ang_vel = torch.zeros(B, dtype=torch.float64)
+    ang_vel = torch.zeros(B, dtype=dtype)
     next_fid = torch.zeros(B, dtype=torch.int64)
     done = torch.zeros(B, dtype=torch.bool)
 
     for b, s in enumerate(states):
         np_ = len(s.planets)
         if np_:
-            planets[b, :np_] = torch.from_numpy(np.asarray(s.planets))
-            p_init[b, :np_] = torch.from_numpy(np.asarray(s.p_init))
+            planets[b, :np_] = torch.from_numpy(np.asarray(s.planets)).to(dtype)
+            p_init[b, :np_] = torch.from_numpy(np.asarray(s.p_init)).to(dtype)
             pmask[b, :np_] = True
         mf = len(s.fleets)
         if mf:
             if mf > M:
                 raise ValueError(f"fleet count {mf} exceeds m_max {M}")
-            fleets[b, :mf] = torch.from_numpy(np.asarray(s.fleets))
+            fleets[b, :mf] = torch.from_numpy(np.asarray(s.fleets)).to(dtype)
             fmask[b, :mf] = True
         step[b] = s.step
         ang_vel[b] = s.angular_velocity
@@ -122,9 +125,9 @@ def to_faststate(batch: GpuBatch, b: int) -> fsim.FastState:
     """Extract game `b` of a batch back into a FastState (for comparison)."""
     pm = batch.pmask[b].cpu().numpy()
     fm = batch.fmask[b].cpu().numpy()
-    planets = batch.planets[b].cpu().numpy()[pm]
-    p_init = batch.p_init[b].cpu().numpy()[pm]
-    fleets = batch.fleets[b].cpu().numpy()[fm]
+    planets = batch.planets[b].cpu().numpy().astype(np.float64)[pm]
+    p_init = batch.p_init[b].cpu().numpy().astype(np.float64)[pm]
+    fleets = batch.fleets[b].cpu().numpy().astype(np.float64)[fm]
     return fsim.FastState(
         planets=planets.copy(), p_init=p_init.copy(),
         p_comet=np.zeros(len(planets), dtype=np.bool_),
@@ -150,11 +153,14 @@ def _seg_point_dist(px, py, ax, ay, bx, by):
     return torch.hypot(px - projx, py - projy)
 
 
-def step(batch: GpuBatch, actions: torch.Tensor) -> GpuBatch:
+def step(batch: GpuBatch, actions: torch.Tensor,
+         has_launch: bool = True) -> GpuBatch:
     """Advance every game one turn.
 
     actions : [B, n_players, A, 3] float — (from_planet_id, angle, ships).
               Unused action slots must be all-zero (ships<=0 is ignored).
+    has_launch : set False when actions are all-zero (passive rollout steps)
+              to skip the launch loop entirely — a large saving.
     Returns a NEW GpuBatch (input untouched). Games already `done` are frozen.
     """
     s = batch.clone()
@@ -162,7 +168,7 @@ def step(batch: GpuBatch, actions: torch.Tensor) -> GpuBatch:
     M = s.fleets.shape[1]
     P = s.n_players
     dev = s.device
-    f64 = torch.float64
+    dt = s.planets.dtype
 
     prev = batch                      # to freeze games that are already done
     active = ~s.done                  # [B]
@@ -173,40 +179,40 @@ def step(batch: GpuBatch, actions: torch.Tensor) -> GpuBatch:
     fmask = s.fmask
 
     # ---- 0. fleet launch -------------------------------------------------
-    A = actions.shape[2]
-    pid = planets[:, :, ID]                                  # [B,N]
-    for p in range(P):
-        for a in range(A):
-            mv = actions[:, p, a, :]                         # [B,3]
-            from_id = mv[:, 0:1]                             # [B,1]
-            angle = mv[:, 1]                                 # [B]
-            ships = torch.round(mv[:, 2])                    # [B]
-            match = (pid == from_id) & pmask                 # [B,N]
-            has = match.any(dim=1)                           # [B]
-            idx = torch.argmax(match.to(torch.int64), dim=1)  # [B]
-            bidx = torch.arange(B, device=dev)
-            owner_ok = planets[bidx, idx, OWNER] == p
-            garrison = planets[bidx, idx, SHIPS]
-            valid = (has & owner_ok & active
-                     & (ships > 0) & (garrison >= ships))    # [B]
-            # subtract ships from the launching planet
-            planets[bidx, idx, SHIPS] = torch.where(
-                valid, garrison - ships, garrison)
-            # create the fleet in the next free slot
-            slot = torch.argmax((~fmask).to(torch.int64), dim=1)  # [B]
-            has_slot = (~fmask).any(dim=1)
-            place = valid & has_slot
-            r = planets[bidx, idx, R]
-            sx = planets[bidx, idx, X] + torch.cos(angle) * (r + 0.1)
-            sy = planets[bidx, idx, Y] + torch.sin(angle) * (r + 0.1)
-            newf = torch.stack([
-                s.next_fid.to(f64), torch.full((B,), p, dtype=f64, device=dev),
-                sx, sy, angle, mv[:, 0], ships], dim=1)          # [B,7]
-            cur = fleets[bidx, slot, :]
-            fleets[bidx, slot, :] = torch.where(
-                place.unsqueeze(1), newf, cur)
-            fmask[bidx, slot] = fmask[bidx, slot] | place
-            s.next_fid = s.next_fid + place.to(torch.int64)
+    if has_launch:
+        A = actions.shape[2]
+        pid = planets[:, :, ID]                              # [B,N]
+        bidx = torch.arange(B, device=dev)
+        for p in range(P):
+            for a in range(A):
+                mv = actions[:, p, a, :]                     # [B,3]
+                from_id = mv[:, 0:1]                         # [B,1]
+                angle = mv[:, 1]                             # [B]
+                ships = torch.round(mv[:, 2])                # [B]
+                match = (pid == from_id) & pmask             # [B,N]
+                has = match.any(dim=1)                       # [B]
+                idx = torch.argmax(match.to(torch.int64), dim=1)
+                owner_ok = planets[bidx, idx, OWNER] == p
+                garrison = planets[bidx, idx, SHIPS]
+                valid = (has & owner_ok & active
+                         & (ships > 0) & (garrison >= ships))
+                planets[bidx, idx, SHIPS] = torch.where(
+                    valid, garrison - ships, garrison)
+                slot = torch.argmax((~fmask).to(torch.int64), dim=1)
+                has_slot = (~fmask).any(dim=1)
+                place = valid & has_slot
+                r = planets[bidx, idx, R]
+                sx = planets[bidx, idx, X] + torch.cos(angle) * (r + 0.1)
+                sy = planets[bidx, idx, Y] + torch.sin(angle) * (r + 0.1)
+                newf = torch.stack([
+                    s.next_fid.to(dt),
+                    torch.full((B,), p, dtype=dt, device=dev),
+                    sx, sy, angle, mv[:, 0], ships], dim=1)
+                cur = fleets[bidx, slot, :]
+                fleets[bidx, slot, :] = torch.where(
+                    place.unsqueeze(1), newf, cur)
+                fmask[bidx, slot] = fmask[bidx, slot] | place
+                s.next_fid = s.next_fid + place.to(torch.int64)
 
     # ---- 1. production ---------------------------------------------------
     owned = (planets[:, :, OWNER] != -1) & pmask
@@ -222,7 +228,7 @@ def step(batch: GpuBatch, actions: torch.Tensor) -> GpuBatch:
     sh = fleets[:, :, F_SHIPS]
     safe_sh = torch.clamp(sh, min=1.0)
     speeds = 1.0 + (s.ship_speed - 1.0) * (torch.log(safe_sh) / _LOG1000) ** 1.5
-    speeds = torch.minimum(speeds, torch.tensor(s.ship_speed, dtype=f64,
+    speeds = torch.minimum(speeds, torch.tensor(s.ship_speed, dtype=dt,
                                                 device=dev))
     new_x = old_x + torch.cos(fleets[:, :, F_ANGLE]) * speeds
     new_y = old_y + torch.sin(fleets[:, :, F_ANGLE]) * speeds
@@ -231,7 +237,7 @@ def step(batch: GpuBatch, actions: torch.Tensor) -> GpuBatch:
 
     oob = ~((new_x >= 0) & (new_x <= BOARD_SIZE) &
             (new_y >= 0) & (new_y <= BOARD_SIZE))
-    cen = torch.full((B, M), CENTER, dtype=f64, device=dev)
+    cen = torch.full((B, M), CENTER, dtype=dt, device=dev)
     sun = _seg_point_dist(cen, cen, old_x, old_y, new_x, new_y) < SUN_RADIUS
     removed = (oob | sun) & fmask
 
@@ -243,9 +249,8 @@ def step(batch: GpuBatch, actions: torch.Tensor) -> GpuBatch:
     hit = (D < planets[:, :, R].unsqueeze(1)) & pmask.unsqueeze(1)
     hit = hit & fmask.unsqueeze(2) & (~removed).unsqueeze(2)
     mhit = hit.any(dim=2)                                      # [B,M]
-    first = torch.argmax(hit.to(torch.int64), dim=2)           # [B,M]
-    first_pid = torch.gather(planets[:, :, ID].to(torch.int64), 1, first)
-    caught = torch.where(mhit, first_pid, caught)
+    first = torch.argmax(hit.to(torch.int64), dim=2)           # [B,M] slot idx
+    caught = torch.where(mhit, first, caught)
     removed = removed | mhit
 
     # ---- 3. planet rotation + sweep -------------------------------------
@@ -270,20 +275,24 @@ def step(batch: GpuBatch, actions: torch.Tensor) -> GpuBatch:
     hitS = (DS < planets[:, :, R].unsqueeze(2)) & moved.unsqueeze(2)
     hitS = hitS & pmask.unsqueeze(2) & fmask.unsqueeze(1) & (~removed).unsqueeze(1)
     shit = hitS.any(dim=1)                                     # [B,M]
-    firstS = torch.argmax(hitS.to(torch.int64), dim=1)         # [B,M]
-    sweep_pid = torch.gather(planets[:, :, ID].to(torch.int64), 1, firstS)
-    caught = torch.where(shit, sweep_pid, caught)
+    firstS = torch.argmax(hitS.to(torch.int64), dim=1)         # [B,M] slot idx
+    caught = torch.where(shit, firstS, caught)
     removed = removed | shit
 
     # ---- 4. combat resolution -------------------------------------------
-    # accumulate caught-fleet ships per (game, planet, owner)
-    acc = torch.zeros((B, N, P), dtype=f64, device=dev)
-    for j in range(N):
-        target_pid = planets[:, j, ID].to(torch.int64).unsqueeze(1)  # [B,1]
-        sel = (caught == target_pid) & pmask[:, j:j+1]               # [B,M]
-        for p in range(P):
-            owned_f = sel & (fleets[:, :, F_OWNER] == p)
-            acc[:, j, p] = (fleets[:, :, F_SHIPS] * owned_f).sum(dim=1)
+    # accumulate caught-fleet ships per (game, planet slot, owner) with a
+    # single scatter_add (no Python loop over N or P) — `caught` holds the
+    # planet slot index a fleet hit, or -1.
+    valid_c = caught >= 0                                      # [B,M]
+    owner_f = fleets[:, :, F_OWNER].to(torch.int64).clamp(min=0)
+    slot_c = caught.clamp(min=0)
+    flat_idx = slot_c * P + owner_f                            # [B,M]
+    flat_idx = torch.where(valid_c, flat_idx, torch.zeros_like(flat_idx))
+    contrib = torch.where(valid_c, fleets[:, :, F_SHIPS],
+                          torch.zeros_like(fleets[:, :, F_SHIPS]))
+    acc = torch.zeros((B, N * P), dtype=dt, device=dev)
+    acc.scatter_add_(1, flat_idx, contrib)
+    acc = acc.view(B, N, P)
 
     top2, _ = torch.topk(acc, k=min(2, P), dim=2)               # [B,N,<=2]
     top1 = top2[:, :, 0]
@@ -305,7 +314,7 @@ def step(batch: GpuBatch, actions: torch.Tensor) -> GpuBatch:
     flipped = attack & (after < 0)
     new_ships = torch.where(attack & ~flipped, after, new_ships)
     new_ships = torch.where(flipped, torch.abs(after), new_ships)
-    new_owner = torch.where(flipped, top_owner.to(f64), cur_owner)
+    new_owner = torch.where(flipped, top_owner.to(dt), cur_owner)
     planets[:, :, SHIPS] = torch.where(pmask, new_ships, planets[:, :, SHIPS])
     planets[:, :, OWNER] = torch.where(pmask, new_owner, planets[:, :, OWNER])
 
