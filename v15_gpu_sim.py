@@ -354,6 +354,13 @@ def step(batch: GpuBatch, actions: torch.Tensor,
     return s
 
 
+def step_passive(batch: GpuBatch, actions: torch.Tensor) -> GpuBatch:
+    """A step with no fleet launch (rollout continuation). Compiled separately
+    from `step` so torch.compile sees only this hot path — avoids recompiling
+    for the `has_launch` guard variant."""
+    return step(batch, actions, has_launch=False)
+
+
 def scores(batch: GpuBatch) -> torch.Tensor:
     """[B, n_players] integer ship totals (planets + fleets)."""
     B = batch.B

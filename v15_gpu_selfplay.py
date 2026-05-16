@@ -35,9 +35,16 @@ _COMPILED = False
 
 
 def _ensure_compiled():
+    """Compile the passive engine step (the rollout hot path). Only the
+    continuation step is compiled — the launch step stays eager, so the
+    `has_launch` guard never doubles the compiled-shape count."""
     global _COMPILED
     if not _COMPILED:
-        gsim.step = torch.compile(gsim.step, dynamic=False)
+        import torch._dynamo
+        # baseline / stage-1 / stage-2 give 3 batch shapes per player count;
+        # allow head-room so none falls back to slow eager.
+        torch._dynamo.config.recompile_limit = 32
+        gsim.step_passive = torch.compile(gsim.step_passive, dynamic=False)
         _COMPILED = True
 
 

@@ -234,11 +234,13 @@ def _rollout_eval(states: gsim.GpuBatch, first_actions: torch.Tensor,
     Passive steps pass has_launch=False so the launch loop is skipped."""
     G = states.B
     P = states.n_players
+    # first step applies the combo (eager, with launch); the passive
+    # continuation uses the compiled step_passive (the hot path).
     st = gsim.step(states, first_actions, has_launch=True)
     empty = torch.zeros((G, P, A_SLOTS, 3), dtype=states.planets.dtype,
                         device=states.device)
     for _ in range(horizon - 1):
-        st = gsim.step(st, empty, has_launch=False)
+        st = gsim.step_passive(st, empty)
     return batch_eval(st, player, w, m, s)
 
 
