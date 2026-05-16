@@ -33,6 +33,7 @@ from itertools import combinations
 import numpy as np
 
 import bot_v7
+import v15_bc
 import v15_eval
 import v15_fast_sim as fsim
 
@@ -163,26 +164,30 @@ def _enumerate_shots(fs: fsim.FastState, player: int,
 # ---------------------------------------------------------------------------
 
 def _eval_combo(fs: fsim.FastState, player: int, combo: list,
-                horizon: int) -> float:
-    """Apply `combo` at step 1, then run a PASSIVE continuation (no new
-    launches from any player) for `horizon` steps, so the combo's fleets
-    travel, arrive and resolve combat; return the ESC score of the leaf.
+                horizon: int, bc_cont: bool = False) -> float:
+    """Apply `combo` at step 1, then run a continuation for `horizon` steps so
+    the combo's fleets travel, arrive and resolve combat; return the ESC score
+    of the leaf.
 
-    Passive continuation is deliberate — it is the quiescence principle: let
-    the pending tactics play out, then evaluate a quiet position. A churning
-    deterministic continuation washes out the combo's signal (catastrophic in
-    4p, where three mismodelled opponents compound the error). Existing
-    in-flight enemy fleets ARE simulated; only unknowable future launches are
-    omitted. The combo's effect is therefore isolated and noise-free."""
+    Two continuation modes, both deterministic (zero variance):
+      passive (bc_cont=False) — no new launches; pure quiescence. Lets pending
+        tactics play out, then evaluates a quiet position. A churning
+        continuation washes out the combo signal (catastrophic in 4p).
+      BC      (bc_cont=True)  — both sides continue with the behavioral-cloning
+        policy (top-10 imitation). Models opponent reinforcement, so combos
+        that only beat a do-nothing opponent are correctly penalised."""
     n = fs.n_players
-    empty = [[] for _ in range(n)]
-    actions = [[] for _ in range(n)]
+    if bc_cont:
+        actions = v15_bc.bc_policy(fs)
+    else:
+        actions = [[] for _ in range(n)]
     actions[player] = list(combo)
     st = fsim.step(fs, actions)
     for _ in range(horizon - 1):
         if st.done:
             break
-        st = fsim.step(st, empty)
+        cont = v15_bc.bc_policy(st) if bc_cont else [[] for _ in range(n)]
+        st = fsim.step(st, cont)
     return v15_eval.evaluate(st, player)
 
 
@@ -193,9 +198,13 @@ def _valid_combo(combo: list) -> bool:
 
 
 def search(obs, config=None, *, time_budget: float = 0.7,
-           horizon: int = 24, n_policy_samples: int = 0,
-           seed: int = 0, use_value_fn: bool = False) -> list:
+           horizon: int = 24, bc_cont: bool = False,
+           n_policy_samples: int = 0, seed: int = 0,
+           use_value_fn: bool = False) -> list:
     """V15.3 RCC — coordinated-combination search.
+
+    bc_cont — if True, combos are scored with a behavioral-cloning continuation
+    (models opponent counter-play); if False, a passive quiescence continuation.
 
     `n_policy_samples` / `seed` / `use_value_fn` are accepted for call-site
     compatibility but unused (RCC is deterministic)."""
@@ -221,14 +230,14 @@ def search(obs, config=None, *, time_budget: float = 0.7,
         h1 = max(4, horizon // 2)
 
         # --- baseline: the do-nothing move ---
-        baseline = _eval_combo(fs, our, [], horizon)
+        baseline = _eval_combo(fs, our, [], horizon, bc_cont)
 
         # --- stage 1: score each atomic shot in isolation ---
         scored = []
         for shot in atomic:
             if time.monotonic() > deadline:
                 break
-            scored.append((shot, _eval_combo(fs, our, [shot], h1)))
+            scored.append((shot, _eval_combo(fs, our, [shot], h1, bc_cont)))
         if not scored:
             return v7_move
         scored.sort(key=lambda kv: kv[1], reverse=True)
@@ -248,7 +257,7 @@ def search(obs, config=None, *, time_budget: float = 0.7,
         for combo in subsets:
             if time.monotonic() > deadline:
                 break
-            sc = _eval_combo(fs, our, combo, horizon)
+            sc = _eval_combo(fs, our, combo, horizon, bc_cont)
             if sc > best_score:
                 best_score = sc
                 best_combo = combo
