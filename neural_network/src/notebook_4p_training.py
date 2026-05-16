@@ -290,11 +290,16 @@ def _make_policy_agent(
             action = reconstruct_action(cand, planning_game)
             move = _candidate_move(planning_game, action)
             executed_ships = int(move[0][2]) if move else 0
+            planned_angle = float(move[0][1]) if move else None
             noop_has_real_candidate = any(c.mission != "do_nothing" for c in candidates)
             action_records.append(
                 {
                     "mission": cand.mission if move else "do_nothing",
                     "ships": executed_ships,
+                    "source_id": int(action[0]) if len(action) > 0 else -1,
+                    "target_id": int(action[1]) if len(action) > 1 else -1,
+                    "planned_angle": planned_angle,
+                    "action_slot": int(action_slot),
                     "noop_has_real_candidate": bool(noop_has_real_candidate),
                     "_value": outputs["value"].reshape(-1)[0],
                     "_entropy": entropy,
@@ -323,6 +328,109 @@ def _combine_terminal_dense_reward(terminal_reward: float, dense_reward: float) 
     # Keep the terminal outcome dominant while allowing a small progress signal.
     reward = float(terminal_reward) + 0.25 * float(dense_reward)
     return float(max(-1.0, min(1.0, reward)))
+
+
+def _event_get(event: Any, key: str, default: Any = None) -> Any:
+    if isinstance(event, dict):
+        return event.get(key, default)
+    return getattr(event, key, default)
+
+
+def _attach_action_outcomes(action_records: List[Dict[str, Any]], fleet_events: Sequence[Dict[str, Any]], player: int) -> None:
+    launch_events = [
+        event for event in fleet_events
+        if str(_event_get(event, "type", "")) == "launch" and int(_event_get(event, "player", -1)) == int(player)
+    ]
+    hit_by_fleet = {
+        int(_event_get(event, "fleet_id", -1)): event
+        for event in fleet_events
+        if str(_event_get(event, "type", "")) == "hit"
+    }
+    loss_by_fleet = {
+        int(_event_get(event, "fleet_id", -1)): event
+        for event in fleet_events
+        if str(_event_get(event, "type", "")) in {"lost_oob", "lost_sun"}
+    }
+    combat_by_turn_target = {
+        (int(_event_get(event, "turn", -1)), int(_event_get(event, "target_id", -1))): event
+        for event in fleet_events
+        if str(_event_get(event, "type", "")) == "combat"
+    }
+    remaining_launches = list(launch_events)
+    for record in action_records:
+        mission = str(record.get("mission") or "do_nothing")
+        ships = int(record.get("ships") or 0)
+        if mission == "do_nothing" or ships <= 0:
+            continue
+        record.update({
+            "fleet_launch_mapped": False,
+            "fleet_outcome_known": False,
+            "fleet_hit": False,
+            "fleet_lost": False,
+            "fleet_pending": False,
+            "fleet_captured": False,
+            "fleet_supported": False,
+            "fleet_enemy_hit": False,
+            "fleet_neutral_hit": False,
+        })
+        source_id = int(record.get("source_id", -1))
+        match_idx = -1
+        for idx, event in enumerate(remaining_launches):
+            if int(_event_get(event, "source_id", -2)) == source_id and int(_event_get(event, "ships", -1)) == ships:
+                match_idx = idx
+                break
+        if match_idx < 0 and remaining_launches:
+            match_idx = 0
+        if match_idx < 0:
+            continue
+        launch = remaining_launches.pop(match_idx)
+        fleet_id = int(_event_get(launch, "fleet_id", -1))
+        record["fleet_launch_mapped"] = True
+        record["fleet_id"] = fleet_id
+        hit = hit_by_fleet.get(fleet_id)
+        loss = loss_by_fleet.get(fleet_id)
+        if hit is not None:
+            turn = int(_event_get(hit, "turn", -1))
+            target_id = int(_event_get(hit, "target_id", -1))
+            owner_before = int(_event_get(hit, "target_owner_before", -2))
+            combat = combat_by_turn_target.get((turn, target_id))
+            owner_after = int(_event_get(combat, "owner_after", owner_before)) if combat is not None else owner_before
+            record.update({
+                "fleet_outcome_known": True,
+                "fleet_hit": True,
+                "hit_target_id": target_id,
+                "fleet_target_owner_before": owner_before,
+                "fleet_target_owner_after": owner_after,
+                "fleet_captured": owner_before != int(player) and owner_after == int(player),
+                "fleet_supported": owner_before == int(player) and owner_after == int(player),
+                "fleet_enemy_hit": owner_before not in (-1, int(player)),
+                "fleet_neutral_hit": owner_before == -1,
+            })
+        elif loss is not None:
+            record.update({"fleet_outcome_known": True, "fleet_lost": True})
+        else:
+            record["fleet_pending"] = True
+
+
+def _fleet_event_reward(action_records: Sequence[Dict[str, Any]], config: Dict[str, Any]) -> float:
+    if not bool(config.get("train_event_shaping_enabled", True)):
+        return 0.0
+    reward = 0.0
+    for record in action_records:
+        if str(record.get("mission") or "do_nothing") == "do_nothing" or int(record.get("ships") or 0) <= 0:
+            continue
+        if bool(record.get("fleet_hit", False)):
+            if bool(record.get("fleet_captured", False)):
+                reward += float(config.get("train_event_capture_bonus", 0.10))
+            elif bool(record.get("fleet_supported", False)):
+                reward += float(config.get("train_event_support_bonus", 0.015))
+            elif bool(record.get("fleet_enemy_hit", False)):
+                reward += float(config.get("train_event_enemy_hit_bonus", 0.045))
+            else:
+                reward += float(config.get("train_event_hit_bonus", 0.035))
+        if bool(record.get("fleet_lost", False)):
+            reward -= float(config.get("train_event_lost_penalty", 0.045))
+    return float(max(-0.25, min(0.25, reward)))
 
 
 def _player_alive(obs: Any, player: int) -> bool:
@@ -522,6 +630,11 @@ def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     real_actions = [a for a in action_records if a.get("mission") != "do_nothing" and int(a.get("ships", 0)) > 0]
     ships_sent = [int(a.get("ships", 0)) for a in real_actions]
     missions = Counter(str(a.get("mission", "unknown")) for a in action_records)
+    fleet_hit_count = sum(1 for a in real_actions if bool(a.get("fleet_hit", False)))
+    fleet_capture_count = sum(1 for a in real_actions if bool(a.get("fleet_captured", False)))
+    fleet_lost_count = sum(1 for a in real_actions if bool(a.get("fleet_lost", False)))
+    fleet_pending_count = sum(1 for a in real_actions if bool(a.get("fleet_pending", False)))
+    real_action_count = max(1, len(real_actions))
     # Disentangle forced no-ops (no real candidate available) from legal no-ops
     # (real candidate existed -> avoidable). Records missing the flag fall back
     # to had_real=True so legal_noop_rate == raw do_nothing_rate for legacy
@@ -561,6 +674,10 @@ def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
         "mission_attack_count": int(missions.get("attack", 0)),
         "mission_support_count": int(missions.get("support", 0)),
         "mission_do_nothing_count": int(missions.get("do_nothing", 0)),
+        "fleet_hit_rate": float(fleet_hit_count / real_action_count),
+        "fleet_capture_rate": float(fleet_capture_count / real_action_count),
+        "fleet_lost_rate": float(fleet_lost_count / real_action_count),
+        "fleet_pending_rate": float(fleet_pending_count / real_action_count),
     }
 
 
@@ -619,6 +736,7 @@ def _eval_match(model: NeuralNetworkModel, config: Dict[str, Any], seed: int, ou
         stop_player=our_index,
         config=config,
     )
+    _attach_action_outcomes(action_records, result.get("fleet_events", []) or [], our_index)
     reward = _episode_reward(result, our_index)
     scores = result.get("scores", [])
     ordered = sorted(((float(score), idx) for idx, score in enumerate(scores)), reverse=True)
@@ -669,6 +787,9 @@ def evaluate_4p(model: NeuralNetworkModel, config: Dict[str, Any], pool: Sequenc
         "eval_action_count": float(np.mean([r["action_count"] for r in rows]) if rows else 0.0),
         "eval_do_nothing_rate": float(np.mean([r["do_nothing_rate"] for r in rows]) if rows else 1.0),
         "eval_avg_ships_sent": float(np.mean([r["avg_ships_sent"] for r in rows]) if rows else 0.0),
+        "eval_fleet_hit_rate": float(np.mean([r.get("fleet_hit_rate", 0.0) for r in rows]) if rows else 0.0),
+        "eval_fleet_capture_rate": float(np.mean([r.get("fleet_capture_rate", 0.0) for r in rows]) if rows else 0.0),
+        "eval_fleet_lost_rate": float(np.mean([r.get("fleet_lost_rate", 0.0) for r in rows]) if rows else 0.0),
         "seeds": seeds,
     }
 
@@ -725,6 +846,7 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
             stop_player=our_index,
             config=config,
         )
+        _attach_action_outcomes(action_records, result.get("fleet_events", []) or [], our_index)
         # Dense curriculum reward (annealed, actif uniquement en début d'entraînement)
         # On utilise l'état final du match comme approximation de next_state terminal
         final_state = result.get("final_state", {})
@@ -740,7 +862,8 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
             )
         else:
             dense = 0.0
-        reward = _combine_terminal_dense_reward(_episode_reward(result, our_index), dense)
+        event_reward = _fleet_event_reward(action_records, config)
+        reward = max(-1.0, min(1.0, _combine_terminal_dense_reward(_episode_reward(result, our_index), dense) + event_reward))
         action_summary = _action_summary(action_records)
         baseline_rate = max(0.0, min(1.0, float(config.get("baseline_momentum", 0.05))))
         baseline = (1.0 - baseline_rate) * baseline + baseline_rate * reward
@@ -762,6 +885,7 @@ def run_notebook_4p_training(config: Dict[str, Any], resume: bool = True) -> Dic
         record = {
             "step": step,
             "reward": reward,
+            "event_reward": event_reward,
             "baseline": baseline,
             "temperature": temperature,
             "entropy_coef": entropy_coef,

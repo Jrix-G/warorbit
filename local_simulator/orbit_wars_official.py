@@ -371,6 +371,7 @@ def interpreter(state, env):
         obs0.next_fleet_id = 0
         obs0.comets = []
         obs0.comet_planet_ids = []
+        env.info["fleet_events"] = []
 
         # Assign home planets — pick a random symmetric group of 4. Under
         # 4-fold rotational symmetry, every group's 4 copies are 90°
@@ -473,6 +474,11 @@ def interpreter(state, env):
                 obs0.initial_planets.append(planet[:])
             obs0.comets.append(group)
 
+    if not hasattr(env, "info") or env.info is None:
+        env.info = {}
+    fleet_events = env.info.setdefault("fleet_events", [])
+    event_turn = int(get(obs0, "step", 0) or 0) + 1
+
     # 0. Fleet Launch
     def process_moves(player_id, action):
         if not action or not isinstance(action, list):
@@ -492,9 +498,10 @@ def interpreter(state, env):
                     # immediately collide with its origin.
                     start_x = from_planet[2] + math.cos(angle) * (from_planet[4] + 0.1)
                     start_y = from_planet[3] + math.sin(angle) * (from_planet[4] + 0.1)
+                    fleet_id = obs0.next_fleet_id
                     obs0.fleets.append(
                         [
-                            obs0.next_fleet_id,
+                            fleet_id,
                             player_id,
                             start_x,
                             start_y,
@@ -502,6 +509,19 @@ def interpreter(state, env):
                             from_id,
                             ships,
                         ]
+                    )
+                    fleet_events.append(
+                        {
+                            "type": "launch",
+                            "turn": event_turn,
+                            "fleet_id": int(fleet_id),
+                            "player": int(player_id),
+                            "source_id": int(from_id),
+                            "ships": int(ships),
+                            "angle": float(angle),
+                            "source_owner": int(from_planet[1]),
+                            "source_ships_after_launch": float(from_planet[5]),
+                        }
                     )
                     obs0.next_fleet_id += 1
 
@@ -593,6 +613,19 @@ def interpreter(state, env):
             if swept_pair_hit(old_pos, new_pos, p_old, p_new, planet[4]):
                 combat_lists[planet[0]].append(fleet)
                 fleets_to_remove.append(fleet)
+                fleet_events.append(
+                    {
+                        "type": "hit",
+                        "turn": event_turn,
+                        "fleet_id": int(fleet[0]),
+                        "player": int(fleet[1]),
+                        "source_id": int(fleet[5]),
+                        "target_id": int(planet[0]),
+                        "target_owner_before": int(planet[1]),
+                        "target_ships_before": float(planet[5]),
+                        "ships": int(fleet[6]),
+                    }
+                )
                 hit_planet = True
                 break
         if hit_planet:
@@ -601,11 +634,31 @@ def interpreter(state, env):
         # Check if fleet went out of bounds
         if not (0 <= fleet[2] <= BOARD_SIZE and 0 <= fleet[3] <= BOARD_SIZE):
             fleets_to_remove.append(fleet)
+            fleet_events.append(
+                {
+                    "type": "lost_oob",
+                    "turn": event_turn,
+                    "fleet_id": int(fleet[0]),
+                    "player": int(fleet[1]),
+                    "source_id": int(fleet[5]),
+                    "ships": int(fleet[6]),
+                }
+            )
             continue
 
         # Check if fleet path crossed the sun
         if point_to_segment_distance((CENTER, CENTER), old_pos, new_pos) < SUN_RADIUS:
             fleets_to_remove.append(fleet)
+            fleet_events.append(
+                {
+                    "type": "lost_sun",
+                    "turn": event_turn,
+                    "fleet_id": int(fleet[0]),
+                    "player": int(fleet[1]),
+                    "source_id": int(fleet[5]),
+                    "ships": int(fleet[6]),
+                }
+            )
             continue
 
     # 4. Apply planet movement (collisions were already resolved above).
@@ -637,6 +690,8 @@ def interpreter(state, env):
         planet = next((p for p in obs0.planets if p[0] == pid), None)
         if not planet or not planet_fleets:
             continue
+        owner_before = int(planet[1])
+        ships_before = float(planet[5])
 
         # Sum ships per player
         player_ships = {}
@@ -672,6 +727,20 @@ def interpreter(state, env):
                 if planet[5] < 0:
                     planet[1] = survivor_owner
                     planet[5] = abs(planet[5])
+        fleet_events.append(
+            {
+                "type": "combat",
+                "turn": event_turn,
+                "target_id": int(pid),
+                "owner_before": owner_before,
+                "ships_before": ships_before,
+                "owner_after": int(planet[1]),
+                "ships_after": float(planet[5]),
+                "player_ships": {int(player): int(ships) for player, ships in player_ships.items()},
+                "survivor_owner": int(survivor_owner),
+                "survivor_ships": int(survivor_ships),
+            }
+        )
 
     for i in range(1, num_agents):
         state[i].observation.planets = obs0.planets

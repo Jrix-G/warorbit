@@ -54,6 +54,121 @@ def _agent_for_pool_name(name: str, config: Dict[str, Any], cache: Dict[str, Any
     return _agent_for_name(name)
 
 
+def _event_type(event: Any) -> str:
+    return str(event.get("type", "") if isinstance(event, dict) else getattr(event, "type", ""))
+
+
+def _event_get(event: Any, key: str, default: Any = None) -> Any:
+    if isinstance(event, dict):
+        return event.get(key, default)
+    return getattr(event, key, default)
+
+
+def _attach_fleet_outcomes(
+    trajectory: List[Dict[str, Any]],
+    fleet_events: List[Dict[str, Any]],
+    player: int,
+) -> None:
+    """Map official fleet events back to the policy decisions that launched them."""
+    if not trajectory:
+        return
+
+    launch_events = [
+        event for event in fleet_events
+        if _event_type(event) == "launch" and int(_event_get(event, "player", -1)) == int(player)
+    ]
+    hit_by_fleet = {
+        int(_event_get(event, "fleet_id", -1)): event
+        for event in fleet_events
+        if _event_type(event) == "hit"
+    }
+    loss_by_fleet = {
+        int(_event_get(event, "fleet_id", -1)): event
+        for event in fleet_events
+        if _event_type(event) in {"lost_oob", "lost_sun"}
+    }
+    combat_by_turn_target = {
+        (int(_event_get(event, "turn", -1)), int(_event_get(event, "target_id", -1))): event
+        for event in fleet_events
+        if _event_type(event) == "combat"
+    }
+
+    remaining_launches = list(launch_events)
+    for step in trajectory:
+        mission = str(step.get("mission") or "do_nothing")
+        ships = int(step.get("ships") or 0)
+        if mission == "do_nothing" or ships <= 0:
+            continue
+
+        step.update({
+            "fleet_launch_mapped": False,
+            "fleet_outcome_known": False,
+            "fleet_hit": False,
+            "fleet_lost": False,
+            "fleet_lost_sun": False,
+            "fleet_lost_oob": False,
+            "fleet_pending": False,
+            "fleet_captured": False,
+            "fleet_supported": False,
+            "fleet_enemy_hit": False,
+            "fleet_neutral_hit": False,
+            "fleet_target_owner_before": -2,
+            "fleet_target_owner_after": -2,
+            "fleet_id": -1,
+            "hit_target_id": -1,
+        })
+
+        source_id = int(step.get("source_id", -1))
+        match_idx = -1
+        for idx, event in enumerate(remaining_launches):
+            if int(_event_get(event, "source_id", -2)) == source_id and int(_event_get(event, "ships", -1)) == ships:
+                match_idx = idx
+                break
+        if match_idx < 0 and remaining_launches:
+            match_idx = 0
+        if match_idx < 0:
+            continue
+
+        launch = remaining_launches.pop(match_idx)
+        fleet_id = int(_event_get(launch, "fleet_id", -1))
+        step["fleet_id"] = fleet_id
+        step["fleet_launch_mapped"] = True
+
+        hit = hit_by_fleet.get(fleet_id)
+        loss = loss_by_fleet.get(fleet_id)
+        if hit is not None:
+            turn = int(_event_get(hit, "turn", -1))
+            target_id = int(_event_get(hit, "target_id", -1))
+            target_owner_before = int(_event_get(hit, "target_owner_before", -2))
+            combat = combat_by_turn_target.get((turn, target_id))
+            target_owner_after = (
+                int(_event_get(combat, "owner_after", target_owner_before))
+                if combat is not None
+                else target_owner_before
+            )
+            step.update({
+                "fleet_outcome_known": True,
+                "fleet_hit": True,
+                "hit_target_id": target_id,
+                "fleet_target_owner_before": target_owner_before,
+                "fleet_target_owner_after": target_owner_after,
+                "fleet_captured": target_owner_before != int(player) and target_owner_after == int(player),
+                "fleet_supported": target_owner_before == int(player) and target_owner_after == int(player),
+                "fleet_enemy_hit": target_owner_before not in (-1, int(player)),
+                "fleet_neutral_hit": target_owner_before == -1,
+            })
+        elif loss is not None:
+            loss_type = _event_type(loss)
+            step.update({
+                "fleet_outcome_known": True,
+                "fleet_lost": True,
+                "fleet_lost_sun": loss_type == "lost_sun",
+                "fleet_lost_oob": loss_type == "lost_oob",
+            })
+        else:
+            step["fleet_pending"] = True
+
+
 def _make_gpu_agent(
     worker_id: int,
     obs_queue: mp.Queue,
@@ -123,6 +238,9 @@ def _make_gpu_agent(
                     "action_idx": -1,
                     "mission": "do_nothing",
                     "ships": 0,
+                    "source_id": -1,
+                    "target_id": -1,
+                    "planned_angle": None,
                     "old_log_prob": old_log_prob,
                     "entropy": entropy,
                     "temperature": temperature,
@@ -140,6 +258,7 @@ def _make_gpu_agent(
             action = reconstruct_action(cand, planning_game)
             move = _candidate_move(planning_game, action)
             executed_ships = int(move[0][2]) if move else 0
+            planned_angle = float(move[0][1]) if move else None
 
             trajectory.append({
                 "state": state_features,
@@ -147,6 +266,9 @@ def _make_gpu_agent(
                 "action_idx": action_idx,
                 "mission": cand.mission if move else "do_nothing",
                 "ships": executed_ships,
+                "source_id": int(action[0]) if len(action) > 0 else -1,
+                "target_id": int(action[1]) if len(action) > 1 else -1,
+                "planned_angle": planned_angle,
                 "old_log_prob": old_log_prob,
                 "entropy": entropy,
                 "temperature": temperature,
@@ -232,6 +354,12 @@ def worker_fn(
         if stop_event.is_set():
             break
 
+        _attach_fleet_outcomes(
+            trajectory,
+            list(result.get("fleet_events", []) or []),
+            our_index,
+        )
+
         winner = int(result.get("winner", -1))
         terminal_reward = 1.0 if winner == our_index else -1.0
         dense_reward = (
@@ -245,6 +373,17 @@ def worker_fn(
                 "ships": s["ships"],
                 "noop_has_real_candidate": bool(s.get("noop_has_real_candidate", False)),
                 "action_slot": int(s.get("action_slot", 0)),
+                "fleet_launch_mapped": bool(s.get("fleet_launch_mapped", False)),
+                "fleet_outcome_known": bool(s.get("fleet_outcome_known", False)),
+                "fleet_hit": bool(s.get("fleet_hit", False)),
+                "fleet_lost": bool(s.get("fleet_lost", False)),
+                "fleet_lost_sun": bool(s.get("fleet_lost_sun", False)),
+                "fleet_lost_oob": bool(s.get("fleet_lost_oob", False)),
+                "fleet_pending": bool(s.get("fleet_pending", False)),
+                "fleet_captured": bool(s.get("fleet_captured", False)),
+                "fleet_supported": bool(s.get("fleet_supported", False)),
+                "fleet_enemy_hit": bool(s.get("fleet_enemy_hit", False)),
+                "fleet_neutral_hit": bool(s.get("fleet_neutral_hit", False)),
             }
             for s in trajectory
         ]

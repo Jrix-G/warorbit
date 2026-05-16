@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+from .trajectory import safe_plan_shot
+
 
 def _get(obj: Any, key: str, default=None):
     if isinstance(obj, dict):
@@ -24,15 +26,23 @@ def obs_to_game_dict(obs: Any) -> Dict[str, Any]:
 
     fleets = []
     for f in list(_get(obs, "fleets", []) or []):
+        # Official observations encode fleets as:
+        # [id, owner, x, y, angle, source_planet_id, ships].
+        # Older code treated angle/source/ships as ships/target/eta, which
+        # poisoned incoming-fleet and total-ship features.
+        angle = float(f[4]) if len(f) > 4 else 0.0
+        source_id = int(f[5]) if len(f) > 5 else -1
+        ships = float(f[6]) if len(f) > 6 else 0.0
         fleets.append({
             "id": int(f[0]),
             "owner": int(f[1]),
             "x": float(f[2]),
             "y": float(f[3]),
-            "ships": float(f[4]),
-            "target_id": int(f[5]),
-            "eta": int(f[6]),
-            "source_id": int(f[7]) if len(f) > 7 else -1,
+            "angle": angle,
+            "ships": ships,
+            "target_id": -1,
+            "eta": 100,
+            "source_id": source_id,
         })
 
     init_planets = []
@@ -51,9 +61,13 @@ def obs_to_game_dict(obs: Any) -> Dict[str, Any]:
     for c in list(_get(obs, "comets", []) or []):
         comets.append(list(c))
 
-    owners = {int(p["owner"]) for p in planets if int(p["owner"]) >= 0}
-    owners.update({int(p["owner"]) for p in init_planets if int(p["owner"]) >= 0})
-    owners.update({int(f["owner"]) for f in fleets if int(f["owner"]) >= 0})
+    observed_owners = {int(p["owner"]) for p in planets if int(p["owner"]) >= 0}
+    observed_owners.update({int(p["owner"]) for p in init_planets if int(p["owner"]) >= 0})
+    observed_owners.update({int(f["owner"]) for f in fleets if int(f["owner"]) >= 0})
+    max_observed_owner = max(observed_owners, default=1)
+    # Keep owner slots stable across turns. Dynamic `sorted(owners)` changes
+    # one-hot meanings when a player temporarily has no visible assets.
+    player_ids = list(range(max(4, max_observed_owner + 1)))[:4]
 
     return {
         "my_id": int(_get(obs, "player", 0) or 0),
@@ -64,14 +78,23 @@ def obs_to_game_dict(obs: Any) -> Dict[str, Any]:
         "angular_velocity": float(_get(obs, "angular_velocity", 0.0) or 0.0),
         "comets": comets,
         "comet_planet_ids": list(_get(obs, "comet_planet_ids", []) or []),
-        "player_ids": sorted(owners),
-        "is_four_player": len(owners) >= 4,
+        "player_ids": player_ids,
+        "is_four_player": len(observed_owners) >= 4,
         "remaining_overage_time": int(_get(obs, "remainingOverageTime", 0) or 0),
     }
 
 
-def action_to_kaggle_list(action_tuple: tuple[int, int, int]) -> List[List[int]]:
+def action_to_kaggle_list(action_tuple: tuple[int, int, int], game: Dict[str, Any] | None = None) -> List[List[int | float]]:
     src, tgt, ships = action_tuple
     if src < 0 or tgt < 0 or ships <= 0:
         return []
-    return [[int(src), int(tgt), int(ships)]]
+    if game is None:
+        raise ValueError("game is required to convert target-id action into an official angle action")
+    src_planet = next((p for p in game.get("planets", []) if int(p.get("id", -1)) == int(src)), None)
+    tgt_planet = next((p for p in game.get("planets", []) if int(p.get("id", -1)) == int(tgt)), None)
+    if src_planet is None or tgt_planet is None:
+        return []
+    angle = safe_plan_shot(src_planet, tgt_planet, game, ships=int(ships))
+    if angle is None:
+        return []
+    return [[int(src), float(angle), int(ships)]]

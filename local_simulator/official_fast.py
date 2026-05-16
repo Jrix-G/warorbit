@@ -9,6 +9,7 @@ stdout/stderr around every agent call.
 
 from __future__ import annotations
 
+import copy
 import random
 import sys
 import time
@@ -36,39 +37,47 @@ def _fetch_orbit_wars_py(dest: Path) -> None:
     urllib.request.urlretrieve(_ORBIT_WARS_URL, dest)
 
 
-try:
-    from kaggle_environments.envs.orbit_wars import orbit_wars  # noqa: E402
-    from kaggle_environments.utils import Struct, structify  # noqa: E402
-except ModuleNotFoundError:
-    orbit_wars_path = KAGGLE_ENV_ROOT / "kaggle_environments" / "envs" / "orbit_wars" / "orbit_wars.py"
-    if not orbit_wars_path.exists():
-        orbit_wars_path = Path(__file__).resolve().parent / "orbit_wars_official.py"
-    if not orbit_wars_path.exists():
-        orbit_wars_path = Path(__file__).resolve().parent / "_orbit_wars_downloaded.py"
-        _fetch_orbit_wars_py(orbit_wars_path)
+def _load_orbit_wars_module(orbit_wars_path: Path):
     spec = importlib_util.spec_from_file_location("orbit_wars_official_fast", orbit_wars_path)
     if spec is None or spec.loader is None:
-        raise
-    orbit_wars = importlib_util.module_from_spec(spec)
-    spec.loader.exec_module(orbit_wars)
+        raise ImportError(f"Cannot load Orbit Wars engine from {orbit_wars_path}")
+    module = importlib_util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
-    class Struct(dict):
-        def __init__(self, **entries: Any) -> None:
-            entries = {k: v for k, v in entries.items() if k != "items"}
-            dict.__init__(self, entries)
-            self.__dict__.update(entries)
 
-        def __setattr__(self, attr: str, value: Any) -> None:
-            self.__dict__[attr] = value
-            self[attr] = value
+class Struct(dict):
+    def __init__(self, **entries: Any) -> None:
+        entries = {k: v for k, v in entries.items() if k != "items"}
+        dict.__init__(self, entries)
+        self.__dict__.update(entries)
 
-    def structify(o: Any) -> Any:
-        if isinstance(o, list):
-            return [structify(item) for item in o]
-        if isinstance(o, dict):
-            return Struct(**{key: structify(value) for key, value in o.items()})
-        return o
+    def __setattr__(self, attr: str, value: Any) -> None:
+        self.__dict__[attr] = value
+        self[attr] = value
 
+
+def structify(o: Any) -> Any:
+    if isinstance(o, list):
+        return [structify(item) for item in o]
+    if isinstance(o, dict):
+        return Struct(**{key: structify(value) for key, value in o.items()})
+    return o
+
+
+local_orbit_wars_path = Path(__file__).resolve().parent / "orbit_wars_official.py"
+if local_orbit_wars_path.exists():
+    orbit_wars = _load_orbit_wars_module(local_orbit_wars_path)
+else:
+    try:
+        from kaggle_environments.envs.orbit_wars import orbit_wars  # noqa: E402
+        from kaggle_environments.utils import Struct, structify  # noqa: E402
+    except ModuleNotFoundError:
+        orbit_wars_path = KAGGLE_ENV_ROOT / "kaggle_environments" / "envs" / "orbit_wars" / "orbit_wars.py"
+        if not orbit_wars_path.exists():
+            orbit_wars_path = Path(__file__).resolve().parent / "_orbit_wars_downloaded.py"
+            _fetch_orbit_wars_py(orbit_wars_path)
+        orbit_wars = _load_orbit_wars_module(orbit_wars_path)
 
 @dataclass
 class FastConfig:
@@ -218,7 +227,7 @@ class OfficialFastGame:
         for fleet in obs.get("fleets", []) or []:
             owner = int(fleet[1])
             if 0 <= owner < self.n_players:
-                scores[owner] += int(fleet[4])
+                scores[owner] += int(fleet[6])
         return scores
 
     def winner(self) -> int:
@@ -237,6 +246,7 @@ class OfficialFastGame:
             "seconds": elapsed,
             "steps_per_second": step / max(elapsed, 1e-9) if elapsed else 0.0,
             "tracked_player": int(tracked_player),
+            "fleet_events": list(self.info.get("fleet_events", []) or []),
         }
 
     def _call_interpreter(self, state: list[Struct]) -> list[Struct]:
@@ -289,7 +299,7 @@ def run_fast_game(
     stop_player = None if stop_player is None else int(stop_player)
     tracked_player = int(tracked_player)
     initial_player = stop_player if stop_player is not None else tracked_player
-    initial_state = game.observation(initial_player)
+    initial_state = copy.deepcopy(game.observation(initial_player))
     max_planets = _owned_planets(game.observation(tracked_player), tracked_player)
     planets_t60 = None
     planets_t100 = None
@@ -321,7 +331,7 @@ def run_fast_game(
     result["planets_t60"] = int(planets_t60 if planets_t60 is not None else max_planets)
     result["planets_t100"] = int(planets_t100 if planets_t100 is not None else max_planets)
     result["initial_state"] = initial_state
-    result["final_state"] = game.observation(initial_player)
+    result["final_state"] = copy.deepcopy(game.observation(initial_player))
     return result
 
 

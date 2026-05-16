@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
 
 from neural_network.src.model import ModelConfig, NeuralNetworkModel, load_compatible_state_dict
 from neural_network.src.notebook_4p_training import _build_agents, run_match
+from neural_network_gpu.src.action_metrics import summarize_action_records, summarize_fleet_events
 
 
 def _load_raw(ckpt_path: Path):
@@ -67,6 +68,7 @@ def eval_checkpoint(
     valid_win_min_real_moves = float(cfg.get("valid_win_min_real_moves_turn", 0.90))
 
     wins, valid_wins, noops, ships_list = [], [], [], []
+    fleet_hits, fleet_captures, fleet_losses = [], [], []
 
     for i in range(n_games):
         our_index = i % n_players
@@ -79,15 +81,18 @@ def eval_checkpoint(
         won = 1.0 if result.get("winner") == our_index else 0.0
         wins.append(won)
 
-        ar = [a for a in action_records if a.get("player") == our_index]
-        total = len(ar) or 1
-        noop_r = sum(1 for a in ar if a.get("action_type") in ("do_nothing", "legal_noop")) / total
-        s_sent = [a.get("ships_sent", 0) for a in ar if a.get("action_type") not in ("do_nothing", "legal_noop")]
-        avg_s = float(np.mean(s_sent)) if s_sent else 0.0
-        real_m = sum(1 for a in ar if a.get("action_type") not in ("do_nothing", "legal_noop", "forced_noop")) / total
+        metrics = summarize_action_records(action_records)
+        metrics.update(summarize_fleet_events(result.get("fleet_events", []) or [], our_index))
+        noop_r = float(metrics.get("legal_noop_rate", metrics.get("do_nothing_rate", 1.0)))
+        avg_s = float(metrics.get("avg_ships_sent", 0.0))
+        episode_steps = max(1, int(result.get("steps", 1)))
+        real_m = float(metrics.get("real_action_count", 0.0)) / float(episode_steps)
 
         noops.append(noop_r)
         ships_list.append(avg_s)
+        fleet_hits.append(float(metrics.get("fleet_hit_rate", 0.0)))
+        fleet_captures.append(float(metrics.get("fleet_capture_rate", 0.0)))
+        fleet_losses.append(float(metrics.get("fleet_lost_rate", 0.0)))
 
         is_valid = (
             won == 1.0
@@ -105,6 +110,9 @@ def eval_checkpoint(
         "valid": float(np.mean(valid_wins)),
         "noop": float(np.mean(noops)),
         "ships": float(np.mean(ships_list)),
+        "fleet_hit": float(np.mean(fleet_hits)),
+        "fleet_capture": float(np.mean(fleet_captures)),
+        "fleet_lost": float(np.mean(fleet_losses)),
         "wins": int(sum(wins)),
         "games": n_games,
     }
@@ -144,7 +152,7 @@ def main():
         for opp in opponents:
             print(f"  vs {opp} ({args.games} games)...", flush=True)
             r = eval_checkpoint(path, opp, args.games, args.n_players, device, fallback_config)
-            print(f"  => winrate={r['winrate']:.3f}  valid={r['valid']:.3f}  noop={r['noop']:.3f}  ships={r['ships']:.2f}  ({r['wins']}/{r['games']} wins)")
+            print(f"  => winrate={r['winrate']:.3f}  valid={r['valid']:.3f}  noop={r['noop']:.3f}  ships={r['ships']:.2f}  fleet_hit={r['fleet_hit']:.3f}  fleet_capture={r['fleet_capture']:.3f}  fleet_lost={r['fleet_lost']:.3f}  ({r['wins']}/{r['games']} wins)")
 
     print("\nDone.")
 

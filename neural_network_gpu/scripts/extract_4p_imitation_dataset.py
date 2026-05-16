@@ -31,7 +31,7 @@ ENCODER_CONFIG: dict[str, Any] = {
     "production_scale": 10.0,
     "radius_scale": 10.0,
     "horizon_scale": 100.0,
-    "planet_id_scale": 100.0,
+    "planet_id_scale": 64.0,
 }
 
 
@@ -122,6 +122,35 @@ def _best_move(action: Any) -> list[Any] | None:
     return max(moves, key=lambda m: float(m[2]))
 
 
+def _valid_moves(action: Any) -> list[list[Any]]:
+    if not isinstance(action, list) or not action:
+        return []
+    return [m for m in action if isinstance(m, list) and len(m) >= 3 and float(m[2]) > 0]
+
+
+def _send_ratios(raw: str) -> tuple[float, ...]:
+    values: list[float] = []
+    for item in str(raw).split(","):
+        item = item.strip()
+        if not item:
+            continue
+        value = float(item)
+        if 0.0 < value < 1.0:
+            values.append(value)
+    return tuple(values or [0.25, 0.35, 0.50, 0.65, 0.80, 0.95])
+
+
+def _reserve_candidate_ships(game: dict[str, Any], candidate: Any) -> None:
+    source_id = int(getattr(candidate, "source_id", -1))
+    ships = int(getattr(candidate, "amount", 0))
+    if source_id < 0 or ships <= 0:
+        return
+    for planet in game.get("planets", []):
+        if int(planet.get("id", -1)) == source_id:
+            planet["ships"] = max(1.0, float(planet.get("ships", 0.0)) - float(ships))
+            return
+
+
 def _candidate_label(game: dict[str, Any], candidates: list[Any], move: list[Any], max_angle_error: float) -> tuple[int, float, str] | None:
     src_id = int(move[0])
     action_angle = float(move[1])
@@ -132,7 +161,7 @@ def _candidate_label(game: dict[str, Any], candidates: list[Any], move: list[Any
         return None
 
     best: tuple[float, float, int, str] | None = None
-    angle_cache: dict[int, float | None] = {}
+    angle_cache: dict[tuple[int, int], float | None] = {}
     for idx, candidate in enumerate(candidates):
         if candidate.mission == "do_nothing" or int(candidate.source_id) != src_id:
             continue
@@ -140,9 +169,10 @@ def _candidate_label(game: dict[str, Any], candidates: list[Any], move: list[Any
         if tgt is None:
             continue
         target_id = int(candidate.target_id)
-        if target_id not in angle_cache:
-            angle_cache[target_id] = safe_plan_shot(src, tgt, game)
-        candidate_angle = angle_cache[target_id]
+        angle_key = (target_id, int(candidate.amount))
+        if angle_key not in angle_cache:
+            angle_cache[angle_key] = safe_plan_shot(src, tgt, game, ships=int(candidate.amount))
+        candidate_angle = angle_cache[angle_key]
         if candidate_angle is None:
             continue
         angle_error = _angle_diff(action_angle, candidate_angle)
@@ -257,73 +287,121 @@ def extract(args: argparse.Namespace) -> dict[str, Any]:
                 if not args.include_non_winners and player_id not in winners:
                     continue
                 action = steps[step_idx][player_id].get("action")
-                move = _best_move(action)
-                if move is None:
+                moves = _valid_moves(action)
+                if not moves:
                     if float(args.noop_keep_rate) <= 0.0 or random.random() > float(args.noop_keep_rate):
                         continue
-                    label_idx = 0
-                    angle_error = 0.0
-                    mission = "do_nothing"
-                else:
                     prev_obs = steps[step_idx - 1][player_id].get("observation") or {}
                     game = _game_from_observation(prev_obs, player_id)
                     if game is None:
                         skip["bad_observation"] += 1
                         continue
-                    candidates = build_action_candidates(game)
-                    label = _candidate_label(game, candidates, move, float(args.max_angle_error))
-                    if label is None:
-                        skip["unmatched_action"] += 1
-                        continue
-                    label_idx, angle_error, mission = label
+                    candidates = build_action_candidates(
+                        game,
+                        send_ratios=_send_ratios(args.send_ratios),
+                        min_expand_attack_ships=int(args.min_expand_attack_ships),
+                        allow_support=not bool(args.disable_support_actions),
+                    )
+                    label_idx = 0
+                    angle_error = 0.0
+                    mission = "do_nothing"
+                    candidates, label_idx = _trim_candidates(candidates, label_idx, int(args.max_candidates))
+                    encoded = encode_game_state(game, ENCODER_CONFIG).features
+                    cand = np.zeros((int(args.max_candidates), 16), dtype=np.float32)
+                    mask = np.zeros((int(args.max_candidates),), dtype=np.bool_)
+                    cand_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
+                    cand[: len(candidates)] = cand_features
+                    mask[: len(candidates)] = True
+                    state_rows.append(encoded)
+                    candidate_rows.append(cand)
+                    mask_rows.append(mask)
+                    label_rows.append(int(label_idx))
+                    weight_rows.append(float(args.noop_weight))
+                    missions[mission] += 1
+                    per_episode[episode_id] += 1
+                    total_samples += 1
+                    meta_f.write(json.dumps({
+                        "episode_id": episode_id,
+                        "source": str(path),
+                        "step": step_idx - 1,
+                        "player": player_id,
+                        "winner": player_id in winners,
+                        "mission": mission,
+                        "action_slot": 0,
+                        "label": int(label_idx),
+                        "angle_error": float(angle_error),
+                        "manifest": manifest.get(episode_id, {}),
+                    }) + "\n")
+                    if len(state_rows) >= int(args.shard_size):
+                        _flush_shard(out_dir, shard_idx, state_rows, candidate_rows, mask_rows, label_rows, weight_rows)
+                        shard_idx += 1
+                        state_rows.clear()
+                        candidate_rows.clear()
+                        mask_rows.clear()
+                        label_rows.clear()
+                        weight_rows.clear()
+                    continue
 
                 prev_obs = steps[step_idx - 1][player_id].get("observation") or {}
                 game = _game_from_observation(prev_obs, player_id)
                 if game is None:
                     skip["bad_observation"] += 1
                     continue
-                if move is None:
-                    candidates = build_action_candidates(game)
-                if label_idx >= len(candidates):
-                    skip["candidate_count"] += 1
-                    continue
-                candidates, label_idx = _trim_candidates(candidates, label_idx, int(args.max_candidates))
+                for action_slot, move in enumerate(moves[: int(args.max_actions_per_turn)]):
+                    candidates = build_action_candidates(
+                        game,
+                        send_ratios=_send_ratios(args.send_ratios),
+                        min_expand_attack_ships=int(args.min_expand_attack_ships),
+                        allow_support=not bool(args.disable_support_actions),
+                    )
+                    label = _candidate_label(game, candidates, move, float(args.max_angle_error))
+                    if label is None:
+                        skip["unmatched_action"] += 1
+                        continue
+                    label_idx, angle_error, mission = label
+                    if label_idx >= len(candidates):
+                        skip["candidate_count"] += 1
+                        continue
+                    selected_candidate = candidates[int(label_idx)]
+                    model_candidates, model_label_idx = _trim_candidates(candidates, label_idx, int(args.max_candidates))
 
-                encoded = encode_game_state(game, ENCODER_CONFIG).features
-                cand = np.zeros((int(args.max_candidates), 16), dtype=np.float32)
-                mask = np.zeros((int(args.max_candidates),), dtype=np.bool_)
-                cand_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
-                cand[: len(candidates)] = cand_features
-                mask[: len(candidates)] = True
+                    encoded = encode_game_state(game, ENCODER_CONFIG).features
+                    cand = np.zeros((int(args.max_candidates), 16), dtype=np.float32)
+                    mask = np.zeros((int(args.max_candidates),), dtype=np.bool_)
+                    cand_features = np.stack([c.score_features for c in model_candidates]).astype(np.float32)
+                    cand[: len(model_candidates)] = cand_features
+                    mask[: len(model_candidates)] = True
 
-                state_rows.append(encoded)
-                candidate_rows.append(cand)
-                mask_rows.append(mask)
-                label_rows.append(int(label_idx))
-                weight_rows.append(1.0 if mission != "do_nothing" else float(args.noop_weight))
-                missions[mission] += 1
-                per_episode[episode_id] += 1
-                total_samples += 1
-                meta_f.write(json.dumps({
-                    "episode_id": episode_id,
-                    "source": str(path),
-                    "step": step_idx - 1,
-                    "player": player_id,
-                    "winner": player_id in winners,
-                    "mission": mission,
-                    "label": int(label_idx),
-                    "angle_error": float(angle_error),
-                    "manifest": manifest.get(episode_id, {}),
-                }) + "\n")
+                    state_rows.append(encoded)
+                    candidate_rows.append(cand)
+                    mask_rows.append(mask)
+                    label_rows.append(int(model_label_idx))
+                    weight_rows.append(1.0 if mission != "do_nothing" else float(args.noop_weight))
+                    missions[mission] += 1
+                    per_episode[episode_id] += 1
+                    total_samples += 1
+                    meta_f.write(json.dumps({
+                        "episode_id": episode_id,
+                        "source": str(path),
+                        "step": step_idx - 1,
+                        "player": player_id,
+                        "winner": player_id in winners,
+                        "mission": mission,
+                        "action_slot": int(action_slot),
+                        "label": int(model_label_idx),
+                        "angle_error": float(angle_error),
+                        "manifest": manifest.get(episode_id, {}),
+                    }) + "\n")
+                    _reserve_candidate_ships(game, selected_candidate)
 
-                if len(state_rows) >= int(args.shard_size):
-                    _flush_shard(out_dir, shard_idx, state_rows, candidate_rows, mask_rows, label_rows, weight_rows)
-                    shard_idx += 1
-                    state_rows.clear()
-                    candidate_rows.clear()
-                    mask_rows.clear()
-                    label_rows.clear()
-                    weight_rows.clear()
+                    if len(state_rows) >= int(args.shard_size):
+                        _flush_shard(out_dir, shard_idx, state_rows, candidate_rows, mask_rows, label_rows, weight_rows)
+                        shard_idx += 1
+                        state_rows.clear()
+                        candidate_rows.clear()
+                        mask_rows.clear()
+                        label_rows.clear()
+                        weight_rows.clear()
 
         if path_idx % int(args.log_every) == 0:
             print(f"scan episodes={path_idx}/{len(replay_paths)} samples={total_samples} skipped={dict(skip)} missions={dict(missions)}", flush=True)
@@ -358,7 +436,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-episodes", type=int, default=0)
     parser.add_argument("--max-samples", type=int, default=250_000)
     parser.add_argument("--max-candidates", type=int, default=2048)
+    parser.add_argument("--max-actions-per-turn", type=int, default=8)
     parser.add_argument("--max-angle-error", type=float, default=0.28)
+    parser.add_argument("--send-ratios", default="0.25,0.35,0.50,0.65,0.80,0.95")
+    parser.add_argument("--min-expand-attack-ships", type=int, default=2)
+    parser.add_argument("--disable-support-actions", action="store_true")
     parser.add_argument("--shard-size", type=int, default=4096)
     parser.add_argument("--noop-keep-rate", type=float, default=0.0)
     parser.add_argument("--noop-weight", type=float, default=0.10)

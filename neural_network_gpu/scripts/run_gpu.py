@@ -31,7 +31,7 @@ from neural_network.src.population_4p_training import configure_run_logging
 from neural_network_gpu.src.vec_worker import worker_fn
 from neural_network_gpu.src.inference_server import inference_server_fn
 from neural_network_gpu.src.gpu_trainer import train_on_episodes
-from neural_network_gpu.src.action_metrics import summarize_action_records
+from neural_network_gpu.src.action_metrics import summarize_action_records, summarize_fleet_events
 
 
 def _now() -> str:
@@ -51,6 +51,23 @@ def _run_tag() -> str:
 
 def _model_state_np(model: NeuralNetworkModel) -> Dict[str, np.ndarray]:
     return {k: v.detach().cpu().numpy() for k, v in model.state_dict().items()}
+
+
+def _put_latest_model_update(queue: mp.Queue, msg: Dict[str, Any]) -> tuple[bool, int]:
+    dropped = 0
+    while True:
+        try:
+            queue.get_nowait()
+            dropped += 1
+        except Empty:
+            break
+        except Exception:
+            break
+    try:
+        queue.put_nowait(msg)
+        return True, dropped
+    except Exception:
+        return False, dropped
 
 
 def _set_optimizer_lr(optimizer: torch.optim.Optimizer, lr: float) -> None:
@@ -160,8 +177,9 @@ def _auto_tune_training(
         patch["train_noop_penalty_coef"] = _clamp_float(float(cfg.get("train_noop_penalty_coef", 0.70)) * 1.04, 0.10, 2.20)
         patch["train_passivity_penalty_coef"] = _clamp_float(float(cfg.get("train_passivity_penalty_coef", 0.55)) * 1.06, 0.10, 2.00)
         patch["do_nothing_logit_penalty"] = _clamp_float(float(cfg.get("do_nothing_logit_penalty", 0.50)) + 0.10, 0.0, 2.0)
-        patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.03, 0.05, 0.70)
-        patch["train_ships_sent_bonus_coef"] = _clamp_float(float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.03, 0.03, float(cfg.get("stabilizer_max_ship_bonus", 0.80)))
+        if not bool(cfg.get("train_event_shaping_enabled", True)):
+            patch["train_action_bonus_coef"] = _clamp_float(float(cfg.get("train_action_bonus_coef", 0.28)) * 1.03, 0.05, 0.70)
+            patch["train_ships_sent_bonus_coef"] = _clamp_float(float(cfg.get("train_ships_sent_bonus_coef", 0.18)) * 1.03, 0.03, float(cfg.get("stabilizer_max_ship_bonus", 0.80)))
         patch["policy_prior_strength"] = _clamp_float(float(cfg.get("policy_prior_strength", 0.0)) + 0.02, 0.0, 0.55)
         reasons.append("noop_high")
 
@@ -506,6 +524,8 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         # Training
         "learning_rate": args.learning_rate,
         "gamma": 0.99,
+        "train_return_gamma": args.train_return_gamma,
+        "train_return_clip": args.train_return_clip,
         "value_loss_coef": 0.25,
         "entropy_coef_start": args.entropy_coef_start,
         "baseline_momentum": 0.10,
@@ -533,12 +553,24 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "train_per_step_ship_volume_bonus": args.per_step_ship_volume_bonus,
         "train_per_step_ship_volume_target": args.per_step_ship_volume_target,
         "train_per_step_shape_clip": args.per_step_shape_clip,
+        "train_event_shaping_enabled": not bool(args.disable_event_shaping),
+        "train_event_hit_bonus": args.event_hit_bonus,
+        "train_event_enemy_hit_bonus": args.event_enemy_hit_bonus,
+        "train_event_capture_bonus": args.event_capture_bonus,
+        "train_event_support_bonus": args.event_support_bonus,
+        "train_event_lost_penalty": args.event_lost_penalty,
+        "train_event_pending_penalty": args.event_pending_penalty,
+        "train_event_min_shape_clip": args.event_min_shape_clip,
+        "train_event_max_flat_action_bonus": args.event_max_flat_action_bonus,
+        "train_event_max_ship_volume_bonus": args.event_max_ship_volume_bonus,
+        "train_event_max_activity_action_bonus": args.event_max_activity_action_bonus,
+        "train_event_max_activity_ships_bonus": args.event_max_activity_ships_bonus,
         "train_passive_win_legal_noop_rate": args.passive_win_legal_noop_rate,
         "do_nothing_logit_penalty": 0.50,
         "do_nothing_prob_cap": 0.45,
         "do_nothing_prob_caps_by_slot": [0.05, 0.08, 0.12, 0.20, 0.32, 0.45, 0.55, 0.65],
-        "train_action_bonus_coef": 0.28,
-        "train_ships_sent_bonus_coef": 0.18,
+        "train_action_bonus_coef": 0.03,
+        "train_ships_sent_bonus_coef": 0.0,
         "train_activity_reward_clip": 0.55,
         "train_passive_win_noop_rate": args.valid_win_max_do_nothing_rate,
         "train_passive_win_min_avg_ships_sent": args.valid_win_min_avg_ships_sent,
@@ -600,6 +632,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "n_players": args.n_players,
         "seed": 42,
         "eval_seed_start": args.eval_seed_start,
+        "eval_seed_stride": args.eval_seed_stride,
         "promotion_margin": args.promotion_margin,
         "rollback_margin": args.rollback_margin,
         "rollback_on_noop_rate": args.rollback_on_noop_rate,
@@ -664,6 +697,10 @@ def _evaluate(
     all_legal_noop_rates: List[float] = []
     all_forced_noop_rates: List[float] = []
     all_avg_ships_sent: List[float] = []
+    all_fleet_hit_rates: List[float] = []
+    all_fleet_capture_rates: List[float] = []
+    all_fleet_lost_rates: List[float] = []
+    all_fleet_pending_rates: List[float] = []
     train_metrics = train_metrics or {}
     valid_win_max_noop = float(config.get("valid_win_max_do_nothing_rate", config.get("max_eval_do_nothing_rate", 0.75)))
     valid_win_max_legal_noop = float(config.get("valid_win_max_legal_noop_rate", 0.30))
@@ -679,6 +716,11 @@ def _evaluate(
         legal_noop_rates: List[float] = []
         forced_noop_rates: List[float] = []
         avg_ships_sent: List[float] = []
+        fleet_hit_rates: List[float] = []
+        fleet_capture_rates: List[float] = []
+        fleet_lost_rates: List[float] = []
+        fleet_pending_rates: List[float] = []
+        metric_rows: List[Dict[str, float]] = []
         seed_base = int(seed_start) + opponent_idx * max(100000, episodes + 1)
         for i in range(episodes):
             seed = seed_base + i
@@ -701,10 +743,16 @@ def _evaluate(
             winner = int(result.get("winner", -1))
             episode_steps = max(1, int(result.get("steps", 1)))
             metrics = summarize_action_records(action_records)
+            metrics.update(summarize_fleet_events(result.get("fleet_events", []) or [], our_index))
+            metric_rows.append(dict(metrics))
             noop = float(metrics.get("do_nothing_rate", 1.0))
             legal_noop = float(metrics.get("legal_noop_rate", noop))
             forced_noop = float(metrics.get("forced_noop_rate", 0.0))
             ships = float(metrics.get("avg_ships_sent", 0.0))
+            fleet_hit = float(metrics.get("fleet_hit_rate", 0.0))
+            fleet_capture = float(metrics.get("fleet_capture_rate", 0.0))
+            fleet_lost = float(metrics.get("fleet_lost_rate", 0.0))
+            fleet_pending = float(metrics.get("fleet_pending_rate", 0.0))
             real_moves_per_turn = float(metrics.get("real_action_count", 0.0)) / episode_steps
             won = float(winner == our_index)
             # Promotion-validity gate uses legal_noop (avoidable-only) so wins on
@@ -722,6 +770,10 @@ def _evaluate(
             legal_noop_rates.append(legal_noop)
             forced_noop_rates.append(forced_noop)
             avg_ships_sent.append(ships)
+            fleet_hit_rates.append(fleet_hit)
+            fleet_capture_rates.append(fleet_capture)
+            fleet_lost_rates.append(fleet_lost)
+            fleet_pending_rates.append(fleet_pending)
             if progress_log_path is not None and ((i + 1) == episodes or (i + 1) % max(1, episodes // 4) == 0):
                 _log(
                     progress_log_path,
@@ -733,6 +785,15 @@ def _evaluate(
         valid_win_count = int(sum(valid_wins))
         ci_low, ci_high = _wilson_ci(win_count, episodes)
         valid_ci_low, valid_ci_high = _wilson_ci(valid_win_count, episodes)
+
+        def _metric_mean(name: str, default: float = 0.0) -> float:
+            values = [float(row.get(name, default)) for row in metric_rows if name in row]
+            return float(np.mean(values)) if values else default
+
+        def _metric_max(name: str, default: float = 0.0) -> float:
+            values = [float(row.get(name, default)) for row in metric_rows if name in row]
+            return float(np.max(values)) if values else default
+
         record = {
             "episode": int(episode_count),
             "checkpoint": checkpoint_label,
@@ -751,17 +812,25 @@ def _evaluate(
             "legal_noop_rate": float(np.mean(legal_noop_rates)) if legal_noop_rates else 0.0,
             "forced_noop_rate": float(np.mean(forced_noop_rates)) if forced_noop_rates else 0.0,
             "avg_ships_sent": float(np.mean(avg_ships_sent)) if avg_ships_sent else 0.0,
-            "avg_ships_per_action": float(metrics.get("avg_ships_per_action", 0.0)),
-            "median_ships_sent": float(metrics.get("median_ships_sent", 0.0)),
-            "ships_sent_p25": float(metrics.get("ships_sent_p25", 0.0)),
-            "ships_sent_p75": float(metrics.get("ships_sent_p75", 0.0)),
-            "ships_sent_p90": float(metrics.get("ships_sent_p90", 0.0)),
-            "ships_sent_max": float(metrics.get("ships_sent_max", 0.0)),
-            "mission_expand_ships_mean": float(metrics.get("mission_expand_ships_mean", 0.0)),
-            "mission_attack_ships_mean": float(metrics.get("mission_attack_ships_mean", 0.0)),
-            "mission_support_ships_mean": float(metrics.get("mission_support_ships_mean", 0.0)),
-            "slot0_ships_mean": float(metrics.get("slot0_ships_mean", 0.0)),
-            "slot1_ships_mean": float(metrics.get("slot1_ships_mean", 0.0)),
+            "fleet_hit_rate": float(np.mean(fleet_hit_rates)) if fleet_hit_rates else 0.0,
+            "fleet_capture_rate": float(np.mean(fleet_capture_rates)) if fleet_capture_rates else 0.0,
+            "fleet_lost_rate": float(np.mean(fleet_lost_rates)) if fleet_lost_rates else 0.0,
+            "fleet_pending_rate": float(np.mean(fleet_pending_rates)) if fleet_pending_rates else 0.0,
+            "avg_ships_per_action": _metric_mean("avg_ships_per_action"),
+            "median_ships_sent": _metric_mean("median_ships_sent"),
+            "ships_sent_p25": _metric_mean("ships_sent_p25"),
+            "ships_sent_p75": _metric_mean("ships_sent_p75"),
+            "ships_sent_p90": _metric_mean("ships_sent_p90"),
+            "ships_sent_max": _metric_max("ships_sent_max"),
+            "mission_expand_ships_mean": _metric_mean("mission_expand_ships_mean"),
+            "mission_attack_ships_mean": _metric_mean("mission_attack_ships_mean"),
+            "mission_support_ships_mean": _metric_mean("mission_support_ships_mean"),
+            "fleet_hit_rate": _metric_mean("fleet_hit_rate"),
+            "fleet_capture_rate": _metric_mean("fleet_capture_rate"),
+            "fleet_lost_rate": _metric_mean("fleet_lost_rate"),
+            "fleet_pending_rate": _metric_mean("fleet_pending_rate"),
+            "slot0_ships_mean": _metric_mean("slot0_ships_mean"),
+            "slot1_ships_mean": _metric_mean("slot1_ships_mean"),
             "avg_reward": float(train_metrics.get("mean_reward", 0.0)),
             "terminal_reward": float(train_metrics.get("terminal_reward_mean", 0.0)),
             "dense_reward": float(train_metrics.get("dense_reward_mean", 0.0)),
@@ -783,6 +852,9 @@ def _evaluate(
                 f"eval_done checkpoint={checkpoint_label} opponent={opponent} "
                 f"winrate={record['winrate']:.3f} valid={record['valid_winrate']:.3f} "
                 f"noop={record['do_nothing_rate']:.3f} ships={record['avg_ships_sent']:.2f} "
+                f"fleet_hit={record.get('fleet_hit_rate', 0.0):.3f} "
+                f"fleet_capture={record.get('fleet_capture_rate', 0.0):.3f} "
+                f"fleet_lost={record.get('fleet_lost_rate', 0.0):.3f} "
                 f"ships_p50={record.get('median_ships_sent', 0.0):.2f} "
                 f"ships_p75={record.get('ships_sent_p75', 0.0):.2f} "
                 f"ships_p90={record.get('ships_sent_p90', 0.0):.2f} "
@@ -796,6 +868,10 @@ def _evaluate(
         all_legal_noop_rates.extend(legal_noop_rates)
         all_forced_noop_rates.extend(forced_noop_rates)
         all_avg_ships_sent.extend(avg_ships_sent)
+        all_fleet_hit_rates.extend(fleet_hit_rates)
+        all_fleet_capture_rates.extend(fleet_capture_rates)
+        all_fleet_lost_rates.extend(fleet_lost_rates)
+        all_fleet_pending_rates.extend(fleet_pending_rates)
 
     total_games = len(all_wins)
     total_wins = int(sum(all_wins))
@@ -816,6 +892,10 @@ def _evaluate(
         "eval_legal_noop_rate": float(np.mean(all_legal_noop_rates)) if all_legal_noop_rates else 0.0,
         "eval_forced_noop_rate": float(np.mean(all_forced_noop_rates)) if all_forced_noop_rates else 0.0,
         "eval_avg_ships_sent": float(np.mean(all_avg_ships_sent)) if all_avg_ships_sent else 0.0,
+        "eval_fleet_hit_rate": float(np.mean(all_fleet_hit_rates)) if all_fleet_hit_rates else 0.0,
+        "eval_fleet_capture_rate": float(np.mean(all_fleet_capture_rates)) if all_fleet_capture_rates else 0.0,
+        "eval_fleet_lost_rate": float(np.mean(all_fleet_lost_rates)) if all_fleet_lost_rates else 0.0,
+        "eval_fleet_pending_rate": float(np.mean(all_fleet_pending_rates)) if all_fleet_pending_rates else 0.0,
         "eval_episodes": int(episodes),
         "eval_games": int(total_games),
         "seed_start": int(seed_start),
@@ -929,12 +1009,15 @@ def main() -> None:
     parser.add_argument("--ppo-clip-eps", type=float, default=0.2)
     parser.add_argument("--ppo-epochs", type=int, default=3)
     parser.add_argument("--ppo-minibatch-size", type=int, default=512)
+    parser.add_argument("--train-return-gamma", type=float, default=0.997)
+    parser.add_argument("--train-return-clip", type=float, default=2.0)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--batch-timeout", type=float, default=0.010)
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--target-winrate", type=float, default=0.85)
     parser.add_argument("--n-players", type=int, default=2)
     parser.add_argument("--eval-seed-start", type=int, default=900000)
+    parser.add_argument("--eval-seed-stride", type=int, default=1000000)
     parser.add_argument("--promotion-margin", type=float, default=0.03)
     parser.add_argument("--rollback-margin", type=float, default=0.08)
     parser.add_argument("--min-lr", type=float, default=1e-6)
@@ -953,14 +1036,27 @@ def main() -> None:
                         help="Wins flagged as passive when legal_noop_rate exceeds this threshold.")
     parser.add_argument("--per-step-legal-noop-penalty", type=float, default=0.020,
                         help="Per-step penalty applied to each avoidable no-op decision.")
-    parser.add_argument("--per-step-real-action-bonus", type=float, default=0.008,
-                        help="Per-step bonus applied to each real action decision.")
+    parser.add_argument("--per-step-real-action-bonus", type=float, default=0.001,
+                        help="Small exploration bonus for real actions. Event bonuses carry the main signal.")
     parser.add_argument("--per-step-ship-volume-bonus", type=float, default=0.0,
                         help="Extra per-step bonus proportional to ships sent (linear up to target, capped). 0=disabled.")
     parser.add_argument("--per-step-ship-volume-target", type=float, default=8.0,
                         help="Ship count at which the volume bonus is maxed out.")
     parser.add_argument("--per-step-shape-clip", type=float, default=0.04,
                         help="Hard clip on per-step shaping magnitude.")
+    parser.add_argument("--disable-event-shaping", action="store_true",
+                        help="Disable causal fleet-event shaping and use legacy action-only shaping.")
+    parser.add_argument("--event-hit-bonus", type=float, default=0.035)
+    parser.add_argument("--event-enemy-hit-bonus", type=float, default=0.045)
+    parser.add_argument("--event-capture-bonus", type=float, default=0.10)
+    parser.add_argument("--event-support-bonus", type=float, default=0.015)
+    parser.add_argument("--event-lost-penalty", type=float, default=0.045)
+    parser.add_argument("--event-pending-penalty", type=float, default=0.0)
+    parser.add_argument("--event-min-shape-clip", type=float, default=0.12)
+    parser.add_argument("--event-max-flat-action-bonus", type=float, default=0.002)
+    parser.add_argument("--event-max-ship-volume-bonus", type=float, default=0.0)
+    parser.add_argument("--event-max-activity-action-bonus", type=float, default=0.03)
+    parser.add_argument("--event-max-activity-ships-bonus", type=float, default=0.0)
     parser.add_argument("--enable-episodic-passivity-penalty", action="store_true",
                         help="Re-enable the legacy episode-broadcast passivity penalty (default: off, per-step shaping replaces it).")
     parser.add_argument("--stabilizer-target-legal-noop", type=float, default=0.15,
@@ -1048,6 +1144,17 @@ def main() -> None:
             "train_passivity_penalty_coef",
             "train_action_bonus_coef",
             "train_ships_sent_bonus_coef",
+            "train_event_hit_bonus",
+            "train_event_enemy_hit_bonus",
+            "train_event_capture_bonus",
+            "train_event_support_bonus",
+            "train_event_lost_penalty",
+            "train_event_pending_penalty",
+            "train_event_min_shape_clip",
+            "train_event_max_flat_action_bonus",
+            "train_event_max_ship_volume_bonus",
+            "train_event_max_activity_action_bonus",
+            "train_event_max_activity_ships_bonus",
             "policy_prior_strength",
             "entropy_coef_start",
         }
@@ -1065,6 +1172,17 @@ def main() -> None:
                 "train_passivity_penalty_coef",
                 "train_action_bonus_coef",
                 "train_ships_sent_bonus_coef",
+                "train_event_hit_bonus",
+                "train_event_enemy_hit_bonus",
+                "train_event_capture_bonus",
+                "train_event_support_bonus",
+                "train_event_lost_penalty",
+                "train_event_pending_penalty",
+                "train_event_min_shape_clip",
+                "train_event_max_flat_action_bonus",
+                "train_event_max_ship_volume_bonus",
+                "train_event_max_activity_action_bonus",
+                "train_event_max_activity_ships_bonus",
                 "train_mission_mix_bonus_coef",
                 "train_target_support_ratio",
                 "train_support_ratio_band",
@@ -1287,10 +1405,18 @@ def main() -> None:
                     f"param_delta={metrics.get('param_relative_delta', 0):.8f} "
                     f"grad_norm={metrics.get('grad_norm', 0):.3f} "
                     f"reward={metrics.get('mean_reward', 0):.3f} "
+                    f"return={metrics.get('return_target_mean', 0):.3f}/{metrics.get('return_target_std', 0):.3f} "
+                    f"vpred={metrics.get('value_prediction_mean', 0):.3f} "
+                    f"adv={metrics.get('raw_advantage_mean', 0):.3f}/{metrics.get('raw_advantage_std', 0):.3f} "
                     f"terminal={metrics.get('terminal_reward_mean', 0):.3f} "
                     f"adj_terminal={metrics.get('adjusted_terminal_reward_mean', 0):.3f} "
                     f"dense={metrics.get('dense_reward_mean', 0):.3f} "
                     f"activity={metrics.get('activity_reward_mean', 0):.3f} "
+                    f"event_shape={metrics.get('event_shape_reward_mean', 0):.3f} "
+                    f"fleet_hit={metrics.get('fleet_hit_rate_mean', 0):.3f} "
+                    f"fleet_capture={metrics.get('fleet_capture_rate_mean', 0):.3f} "
+                    f"fleet_lost={metrics.get('fleet_lost_rate_mean', 0):.3f} "
+                    f"fleet_pending={metrics.get('fleet_pending_rate_mean', 0):.3f} "
                     f"mix={metrics.get('mission_mix_reward_mean', 0):.3f} "
                     f"support={metrics.get('mission_support_ratio_mean', 0):.3f} "
                     f"attack={metrics.get('mission_attack_ratio_mean', 0):.3f} "
@@ -1340,10 +1466,9 @@ def main() -> None:
                     "policy_version": policy_version,
                     "config_patch": config_patch,
                 }
-                try:
-                    model_update_queue.put_nowait(new_state)
-                except Exception:
-                    pass
+                pushed, dropped_updates = _put_latest_model_update(model_update_queue, new_state)
+                if dropped_updates or not pushed:
+                    _log(log_path, f"MODEL_UPDATE_QUEUE pushed={int(pushed)} dropped_stale={dropped_updates}")
                 if config_patch:
                     control_msg = {"config_patch": dict(config_patch)}
                     for queue in control_queues.values():
@@ -1376,6 +1501,17 @@ def main() -> None:
                             "train_passivity_penalty_coef": float(cfg.get("train_passivity_penalty_coef", 0.0)),
                             "train_action_bonus_coef": float(cfg.get("train_action_bonus_coef", 0.0)),
                             "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
+                            "train_event_hit_bonus": float(cfg.get("train_event_hit_bonus", 0.0)),
+                            "train_event_enemy_hit_bonus": float(cfg.get("train_event_enemy_hit_bonus", 0.0)),
+                            "train_event_capture_bonus": float(cfg.get("train_event_capture_bonus", 0.0)),
+                            "train_event_support_bonus": float(cfg.get("train_event_support_bonus", 0.0)),
+                            "train_event_lost_penalty": float(cfg.get("train_event_lost_penalty", 0.0)),
+                            "train_event_pending_penalty": float(cfg.get("train_event_pending_penalty", 0.0)),
+                            "train_event_min_shape_clip": float(cfg.get("train_event_min_shape_clip", 0.0)),
+                            "train_event_max_flat_action_bonus": float(cfg.get("train_event_max_flat_action_bonus", 0.0)),
+                            "train_event_max_ship_volume_bonus": float(cfg.get("train_event_max_ship_volume_bonus", 0.0)),
+                            "train_event_max_activity_action_bonus": float(cfg.get("train_event_max_activity_action_bonus", 0.0)),
+                            "train_event_max_activity_ships_bonus": float(cfg.get("train_event_max_activity_ships_bonus", 0.0)),
                             "min_expand_attack_ships": int(cfg.get("min_expand_attack_ships", 2)),
                             "send_ratios": list(cfg.get("send_ratios", [])),
                             "behavior_supervisor_enabled": bool(cfg.get("behavior_supervisor_enabled", True)),
@@ -1392,6 +1528,8 @@ def main() -> None:
             if total_episodes - last_eval_episode >= cfg["eval_every"]:
                 last_eval_episode = total_episodes
                 current_lr = float(optimizer.param_groups[0]["lr"])
+                eval_round = max(0, int(total_episodes // max(1, int(cfg["eval_every"]))) - 1)
+                eval_seed_start = int(cfg["eval_seed_start"]) + eval_round * int(cfg.get("eval_seed_stride", 1000000))
                 eval_pool = list(cfg.get("eval_opponents", []))
                 if not use_simple_2p_only:
                     eval_pool += _checkpoint_opponent_paths(
@@ -1413,7 +1551,7 @@ def main() -> None:
                 eval_result = _evaluate(
                     model, cfg, device,
                     episodes=cfg["eval_episodes"],
-                    seed_start=int(cfg["eval_seed_start"]),
+                    seed_start=eval_seed_start,
                     pool=eval_pool,
                     n_players=n_players,
                     eval_history_path=eval_history_path,
@@ -1458,7 +1596,7 @@ def main() -> None:
                 best_eval = _evaluate(
                     best_model, cfg, device,
                     episodes=cfg["eval_episodes"],
-                    seed_start=int(cfg["eval_seed_start"]),
+                    seed_start=eval_seed_start,
                     pool=eval_pool,
                     n_players=n_players,
                     eval_history_path=eval_history_path,
@@ -1513,6 +1651,17 @@ def main() -> None:
                             "train_passivity_penalty_coef": float(cfg.get("train_passivity_penalty_coef", 0.0)),
                             "train_action_bonus_coef": float(cfg.get("train_action_bonus_coef", 0.0)),
                             "train_ships_sent_bonus_coef": float(cfg.get("train_ships_sent_bonus_coef", 0.0)),
+                            "train_event_hit_bonus": float(cfg.get("train_event_hit_bonus", 0.0)),
+                            "train_event_enemy_hit_bonus": float(cfg.get("train_event_enemy_hit_bonus", 0.0)),
+                            "train_event_capture_bonus": float(cfg.get("train_event_capture_bonus", 0.0)),
+                            "train_event_support_bonus": float(cfg.get("train_event_support_bonus", 0.0)),
+                            "train_event_lost_penalty": float(cfg.get("train_event_lost_penalty", 0.0)),
+                            "train_event_pending_penalty": float(cfg.get("train_event_pending_penalty", 0.0)),
+                            "train_event_min_shape_clip": float(cfg.get("train_event_min_shape_clip", 0.0)),
+                            "train_event_max_flat_action_bonus": float(cfg.get("train_event_max_flat_action_bonus", 0.0)),
+                            "train_event_max_ship_volume_bonus": float(cfg.get("train_event_max_ship_volume_bonus", 0.0)),
+                            "train_event_max_activity_action_bonus": float(cfg.get("train_event_max_activity_action_bonus", 0.0)),
+                            "train_event_max_activity_ships_bonus": float(cfg.get("train_event_max_activity_ships_bonus", 0.0)),
                             "min_expand_attack_ships": int(cfg.get("min_expand_attack_ships", 2)),
                             "send_ratios": list(cfg.get("send_ratios", [])),
                             "eval_stabilizer_enabled": bool(cfg.get("eval_stabilizer_enabled", True)),
@@ -1588,10 +1737,12 @@ def main() -> None:
                         }
                         save_checkpoint(latest_path, _model_state_np(model), rollback_metadata)
                         save_checkpoint(checkpoint_path, _model_state_np(model), rollback_metadata)
-                        try:
-                            model_update_queue.put_nowait({"state": _model_state_np(model), "policy_version": policy_version})
-                        except Exception:
-                            pass
+                        pushed, dropped_updates = _put_latest_model_update(
+                            model_update_queue,
+                            {"state": _model_state_np(model), "policy_version": policy_version},
+                        )
+                        if dropped_updates or not pushed:
+                            _log(log_path, f"MODEL_UPDATE_QUEUE pushed={int(pushed)} dropped_stale={dropped_updates}")
                         _log(
                             log_path,
                             f"ROLLBACK failed={failed_path} regressions={consecutive_regressions} "
@@ -1641,14 +1792,16 @@ def main() -> None:
                             queue.put_nowait(control_msg)
                         except Exception:
                             pass
-                    try:
-                        model_update_queue.put_nowait({
+                    pushed, dropped_updates = _put_latest_model_update(
+                        model_update_queue,
+                        {
                             "state": _model_state_np(model),
                             "policy_version": policy_version,
                             "config_patch": dict(stabilizer_patch),
-                        })
-                    except Exception:
-                        pass
+                        },
+                    )
+                    if dropped_updates or not pushed:
+                        _log(log_path, f"MODEL_UPDATE_QUEUE pushed={int(pushed)} dropped_stale={dropped_updates}")
                     save_json(run_dir / "config.json", cfg)
                 max_collapse_recoveries = int(cfg.get("collapse_max_recoveries", 0))
                 if int(cfg.get("collapse_stop_evals", 0)) > 0 and collapse_eval_count >= int(cfg.get("collapse_stop_evals", 0)):
@@ -1679,10 +1832,12 @@ def main() -> None:
                     eval_history.clear()
                     collapse_eval_count = 0
                     consecutive_regressions = 0
-                    try:
-                        model_update_queue.put_nowait({"state": _model_state_np(model), "policy_version": policy_version})
-                    except Exception:
-                        pass
+                    pushed, dropped_updates = _put_latest_model_update(
+                        model_update_queue,
+                        {"state": _model_state_np(model), "policy_version": policy_version},
+                    )
+                    if dropped_updates or not pushed:
+                        _log(log_path, f"MODEL_UPDATE_QUEUE pushed={int(pushed)} dropped_stale={dropped_updates}")
                     _log(
                         log_path,
                         f"COLLAPSE_RECOVERY count={collapse_recovery_count}/{max_collapse_recoveries or 'inf'} "

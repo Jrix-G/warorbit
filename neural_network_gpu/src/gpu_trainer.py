@@ -80,6 +80,28 @@ def train_on_episodes(
     minibatch_size = max(1, int(config.get("ppo_minibatch_size", 512)))
     teacher_kl_coef = max(0.0, float(config.get("teacher_kl_coef", 0.0))) if teacher_model is not None else 0.0
     advantage_eps = 1e-6
+    return_gamma = max(0.0, min(1.0, float(config.get("train_return_gamma", config.get("gamma", 0.997)))))
+    return_clip = max(0.0, float(config.get("train_return_clip", 2.0)))
+    event_shaping_enabled = bool(config.get("train_event_shaping_enabled", True))
+    effective_activity_action_bonus = float(config.get("train_action_bonus_coef", 0.08))
+    effective_activity_ship_bonus = float(config.get("train_ships_sent_bonus_coef", 0.04))
+    if event_shaping_enabled:
+        effective_activity_action_bonus = min(
+            effective_activity_action_bonus,
+            max(0.0, float(config.get("train_event_max_activity_action_bonus", 0.03))),
+        )
+        effective_activity_ship_bonus = min(
+            effective_activity_ship_bonus,
+            max(0.0, float(config.get("train_event_max_activity_ships_bonus", 0.0))),
+        )
+    activity_config = config
+    if (
+        effective_activity_action_bonus != float(config.get("train_action_bonus_coef", 0.08))
+        or effective_activity_ship_bonus != float(config.get("train_ships_sent_bonus_coef", 0.04))
+    ):
+        activity_config = dict(config)
+        activity_config["train_action_bonus_coef"] = effective_activity_action_bonus
+        activity_config["train_ships_sent_bonus_coef"] = effective_activity_ship_bonus
 
     # Build per-step dataset across all episodes
     dataset: List[Dict[str, Any]] = []
@@ -92,6 +114,18 @@ def train_on_episodes(
     mission_expand_ratios: List[float] = []
     mission_attack_ratios: List[float] = []
     mission_support_ratios: List[float] = []
+    event_shape_rewards: List[float] = []
+    fleet_launch_mapped_rates: List[float] = []
+    fleet_outcome_known_rates: List[float] = []
+    fleet_hit_rates: List[float] = []
+    fleet_enemy_hit_rates: List[float] = []
+    fleet_neutral_hit_rates: List[float] = []
+    fleet_support_rates: List[float] = []
+    fleet_capture_rates: List[float] = []
+    fleet_lost_rates: List[float] = []
+    fleet_lost_sun_rates: List[float] = []
+    fleet_lost_oob_rates: List[float] = []
+    fleet_pending_rates: List[float] = []
     passivity_penalties: List[float] = []
     passive_win_flags: List[float] = []
     do_nothing_rates: List[float] = []
@@ -123,7 +157,7 @@ def train_on_episodes(
         if not trajectory:
             continue
         action_metrics = ep.get("action_metrics", {})
-        activity_reward = _activity_shaping_reward(action_metrics, config)
+        activity_reward = _activity_shaping_reward(action_metrics, activity_config)
         mission_mix_reward, mission_mix_stats = _mission_mix_shaping_reward(action_metrics, config)
         do_nothing_rate = max(0.0, min(1.0, float(action_metrics.get("do_nothing_rate", 1.0))))
         legal_noop_rate = max(0.0, min(1.0, float(action_metrics.get("legal_noop_rate", do_nothing_rate))))
@@ -169,6 +203,17 @@ def train_on_episodes(
         mission_expand_ratios.append(float(mission_mix_stats["mission_expand_ratio"]))
         mission_attack_ratios.append(float(mission_mix_stats["mission_attack_ratio"]))
         mission_support_ratios.append(float(mission_mix_stats["mission_support_ratio"]))
+        fleet_launch_mapped_rates.append(float(action_metrics.get("fleet_launch_mapped_rate", 0.0)))
+        fleet_outcome_known_rates.append(float(action_metrics.get("fleet_outcome_known_rate", 0.0)))
+        fleet_hit_rates.append(float(action_metrics.get("fleet_hit_rate", 0.0)))
+        fleet_enemy_hit_rates.append(float(action_metrics.get("fleet_enemy_hit_rate", 0.0)))
+        fleet_neutral_hit_rates.append(float(action_metrics.get("fleet_neutral_hit_rate", 0.0)))
+        fleet_support_rates.append(float(action_metrics.get("fleet_support_rate", 0.0)))
+        fleet_capture_rates.append(float(action_metrics.get("fleet_capture_rate", 0.0)))
+        fleet_lost_rates.append(float(action_metrics.get("fleet_lost_rate", 0.0)))
+        fleet_lost_sun_rates.append(float(action_metrics.get("fleet_lost_sun_rate", 0.0)))
+        fleet_lost_oob_rates.append(float(action_metrics.get("fleet_lost_oob_rate", 0.0)))
+        fleet_pending_rates.append(float(action_metrics.get("fleet_pending_rate", 0.0)))
         passivity_penalties.append(float(passivity_penalty))
         passive_win_flags.append(1.0 if passive_win else 0.0)
         do_nothing_rates.append(float(do_nothing_rate))
@@ -189,21 +234,35 @@ def train_on_episodes(
         episode_ship_p90s.append(float(step_summary.get("ships_sent_p90", 0.0)))
         episode_ship_maxes.append(float(step_summary.get("ships_sent_max", 0.0)))
 
-        # ─── Per-step shaping (credit assignment) ─────────────────────────────
-        # Reward decomposition: each step receives
-        #   r_step = (adjusted_terminal + 0.15*dense + 0.05*activity + mix) / T
-        #            + per_step_shape - passivity_penalty/T
-        # where per_step_shape penalises ONLY avoidable no-ops and rewards real
-        # actions. Forced no-ops (no real candidate) contribute 0. The episode-
-        # level passivity_penalty is gated off by default; the entire signal
-        # against avoidable inactivity comes from per_step_shape.
+        # Per-step shaping is kept local, but the win/loss signal is no longer
+        # divided by trajectory length. Each decision trains against:
+        #   target_t = episode_outcome + discounted_future_step_shaping_t
+        # This keeps terminal outcome on the same scale for long games while
+        # still differentiating avoidable no-ops and useful real actions.
         per_step_legal_noop_coef = float(config.get("train_per_step_legal_noop_penalty", 0.020))
         per_step_real_action_coef = float(config.get("train_per_step_real_action_bonus", 0.008))
         per_step_ship_volume_coef = float(config.get("train_per_step_ship_volume_bonus", 0.0))
+        if event_shaping_enabled:
+            per_step_real_action_coef = min(
+                per_step_real_action_coef,
+                max(0.0, float(config.get("train_event_max_flat_action_bonus", 0.002))),
+            )
+            per_step_ship_volume_coef = min(
+                per_step_ship_volume_coef,
+                max(0.0, float(config.get("train_event_max_ship_volume_bonus", 0.0))),
+            )
+        event_hit_bonus = max(0.0, float(config.get("train_event_hit_bonus", 0.035)))
+        event_enemy_hit_bonus = max(0.0, float(config.get("train_event_enemy_hit_bonus", event_hit_bonus)))
+        event_capture_bonus = max(0.0, float(config.get("train_event_capture_bonus", 0.10)))
+        event_support_bonus = max(0.0, float(config.get("train_event_support_bonus", 0.015)))
+        event_lost_penalty = max(0.0, float(config.get("train_event_lost_penalty", 0.045)))
+        event_pending_penalty = max(0.0, float(config.get("train_event_pending_penalty", 0.0)))
         per_step_ship_volume_target = max(1.0, float(config.get("train_per_step_ship_volume_target", 8.0)))
         per_step_shape_clip = float(config.get("train_per_step_shape_clip", 0.04))
-        episodic_share = reward / float(len(valid_steps))
+        if event_shaping_enabled:
+            per_step_shape_clip = max(per_step_shape_clip, float(config.get("train_event_min_shape_clip", 0.12)))
         episode_per_step_shape_total = 0.0
+        episode_rows: List[Dict[str, Any]] = []
         for step in valid_steps:
             action_slot = int(step.get("action_slot") or 0)
             mission = str(step.get("mission") or "do_nothing")
@@ -214,10 +273,27 @@ def train_on_episodes(
             if is_noop_step and had_real_step:
                 per_step_shape = -per_step_legal_noop_coef  # avoidable no-op
             elif not is_noop_step:
-                # Flat action bonus + volume bonus proportional to ships sent.
-                # Volume bonus: linear up to target, capped at 1x coef beyond target.
+                # The flat/volume terms are capped when event shaping is enabled:
+                # successful or failed fleet outcomes carry the real signal.
                 volume_bonus = per_step_ship_volume_coef * min(1.0, float(ships) / per_step_ship_volume_target)
                 per_step_shape = per_step_real_action_coef + volume_bonus
+                event_shape = 0.0
+                if event_shaping_enabled:
+                    if bool(step.get("fleet_hit", False)):
+                        if bool(step.get("fleet_captured", False)):
+                            event_shape += event_capture_bonus
+                        elif bool(step.get("fleet_supported", False)):
+                            event_shape += event_support_bonus
+                        elif bool(step.get("fleet_enemy_hit", False)):
+                            event_shape += event_enemy_hit_bonus
+                        else:
+                            event_shape += event_hit_bonus
+                    if bool(step.get("fleet_lost", False)):
+                        event_shape -= event_lost_penalty
+                    if bool(step.get("fleet_pending", False)):
+                        event_shape -= event_pending_penalty
+                per_step_shape += event_shape
+                event_shape_rewards.append(float(event_shape))
                 all_real_ships_sent.append(float(ships))
                 all_real_ships_by_slot.setdefault(action_slot, []).append(float(ships))
                 all_real_ships_by_mission.setdefault(mission, []).append(float(ships))
@@ -225,10 +301,9 @@ def train_on_episodes(
                 per_step_shape = 0.0  # forced no-op → no signal
             if per_step_shape_clip > 0.0:
                 per_step_shape = max(-per_step_shape_clip, min(per_step_shape_clip, per_step_shape))
-            step_reward = episodic_share + per_step_shape
             episode_per_step_shape_total += per_step_shape
 
-            dataset.append({
+            episode_rows.append({
                 "state": step["state"],
                 "candidates": step["candidates"],
                 "action_idx": int(step["action_idx"]),
@@ -237,7 +312,9 @@ def train_on_episodes(
                 "temperature": float(step.get("temperature") or 0.0),
                 "policy_version": int(step.get("policy_version") or 0),
                 "action_slot": action_slot,
-                "reward": float(step_reward),
+                "reward": 0.0,
+                "episode_reward": float(reward),
+                "step_shape_reward": float(per_step_shape),
                 "step_weight": step_weight,
             })
             mission = str(step.get("mission") or "do_nothing")
@@ -260,13 +337,33 @@ def train_on_episodes(
                 inference_real_noop_probs_before_cap.setdefault(action_slot, []).append(float(noop_before))
             if has_real_candidate and noop_after is not None:
                 inference_real_noop_probs_after_cap.setdefault(action_slot, []).append(float(noop_after))
+        future_shape_return = 0.0
+        for row in reversed(episode_rows):
+            future_shape_return = float(row["step_shape_reward"]) + return_gamma * future_shape_return
+            return_target = float(row["episode_reward"]) + future_shape_return
+            if return_clip > 0.0:
+                return_target = max(-return_clip, min(return_clip, return_target))
+            row["reward"] = float(return_target)
+        dataset.extend(episode_rows)
         per_step_shape_sums.append(float(episode_per_step_shape_total))
 
     if not dataset:
         return baseline, {"skipped_missing_old_log_prob": float(skipped_missing_old_log_prob)}
 
     rewards_arr = np.array([d["reward"] for d in dataset], dtype=np.float32)
-    advantages_arr = rewards_arr - float(baseline)
+    value_predictions: List[float] = []
+    value_batch_size = max(1, int(config.get("value_bootstrap_batch_size", 4096)))
+    model.eval()
+    with torch.no_grad():
+        for start in range(0, len(dataset), value_batch_size):
+            batch = dataset[start:start + value_batch_size]
+            states = np.stack([d["state"] for d in batch]).astype(np.float32, copy=False)
+            state_t = torch.as_tensor(states, dtype=torch.float32, device=device)
+            values = model(state_t)["value"].detach().cpu().numpy().astype(np.float32)
+            value_predictions.extend(values.tolist())
+    value_predictions_arr = np.asarray(value_predictions, dtype=np.float32)
+    advantages_arr = rewards_arr - value_predictions_arr
+    raw_advantages_arr = advantages_arr.copy()
     adv_std = float(advantages_arr.std()) + advantage_eps
     advantages_arr = (advantages_arr - advantages_arr.mean()) / adv_std
 
@@ -473,14 +570,36 @@ def train_on_episodes(
         "mean_reward": float(np.mean(rewards)) if rewards else 0.0,
         "median_reward": float(np.median(rewards)) if rewards else 0.0,
         "reward_std": float(np.std(rewards)) if rewards else 0.0,
+        "return_target_mean": float(np.mean(rewards_arr)) if rewards_arr.size else 0.0,
+        "return_target_std": float(np.std(rewards_arr)) if rewards_arr.size else 0.0,
+        "value_prediction_mean": float(np.mean(value_predictions_arr)) if value_predictions_arr.size else 0.0,
+        "raw_advantage_mean": float(np.mean(raw_advantages_arr)) if raw_advantages_arr.size else 0.0,
+        "raw_advantage_std": float(np.std(raw_advantages_arr)) if raw_advantages_arr.size else 0.0,
+        "train_return_gamma": float(return_gamma),
+        "train_return_clip": float(return_clip),
         "terminal_reward_mean": float(np.mean(terminal_rewards)) if terminal_rewards else 0.0,
         "adjusted_terminal_reward_mean": float(np.mean(adjusted_terminal_rewards)) if adjusted_terminal_rewards else 0.0,
         "dense_reward_mean": float(np.mean(dense_rewards)) if dense_rewards else 0.0,
         "activity_reward_mean": float(np.mean(activity_rewards)) if activity_rewards else 0.0,
+        "effective_activity_action_bonus": float(effective_activity_action_bonus),
+        "effective_activity_ship_bonus": float(effective_activity_ship_bonus),
         "mission_mix_reward_mean": float(np.mean(mission_mix_rewards)) if mission_mix_rewards else 0.0,
         "mission_expand_ratio_mean": float(np.mean(mission_expand_ratios)) if mission_expand_ratios else 0.0,
         "mission_attack_ratio_mean": float(np.mean(mission_attack_ratios)) if mission_attack_ratios else 0.0,
         "mission_support_ratio_mean": float(np.mean(mission_support_ratios)) if mission_support_ratios else 0.0,
+        "event_shaping_enabled": float(1.0 if event_shaping_enabled else 0.0),
+        "event_shape_reward_mean": float(np.mean(event_shape_rewards)) if event_shape_rewards else 0.0,
+        "fleet_launch_mapped_rate_mean": float(np.mean(fleet_launch_mapped_rates)) if fleet_launch_mapped_rates else 0.0,
+        "fleet_outcome_known_rate_mean": float(np.mean(fleet_outcome_known_rates)) if fleet_outcome_known_rates else 0.0,
+        "fleet_hit_rate_mean": float(np.mean(fleet_hit_rates)) if fleet_hit_rates else 0.0,
+        "fleet_enemy_hit_rate_mean": float(np.mean(fleet_enemy_hit_rates)) if fleet_enemy_hit_rates else 0.0,
+        "fleet_neutral_hit_rate_mean": float(np.mean(fleet_neutral_hit_rates)) if fleet_neutral_hit_rates else 0.0,
+        "fleet_support_rate_mean": float(np.mean(fleet_support_rates)) if fleet_support_rates else 0.0,
+        "fleet_capture_rate_mean": float(np.mean(fleet_capture_rates)) if fleet_capture_rates else 0.0,
+        "fleet_lost_rate_mean": float(np.mean(fleet_lost_rates)) if fleet_lost_rates else 0.0,
+        "fleet_lost_sun_rate_mean": float(np.mean(fleet_lost_sun_rates)) if fleet_lost_sun_rates else 0.0,
+        "fleet_lost_oob_rate_mean": float(np.mean(fleet_lost_oob_rates)) if fleet_lost_oob_rates else 0.0,
+        "fleet_pending_rate_mean": float(np.mean(fleet_pending_rates)) if fleet_pending_rates else 0.0,
         "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,
         "passive_win_rate": float(np.mean(passive_win_flags)) if passive_win_flags else 0.0,
         "do_nothing_rate_mean": float(np.mean(do_nothing_rates)) if do_nothing_rates else 1.0,

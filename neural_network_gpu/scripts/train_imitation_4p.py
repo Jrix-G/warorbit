@@ -106,8 +106,19 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
     shards = sorted(dataset_dir.glob("shard_*.npz"))
     if not shards:
         raise FileNotFoundError(f"No shard_*.npz found in {dataset_dir}")
+    split_rng = random.Random(int(args.seed) + 101)
+    shuffled_shards = list(shards)
+    split_rng.shuffle(shuffled_shards)
+    if len(shuffled_shards) >= 2:
+        val_count = max(1, int(round(len(shuffled_shards) * float(args.val_shard_ratio))))
+        val_count = min(len(shuffled_shards) - 1, val_count)
+        val_shards = sorted(shuffled_shards[:val_count])
+        train_shards = sorted(shuffled_shards[val_count:])
+    else:
+        val_shards = list(shards)
+        train_shards = list(shards)
 
-    first = _load_npz(shards[0])
+    first = _load_npz(train_shards[0])
     input_dim = int(first["states"].shape[1])
     checkpoint_state = _load_checkpoint(Path(args.init_checkpoint)) if args.init_checkpoint else {}
     hidden_dim = int(args.hidden_dim or _infer_hidden_dim(checkpoint_state))
@@ -117,7 +128,7 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
     device = torch.device(args.device if args.device else ("cuda" if torch.cuda.is_available() else "cpu"))
     model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=float(args.lr), weight_decay=float(args.weight_decay))
-    val = _sample_validation(shards, int(args.val_samples), int(args.seed) + 11)
+    val = _sample_validation(val_shards, int(args.val_samples), int(args.seed) + 11)
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -126,9 +137,9 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
     global_step = 0
     for epoch in range(1, int(args.epochs) + 1):
         model.train()
-        random.shuffle(shards)
+        random.shuffle(train_shards)
         epoch_losses: list[float] = []
-        for shard in shards:
+        for shard in train_shards:
             data = _load_npz(shard)
             for idx in _batch_indices(int(data["labels"].shape[0]), int(args.batch_size), shuffle=True):
                 states = torch.from_numpy(data["states"][idx]).to(device)
@@ -162,6 +173,8 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
         "dataset_dir": str(dataset_dir),
         "output_dir": str(out_dir),
         "shards": len(shards),
+        "train_shards": [str(path) for path in train_shards],
+        "val_shards": [str(path) for path in val_shards],
         "input_dim": input_dim,
         "hidden_dim": hidden_dim,
         "device": str(device),
@@ -184,6 +197,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--val-samples", type=int, default=8192)
+    parser.add_argument("--val-shard-ratio", type=float, default=0.20)
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--grad-clip", type=float, default=1.0)

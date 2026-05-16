@@ -1,0 +1,1 @@
+gen1: AGG W=12/128 WR=0.094 CI=[0.054,0.157] -> REGRESSION — stop, diagnose

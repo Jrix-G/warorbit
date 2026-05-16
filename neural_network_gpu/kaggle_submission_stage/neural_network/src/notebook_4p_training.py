@@ -218,7 +218,7 @@ def _candidate_move(game: Dict[str, Any], action: tuple[int, int, int]) -> list[
     tgt = next((p for p in game.get("planets", []) if int(p["id"]) == int(tgt_id)), None)
     if src is None or tgt is None:
         return []
-    angle = safe_plan_shot(src, tgt, game)
+    angle = safe_plan_shot(src, tgt, game, ships=int(ships))
     if angle is None:
         return []
     return [[int(src_id), float(angle), int(ships)]]

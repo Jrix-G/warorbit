@@ -91,8 +91,6 @@ def build_action_candidates(
         for tgt in planets:
             if tgt["id"] == src["id"]:
                 continue
-            if safe_plan_shot(src, tgt, game) is None:
-                continue
             distance = float(np.hypot(float(src.get("x", 0.0)) - float(tgt.get("x", 0.0)), float(src.get("y", 0.0)) - float(tgt.get("y", 0.0))))
             mission = "do_nothing"
             if tgt["owner"] == -1:
@@ -106,6 +104,8 @@ def build_action_candidates(
             for ratio in ratios:
                 amount = max(1, min(int(float(src.get("ships", 0.0)) * ratio), int(float(src.get("ships", 0.0))) - 1))
                 if mission in {"expand", "attack"} and amount < int(min_expand_attack_ships):
+                    continue
+                if safe_plan_shot(src, tgt, game, ships=amount) is None:
                     continue
                 key = (int(src["id"]), int(tgt["id"]), int(amount))
                 if key in seen:
@@ -152,7 +152,7 @@ def is_valid_action(candidate: ActionCandidate, game: Dict[str, Any], check_traj
         return False
     if candidate.source_id == candidate.target_id:
         return False
-    return (not check_trajectory) or safe_plan_shot(src, tgt, game) is not None
+    return (not check_trajectory) or safe_plan_shot(src, tgt, game, ships=int(candidate.amount)) is not None
 
 
 def candidate_valid_mask(
