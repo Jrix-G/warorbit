@@ -7,6 +7,11 @@ node_modules/
 
 checkpoints/
 *.npy
+analysis/*.npz
+analysis/**/*.npz
+analysis/*.pkl
+analysis/**/*.pkl
+.tmp/
 *_b64.txt
 evaluator_b64.txt
 bot_v6_trained.py
