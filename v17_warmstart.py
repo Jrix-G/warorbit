@@ -147,14 +147,21 @@ def train(PF, GF, LAB, VAL, epochs, d, lr, device):
     bs = 256
     for ep in range(epochs):
         np.random.shuffle(idx)
-        tot_p = tot_v = correct = counted = 0.0
+        tot_p = tot_v = correct = counted = atk_correct = atk_counted = 0.0
         for s in range(0, n, bs):
             b = idx[s:s + bs]
             bi = torch.tensor(b, device=device)
             logits, value = net(pf[bi], gf[bi], mask[bi])
             B, N, A = logits.shape
-            pl = F.cross_entropy(logits.reshape(B * N, A),
-                                 lab[bi].reshape(B * N), ignore_index=-100)
+            lab_flat = lab[bi].reshape(B * N)
+            logits_flat = logits.reshape(B * N, A)
+            # upweight attack moves 8x to counter pass-class dominance
+            ce = F.cross_entropy(logits_flat, lab_flat,
+                                 ignore_index=-100, reduction='none')
+            owned_mask = lab_flat != -100
+            w = torch.ones(B * N, device=device)
+            w[lab_flat > 0] = 8.0
+            pl = (ce * w)[owned_mask].mean()
             vl = F.mse_loss(value, val[bi])
             loss = pl + vl
             opt.zero_grad()
@@ -163,13 +170,17 @@ def train(PF, GF, LAB, VAL, epochs, d, lr, device):
             tot_p += pl.item() * len(b)
             tot_v += vl.item() * len(b)
             with torch.no_grad():
-                lb = lab[bi].reshape(B * N)
-                pr = logits.reshape(B * N, A).argmax(-1)
+                lb = lab_flat
+                pr = logits_flat.argmax(-1)
                 m = lb != -100
                 correct += (pr[m] == lb[m]).sum().item()
                 counted += m.sum().item()
+                atk = m & (lb > 0)
+                atk_correct += (pr[atk] == lb[atk]).sum().item()
+                atk_counted += atk.sum().item()
         print(f"[warmstart] epoch {ep+1}/{epochs}: policy_ce={tot_p/n:.4f} "
-              f"value_mse={tot_v/n:.4f} move_acc={correct/counted:.3f}")
+              f"value_mse={tot_v/n:.4f} move_acc={correct/counted:.3f} "
+              f"attack_acc={atk_correct/max(atk_counted,1):.3f}")
     return net
 
 

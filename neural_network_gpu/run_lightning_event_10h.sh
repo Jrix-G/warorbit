@@ -47,6 +47,13 @@ SOURCE_LATEST="${SOURCE_RUN_DIR}/latest.npz"
 CURRENT_RUN_DIR="runs/${RUN_NAME}"
 CURRENT_LATEST="${CURRENT_RUN_DIR}/latest.npz"
 
+# Keep long runs training-bound, not eval-bound. Full 4-opponent eval is too
+# expensive because matches are simulated sequentially on CPU.
+WORKERS="${WORKERS:-16}"
+EVAL_EVERY="${EVAL_EVERY:-2048}"
+EVAL_EPISODES="${EVAL_EPISODES:-16}"
+EVAL_OPPONENTS="${EVAL_OPPONENTS:-random,greedy}"
+
 RESUME_ARGS=()
 TEACHER_ARGS=(--teacher-kl-coef 0.010)
 
@@ -72,10 +79,10 @@ python "$RUNNER_PATH" \
   --run-name "$RUN_NAME" \
   --device cuda \
   --duration-minutes 600 \
-  --workers 8 \
+  --workers "$WORKERS" \
   --train-every 32 \
-  --eval-every 512 \
-  --eval-episodes 32 \
+  --eval-every "$EVAL_EVERY" \
+  --eval-episodes "$EVAL_EPISODES" \
   --batch-size 48 \
   --batch-timeout 0.010 \
   --ppo-minibatch-size 128 \
@@ -85,7 +92,7 @@ python "$RUNNER_PATH" \
   --ppo-epochs 2 \
   --n-players 2 \
   --simple-opponents "random,random,greedy,greedy,greedy,starter,starter,distance,distance" \
-  --eval-opponents "random,greedy,starter,distance" \
+  --eval-opponents "$EVAL_OPPONENTS" \
   --auto-tune-training \
   --policy-prior-strength 0.12 \
   --train-return-gamma 0.997 \
