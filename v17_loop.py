@@ -55,24 +55,34 @@ def main():
     ap.add_argument("--buffer", type=int, default=160000, help="max samples")
     ap.add_argument("--mode", type=int, default=2, choices=(2, 4),
                     help="2 = 2p only (Phase 1/2), 4 = include 4p")
+    ap.add_argument("--d", type=int, default=64, help="network width")
+    ap.add_argument("--fresh", action="store_true",
+                    help="ignore warmstart/checkpoint, init from scratch")
+    ap.add_argument("--vs-v15-frac", type=float, default=0.4,
+                    help="fraction of opponent slots replaced by V15 (0=pure self-play)")
     args = ap.parse_args()
     os.makedirs("analysis", exist_ok=True)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
 
-    if os.path.exists(CKPT):
+    if not args.fresh and os.path.exists(CKPT):
         c = torch.load(CKPT, map_location="cpu")
         d = c["d"]
         net = V17Net(d=d)
         net.load_state_dict(c["state_dict"])
         start = c["iter"] + 1
         print(f"[loop] resumed at iteration {start}")
-    else:
+    elif not args.fresh and os.path.exists(WARMSTART):
         w = torch.load(WARMSTART, map_location="cpu")
         d = w["d"]
         net = V17Net(d=d)
         net.load_state_dict(w["state_dict"])
         start = 1
         print(f"[loop] warm-started from {WARMSTART}")
+    else:
+        d = args.d
+        net = V17Net(d=d)
+        start = 1
+        print(f"[loop] fresh random init (d={d})")
 
     buffer: list = []
     for it in range(start, args.iterations + 1):
@@ -81,13 +91,16 @@ def main():
         tasks = []
         if args.mode == 2:
             for i in range(args.games):
-                tasks.append((sd, d, 2, 30000 + it * 10000 + i, args.n_sims))
+                tasks.append((sd, d, 2, 30000 + it * 10000 + i, args.n_sims,
+                              args.vs_v15_frac))
         else:
             half = args.games // 2
             for i in range(half):
-                tasks.append((sd, d, 2, 30000 + it * 10000 + i, args.n_sims))
+                tasks.append((sd, d, 2, 30000 + it * 10000 + i, args.n_sims,
+                              args.vs_v15_frac))
             for i in range(args.games - half):
-                tasks.append((sd, d, 4, 60000 + it * 10000 + i, args.n_sims))
+                tasks.append((sd, d, 4, 60000 + it * 10000 + i, args.n_sims,
+                              args.vs_v15_frac))
 
         with ProcessPoolExecutor(max_workers=args.workers) as pool:
             results = list(pool.map(play_game, tasks))

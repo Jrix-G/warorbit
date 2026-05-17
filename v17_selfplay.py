@@ -19,6 +19,7 @@ import torch
 
 import v14_core
 import v15_fast_sim as fsim
+import v15_search
 from local_simulator.official_fast import OfficialFastGame
 import v17_encode as enc
 from v17_mcts import mcts_move
@@ -46,12 +47,26 @@ def _pad(pf, pol):
 
 
 def play_game(args):
-    """Play one self-play game; return a list of training samples."""
-    state_dict, d, n_players, seed, n_sims = args
+    """Play one self-play game; return a list of training samples.
+
+    If vs_v15_frac > 0, some opponents are replaced by V15 (RCC).
+    Only V17's (state, policy, outcome) samples are collected.
+    """
+    state_dict, d, n_players, seed, n_sims, vs_v15_frac = args
     net = V17Net(d=d)
     net.load_state_dict(state_dict)
     net.eval()
     rng = np.random.default_rng(seed)
+
+    # decide which players use V15 as opponent
+    v17_players = list(range(n_players))
+    v15_players = []
+    if vs_v15_frac > 0 and n_players >= 2:
+        # always keep at least one V17 player; randomise opponents
+        for p in range(1, n_players):
+            if rng.random() < vs_v15_frac:
+                v15_players.append(p)
+                v17_players.remove(p)
 
     g = OfficialFastGame(n_players, seed=seed, episode_steps=EPISODE,
                          use_c_accel=False)
@@ -64,14 +79,21 @@ def play_game(args):
     while not fs.done:
         temp = 1.0 if t < TEMP_MOVES else 0.0
         moves = []
+        step_samples = []
         for p in range(n_players):
-            gf_pf = enc.encode(fs, p)
-            action, pol = mcts_move(net, fs, p, n_sims=n_sims, rng=rng,
-                                    temperature=temp)
-            moves.append(action)
-            pfp, polp, mask = _pad(gf_pf[0], pol)
-            raw.append([pfp, gf_pf[1], polp, mask, p])
+            if p in v15_players:
+                o = v15_search.state_to_obs(fs, p)
+                action = v15_search.search(o, None)
+                moves.append(action if isinstance(action, list) else [])
+            else:
+                pf, gf = enc.encode(fs, p)
+                action, pol = mcts_move(net, fs, p, n_sims=n_sims, rng=rng,
+                                        temperature=temp)
+                moves.append(action)
+                pfp, polp, mask = _pad(pf, pol)
+                step_samples.append([pfp, gf, polp, mask, p])
         fs = fsim.step(fs, moves)
+        raw.extend(step_samples)
         t += 1
 
     sc = fsim.scores(fs)
