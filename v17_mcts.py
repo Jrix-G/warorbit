@@ -37,9 +37,21 @@ K_CHILDREN = 10
 DIRICHLET_ALPHA = 0.6
 DIRICHLET_FRAC = 0.25
 
+# Optional batched-inference evaluator (set per worker by v17_infer).
+# When set, `_net_eval` delegates to it instead of running a local forward.
+_EVALUATOR = None
+
+
+def set_evaluator(ev) -> None:
+    """Install (or clear with None) the inference evaluator for this process."""
+    global _EVALUATOR
+    _EVALUATOR = ev
+
 
 def _net_eval(net, fs, player, device):
     """Net forward on a single state -> (policy [N,N+1], value scalar)."""
+    if _EVALUATOR is not None:
+        return _EVALUATOR.eval(fs, player)
     pf, gf = enc.encode(fs, player)
     pft = torch.as_tensor(pf[None], device=device)
     gft = torch.as_tensor(gf[None], device=device)
@@ -92,7 +104,7 @@ def _candidate_moves(probs, fs, player, k, rng):
 
 class _Node:
     __slots__ = ("fs", "player", "value", "moves", "actions",
-                 "P", "N", "W", "child")
+                 "P", "N", "W", "child", "opp_actions")
 
     def __init__(self, fs, player, net, device, rng, root=False):
         self.fs = fs
@@ -104,6 +116,7 @@ class _Node:
             self.value = (1.0 if (len(win) == 1 and win[0] == player)
                           else (-1.0 if win and player not in win else 0.0))
             self.moves = []
+            self.opp_actions = None
             return
         probs, val = _net_eval(net, fs, player, device)
         self.value = val
@@ -120,6 +133,9 @@ class _Node:
         self.W = np.zeros(len(pri))
         self.actions = [enc.decode_move(fs, player, t) for t in self.moves]
         self.child = [None] * len(pri)
+        # G1: opponents' greedy moves are deterministic on this (fixed) state,
+        # so compute them once here instead of once per child expansion.
+        self.opp_actions = _opponent_actions(fs, player, net, device)
 
 
 def _opponent_actions(fs, our_player, net, device):
@@ -142,7 +158,7 @@ def _simulate(node, net, device, rng):
          + C_PUCT * node.P * math.sqrt(total + 1) / (1 + node.N))
     a = int(np.argmax(u))
     if node.child[a] is None:
-        actions = _opponent_actions(node.fs, node.player, net, device)
+        actions = list(node.opp_actions)        # G1: reuse cached opp moves
         actions[node.player] = node.actions[a]
         nxt = fsim.step(node.fs, actions)
         node.child[a] = _Node(nxt, node.player, net, device, rng)

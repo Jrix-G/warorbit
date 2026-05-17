@@ -23,6 +23,18 @@ import torch.nn as nn
 
 from v17_encode import G_DIM, P_DIM
 
+_EYE_CACHE: dict = {}
+
+
+def _eye(n: int, device) -> torch.Tensor:
+    """Cached boolean identity matrix (rebuilt only once per (N, device))."""
+    key = (n, str(device))
+    e = _EYE_CACHE.get(key)
+    if e is None:
+        e = torch.eye(n, dtype=torch.bool, device=device)
+        _EYE_CACHE[key] = e
+    return e
+
 
 class V17Net(nn.Module):
     def __init__(self, d: int = 64):
@@ -67,7 +79,7 @@ class V17Net(nn.Module):
         k = self.Wk(e2)
         tgt = (q @ k.transpose(1, 2)) / (d ** 0.5)        # [B,N,N]
         # mask self-targeting and invalid (padded) target planets
-        eye = torch.eye(N, dtype=torch.bool, device=pf.device)
+        eye = _eye(N, pf.device)
         tgt = tgt.masked_fill(eye[None], -1e9)
         tgt = tgt.masked_fill(~pmask[:, None, :], -1e9)
         pas = self.pass_head(e2)                          # [B,N,1]

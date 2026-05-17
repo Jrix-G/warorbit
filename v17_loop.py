@@ -21,6 +21,7 @@ import os
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import argparse
+import multiprocessing as mp
 import time
 from concurrent.futures import ProcessPoolExecutor
 
@@ -34,9 +35,12 @@ from v17_train import train_net
 CKPT = "analysis/v17_loop.pt"
 WARMSTART = "analysis/v17_warmstart.pt"
 
+_USE_SERVER = False
+
 
 def _init_worker():
-    """Pin each self-play worker to 1 thread.
+    """Pin each self-play worker to 1 thread, and (server mode) attach it to
+    the batched inference server.
 
     Self-play forwards are batch=1; intra-op parallelism gives no speedup but
     oversubscribes the CPU (workers x BLAS-threads >> cores) and thrashes.
@@ -44,6 +48,9 @@ def _init_worker():
     change them.
     """
     torch.set_num_threads(1)
+    if _USE_SERVER:
+        import v17_infer
+        v17_infer.attach_worker()
 
 
 def _stack(buffer):
@@ -71,9 +78,19 @@ def main():
                     help="ignore warmstart/checkpoint, init from scratch")
     ap.add_argument("--vs-v15-frac", type=float, default=0.4,
                     help="fraction of opponent slots replaced by V15 (0=pure self-play)")
+    ap.add_argument("--infer-server", action="store_true",
+                    help="batch net inference in one server process "
+                         "(Linux/fork only; big self-play speedup)")
+    ap.add_argument("--infer-batch", type=int, default=0,
+                    help="max inference batch (0 = number of workers)")
+    ap.add_argument("--infer-timeout", type=float, default=0.003,
+                    help="server batch-collection window, seconds")
     args = ap.parse_args()
     os.makedirs("analysis", exist_ok=True)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
+
+    global _USE_SERVER
+    _USE_SERVER = args.infer_server
 
     if not args.fresh and os.path.exists(CKPT):
         c = torch.load(CKPT, map_location="cpu")
@@ -113,9 +130,23 @@ def main():
                 tasks.append((sd, d, 4, 60000 + it * 10000 + i, args.n_sims,
                               args.vs_v15_frac))
 
-        with ProcessPoolExecutor(max_workers=args.workers,
-                                 initializer=_init_worker) as pool:
-            results = list(pool.map(play_game, tasks, chunksize=1))
+        srv = None
+        pool_kw = {}
+        if _USE_SERVER:
+            import v17_infer
+            srv = v17_infer.start_server(
+                sd, d, args.workers, device="cpu",
+                max_batch=(args.infer_batch or args.workers),
+                timeout=args.infer_timeout)
+            pool_kw["mp_context"] = mp.get_context("fork")
+        try:
+            with ProcessPoolExecutor(max_workers=args.workers,
+                                     initializer=_init_worker,
+                                     **pool_kw) as pool:
+                results = list(pool.map(play_game, tasks, chunksize=1))
+        finally:
+            if srv is not None:
+                v17_infer.stop_server(srv)
         new = [s for game in results for s in game]
         buffer.extend(new)
         if len(buffer) > args.buffer:

@@ -53,8 +53,10 @@ class FastState:
     def copy(self) -> "FastState":
         return FastState(
             planets=self.planets.copy(),
-            p_init=self.p_init.copy(),
-            p_comet=self.p_comet.copy(),
+            # p_init / p_comet are immutable per game (only read in step, and
+            # _drop_planets REASSIGNS them with a fresh array) -> share by ref.
+            p_init=self.p_init,
+            p_comet=self.p_comet,
             fleets=self.fleets.copy(),
             comets=[{"planet_ids": list(g["planet_ids"]),
                      "paths": g["paths"],

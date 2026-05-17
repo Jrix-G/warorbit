@@ -57,10 +57,15 @@ Timestamp change = iter 1 done. Expected: ~5-7h per iter.
   - Must show WR > 5% vs V15 (any improvement from random is a good sign)
 - Convergence expected around iter 10-15 for 50-70% WR vs V15
 
-## Training Schedule
-- 18 iterations × ~5-7h each = ~4-5 days total
-- After P1 (2p only), run `--mode 4` for 4p games (P2)
-- After that: ONNX int8 quantization + Kaggle packaging (P3)
+## Phase Plan
+- **P1 — train 2p** (current): 18 iterations of `v17_loop.py` (2p only).
+  Gate at iter 3 (WR > 5% vs V15), convergence iter 10-15 (50-70% WR).
+- **P2 — train 4p**: continue `v17_loop.py --mode 4` (mixes 2p/4p self-play
+  into the buffer). Same net — player-relative encoding handles both.
+- **P3 — packaging**: ONNX int8 quantization of the net + bundle net+MCTS
+  into `v17_agent.py` as a CPU Kaggle submission (~1s/move budget).
+- **P4 — deployment**: submit the packaged bot to Kaggle; it replaces the
+  currently deployed V15.3 (~975 ELO). Target ELO: realistic 1200-1400.
 
 ## Smoke Test Results (from PC, reference)
 Two runs with --fresh --games 6-10 --n-sims 20 both completed in ~17-21 min:
