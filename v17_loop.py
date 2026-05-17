@@ -35,6 +35,17 @@ CKPT = "analysis/v17_loop.pt"
 WARMSTART = "analysis/v17_warmstart.pt"
 
 
+def _init_worker():
+    """Pin each self-play worker to 1 thread.
+
+    Self-play forwards are batch=1; intra-op parallelism gives no speedup but
+    oversubscribes the CPU (workers x BLAS-threads >> cores) and thrashes.
+    Quality-neutral: results are seeded per game and thread count cannot
+    change them.
+    """
+    torch.set_num_threads(1)
+
+
 def _stack(buffer):
     PF = np.stack([s[0] for s in buffer])
     GF = np.stack([s[1] for s in buffer]).astype(np.float32)
@@ -102,8 +113,9 @@ def main():
                 tasks.append((sd, d, 4, 60000 + it * 10000 + i, args.n_sims,
                               args.vs_v15_frac))
 
-        with ProcessPoolExecutor(max_workers=args.workers) as pool:
-            results = list(pool.map(play_game, tasks))
+        with ProcessPoolExecutor(max_workers=args.workers,
+                                 initializer=_init_worker) as pool:
+            results = list(pool.map(play_game, tasks, chunksize=1))
         new = [s for game in results for s in game]
         buffer.extend(new)
         if len(buffer) > args.buffer:

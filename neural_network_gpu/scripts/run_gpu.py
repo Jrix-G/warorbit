@@ -494,6 +494,18 @@ def _parse_opponent_list(raw_value: str, fallback: List[str]) -> List[str]:
     return opponents or list(fallback)
 
 
+def _parse_float_list(raw_value: str, fallback: List[float]) -> List[float]:
+    values: List[float] = []
+    for item in str(raw_value).split(","):
+        item = item.strip()
+        if not item:
+            continue
+        value = float(item)
+        if 0.0 < value < 1.0:
+            values.append(value)
+    return values or list(fallback)
+
+
 def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
     default_opponents = ["random", "greedy", "starter", "distance"]
     simple_opponents = _parse_opponent_list(args.simple_opponents, default_opponents)
@@ -504,9 +516,9 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "game_engine": "official_fast",
         "official_fast_c_accel": True,
         "max_turns": 100,
-        "max_actions_per_turn": 8,
-        "min_expand_attack_ships": 2,
-        "send_ratios": [0.25, 0.35, 0.50, 0.65, 0.80, 0.95],
+        "max_actions_per_turn": args.max_actions_per_turn,
+        "min_expand_attack_ships": args.min_expand_attack_ships,
+        "send_ratios": _parse_float_list(args.send_ratios, [0.25, 0.35, 0.50, 0.65, 0.80, 0.95]),
         "allow_support_actions": not bool(args.disable_support_actions),
         "policy_prior_strength": args.policy_prior_strength,
         # Encoder
@@ -623,6 +635,7 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "train_every": args.train_every,
         "eval_every": args.eval_every,
         "eval_episodes": args.eval_episodes,
+        "best_eval_every": args.best_eval_every,
         "max_batch_size": args.batch_size,
         "batch_timeout": args.batch_timeout,
         "device": args.device,
@@ -1005,6 +1018,12 @@ def main() -> None:
     parser.add_argument("--train-every", type=int, default=64, help="Train after N episodes")
     parser.add_argument("--eval-every", type=int, default=256, help="Eval after N episodes")
     parser.add_argument("--eval-episodes", type=int, default=192)
+    parser.add_argument(
+        "--best-eval-every",
+        type=int,
+        default=1,
+        help="Re-evaluate best_validated every N eval rounds. Cached metadata is used between full best evals.",
+    )
     parser.add_argument("--learning-rate", type=float, default=0.00006)
     parser.add_argument("--ppo-clip-eps", type=float, default=0.2)
     parser.add_argument("--ppo-epochs", type=int, default=3)
@@ -1016,6 +1035,9 @@ def main() -> None:
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--target-winrate", type=float, default=0.85)
     parser.add_argument("--n-players", type=int, default=2)
+    parser.add_argument("--max-actions-per-turn", type=int, default=8)
+    parser.add_argument("--min-expand-attack-ships", type=int, default=2)
+    parser.add_argument("--send-ratios", default="0.25,0.35,0.50,0.65,0.80,0.95")
     parser.add_argument("--eval-seed-start", type=int, default=900000)
     parser.add_argument("--eval-seed-stride", type=int, default=1000000)
     parser.add_argument("--promotion-margin", type=float, default=0.03)
@@ -1157,6 +1179,9 @@ def main() -> None:
             "train_event_max_activity_ships_bonus",
             "policy_prior_strength",
             "entropy_coef_start",
+            "max_actions_per_turn",
+            "min_expand_attack_ships",
+            "send_ratios",
         }
         if isinstance(adaptive_config, dict):
             for key in (
@@ -1189,6 +1214,7 @@ def main() -> None:
                 "train_min_support_ratio",
                 "train_max_attack_ratio",
                 "train_mission_mix_reward_clip",
+                "max_actions_per_turn",
                 "min_expand_attack_ships",
                 "send_ratios",
                 "eval_stabilizer_enabled",
@@ -1592,20 +1618,39 @@ def main() -> None:
                         f"pool={pool}",
                     )
                     save_json(run_dir / "config.json", cfg)
-                best_model = _load_model_from_checkpoint(best_validated_path, cfg, device)
-                best_eval = _evaluate(
-                    best_model, cfg, device,
-                    episodes=cfg["eval_episodes"],
-                    seed_start=eval_seed_start,
-                    pool=eval_pool,
-                    n_players=n_players,
-                    eval_history_path=eval_history_path,
-                    checkpoint_label="best_validated",
-                    episode_count=total_episodes,
-                    lr=current_lr,
-                    train_metrics=last_train_metrics,
-                    progress_log_path=log_path,
-                )
+                best_eval_every = max(1, int(cfg.get("best_eval_every", 1)))
+                should_eval_best = best_eval_every <= 1 or (eval_round % best_eval_every) == 0 or best_winrate < 0.0
+                if should_eval_best:
+                    best_model = _load_model_from_checkpoint(best_validated_path, cfg, device)
+                    best_eval = _evaluate(
+                        best_model, cfg, device,
+                        episodes=cfg["eval_episodes"],
+                        seed_start=eval_seed_start,
+                        pool=eval_pool,
+                        n_players=n_players,
+                        eval_history_path=eval_history_path,
+                        checkpoint_label="best_validated",
+                        episode_count=total_episodes,
+                        lr=current_lr,
+                        train_metrics=last_train_metrics,
+                        progress_log_path=log_path,
+                    )
+                    best_meta = dict(best_eval)
+                else:
+                    best_eval = dict(best_meta)
+                    cached_wr = float(best_eval.get("winrate", best_winrate if best_winrate >= 0.0 else 0.0))
+                    cached_valid = float(best_eval.get("valid_winrate", cached_wr))
+                    best_eval.setdefault("winrate", cached_wr)
+                    best_eval.setdefault("valid_winrate", cached_valid)
+                    best_eval.setdefault("weighted_score", _weighted_eval_score(best_eval))
+                    best_eval.setdefault("ci_low", cached_wr)
+                    best_eval.setdefault("ci_high", cached_wr)
+                    best_eval.setdefault("by_opponent", {})
+                    _log(
+                        log_path,
+                        f"eval_skip checkpoint=best_validated reason=cached "
+                        f"round={eval_round} best_eval_every={best_eval_every}",
+                    )
                 elapsed = (time.time() - started_at) / 60.0
                 if best_validated_path.exists() and best_winrate < 0.0:
                     best_winrate = float(best_eval.get("valid_winrate", best_eval.get("winrate", best_winrate)))
@@ -1672,6 +1717,7 @@ def main() -> None:
                     }
                     save_checkpoint(best_validated_path, _model_state_np(model), metadata)
                     save_checkpoint(checkpoint_path, _model_state_np(model), metadata)
+                    best_meta = dict(metadata)
                     archive_path = _archive_validated_checkpoint(run_dir, total_episodes, model, metadata)
                     new_lr = min(float(cfg["max_lr"]), current_lr * float(cfg["promotion_lr_mult"]))
                     _set_optimizer_lr(optimizer, new_lr)
