@@ -40,6 +40,7 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
     legal_noop_count = 0
     forced_noop_count = 0
     mission_counts: Dict[str, int] = {}
+    tactical_counts: Dict[str, int] = {}
     mission_ship_totals: Dict[str, List[float]] = {}
     slot_ship_totals: Dict[int, List[float]] = {}
     slot_counts: Dict[int, int] = {}
@@ -60,12 +61,14 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
 
     for rec in records:
         mission = str(rec.get("mission") or "do_nothing")
+        tactical_tag = str(rec.get("tactical_tag") or mission)
         ships = float(rec.get("ships") or 0.0)
         action_slot = int(rec.get("action_slot") or 0)
         has_real_candidate = bool(rec.get("noop_has_real_candidate", mission != "do_nothing" and ships > 0.0))
         is_noop = mission == "do_nothing" or ships <= 0.0
 
         mission_counts[mission] = mission_counts.get(mission, 0) + 1
+        tactical_counts[tactical_tag] = tactical_counts.get(tactical_tag, 0) + 1
         mission_ship_totals.setdefault(mission, []).append(ships)
         slot_ship_totals.setdefault(action_slot, []).append(ships)
         slot_counts[action_slot] = slot_counts.get(action_slot, 0) + 1
@@ -141,11 +144,27 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
     }
 
     metrics["mission_counts"] = dict(mission_counts)
+    metrics["tactical_counts"] = dict(tactical_counts)
 
     for mission in ("expand", "attack", "support", "do_nothing"):
         ships_values = mission_ship_totals.get(mission, [])
         metrics[f"mission_{mission}_count"] = float(mission_counts.get(mission, 0))
         metrics[f"mission_{mission}_ships_mean"] = float(np.mean(ships_values)) if ships_values else 0.0
+
+    for tag in (
+        "support_defense",
+        "support_front",
+        "support_redistribute",
+        "support_passive",
+        "support_backward",
+        "attack_opportunity",
+        "attack_pressure",
+        "expand_front",
+        "expand_safe",
+    ):
+        count = float(tactical_counts.get(tag, 0))
+        metrics[f"tactical_{tag}_count"] = count
+        metrics[f"tactical_{tag}_rate"] = count / float(max(1, real_action_count))
 
     for slot in sorted(set(slot_counts.keys()) | set(slot_ship_totals.keys())):
         ships_values = slot_ship_totals.get(slot, [])

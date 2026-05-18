@@ -838,6 +838,15 @@ def _evaluate(
             "mission_expand_ships_mean": _metric_mean("mission_expand_ships_mean"),
             "mission_attack_ships_mean": _metric_mean("mission_attack_ships_mean"),
             "mission_support_ships_mean": _metric_mean("mission_support_ships_mean"),
+            "tactical_support_defense_rate": _metric_mean("tactical_support_defense_rate"),
+            "tactical_support_front_rate": _metric_mean("tactical_support_front_rate"),
+            "tactical_support_redistribute_rate": _metric_mean("tactical_support_redistribute_rate"),
+            "tactical_support_passive_rate": _metric_mean("tactical_support_passive_rate"),
+            "tactical_support_backward_rate": _metric_mean("tactical_support_backward_rate"),
+            "tactical_attack_opportunity_rate": _metric_mean("tactical_attack_opportunity_rate"),
+            "tactical_attack_pressure_rate": _metric_mean("tactical_attack_pressure_rate"),
+            "tactical_expand_front_rate": _metric_mean("tactical_expand_front_rate"),
+            "tactical_expand_safe_rate": _metric_mean("tactical_expand_safe_rate"),
             "fleet_hit_rate": _metric_mean("fleet_hit_rate"),
             "fleet_capture_rate": _metric_mean("fleet_capture_rate"),
             "fleet_lost_rate": _metric_mean("fleet_lost_rate"),
@@ -868,6 +877,10 @@ def _evaluate(
                 f"fleet_hit={record.get('fleet_hit_rate', 0.0):.3f} "
                 f"fleet_capture={record.get('fleet_capture_rate', 0.0):.3f} "
                 f"fleet_lost={record.get('fleet_lost_rate', 0.0):.3f} "
+                f"sup_def={record.get('tactical_support_defense_rate', 0.0):.3f} "
+                f"sup_front={record.get('tactical_support_front_rate', 0.0):.3f} "
+                f"sup_passive={record.get('tactical_support_passive_rate', 0.0):.3f} "
+                f"atk_opp={record.get('tactical_attack_opportunity_rate', 0.0):.3f} "
                 f"ships_p50={record.get('median_ships_sent', 0.0):.2f} "
                 f"ships_p75={record.get('ships_sent_p75', 0.0):.2f} "
                 f"ships_p90={record.get('ships_sent_p90', 0.0):.2f} "
@@ -1443,6 +1456,11 @@ def main() -> None:
                     f"fleet_capture={metrics.get('fleet_capture_rate_mean', 0):.3f} "
                     f"fleet_lost={metrics.get('fleet_lost_rate_mean', 0):.3f} "
                     f"fleet_pending={metrics.get('fleet_pending_rate_mean', 0):.3f} "
+                    f"sup_def={metrics.get('tactical_support_defense_rate_mean', 0):.3f} "
+                    f"sup_front={metrics.get('tactical_support_front_rate_mean', 0):.3f} "
+                    f"sup_redist={metrics.get('tactical_support_redistribute_rate_mean', 0):.3f} "
+                    f"sup_passive={metrics.get('tactical_support_passive_rate_mean', 0):.3f} "
+                    f"atk_opp={metrics.get('tactical_attack_opportunity_rate_mean', 0):.3f} "
                     f"mix={metrics.get('mission_mix_reward_mean', 0):.3f} "
                     f"support={metrics.get('mission_support_ratio_mean', 0):.3f} "
                     f"attack={metrics.get('mission_attack_ratio_mean', 0):.3f} "

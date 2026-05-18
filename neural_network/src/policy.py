@@ -18,10 +18,106 @@ class ActionCandidate:
     mission: str
     score_features: np.ndarray
     valid: bool = True
+    tactical_tag: str = "unknown"
+    tactical_score: float = 0.0
 
 
 def _planet_lookup(game: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
     return {int(p["id"]): p for p in game.get("planets", [])}
+
+
+def _distance(a: Dict[str, Any], b: Dict[str, Any]) -> float:
+    return float(np.hypot(float(a.get("x", 0.0)) - float(b.get("x", 0.0)), float(a.get("y", 0.0)) - float(b.get("y", 0.0))))
+
+
+def _incoming_enemy_ships(game: Dict[str, Any], my_id: int) -> Dict[int, float]:
+    incoming: Dict[int, float] = {}
+    for fleet in game.get("fleets", []) or []:
+        try:
+            owner = int(fleet.get("owner", fleet.get("player", fleet.get("player_id", -2))))
+            target_id = int(fleet.get("target_id", fleet.get("target", -1)))
+            ships = float(fleet.get("ships", fleet.get("amount", 0.0)))
+        except (TypeError, ValueError):
+            continue
+        if owner == int(my_id) or target_id < 0 or ships <= 0.0:
+            continue
+        incoming[target_id] = incoming.get(target_id, 0.0) + ships
+    return incoming
+
+
+def _nearest_distance(planets: Sequence[Dict[str, Any]], src: Dict[str, Any], predicate) -> float:
+    distances = [_distance(src, p) for p in planets if int(p.get("id", -1)) != int(src.get("id", -2)) and predicate(p)]
+    return min(distances) if distances else 999.0
+
+
+def _classify_candidate(candidate: ActionCandidate, game: Dict[str, Any]) -> tuple[str, float]:
+    if candidate.mission == "do_nothing":
+        return "noop", 0.0
+
+    planets = game.get("planets", [])
+    my_id = int(game.get("my_id", 0))
+    lookup = _planet_lookup(game)
+    src = lookup.get(candidate.source_id)
+    tgt = lookup.get(candidate.target_id)
+    if src is None or tgt is None:
+        return "invalid", -1.0
+
+    src_ships = float(src.get("ships", 0.0))
+    tgt_ships = float(tgt.get("ships", 0.0))
+    amount = float(candidate.amount)
+    sent_ratio = amount / max(1.0, src_ships)
+    safety_margin = amount - tgt_ships
+    incoming_enemy = _incoming_enemy_ships(game, my_id)
+    target_threat = float(incoming_enemy.get(int(tgt.get("id", -1)), 0.0))
+    src_enemy_dist = _nearest_distance(planets, src, lambda p: int(p.get("owner", -1)) not in (-1, my_id))
+    tgt_enemy_dist = _nearest_distance(planets, tgt, lambda p: int(p.get("owner", -1)) not in (-1, my_id))
+    src_non_owned_dist = _nearest_distance(planets, src, lambda p: int(p.get("owner", -1)) != my_id)
+    tgt_non_owned_dist = _nearest_distance(planets, tgt, lambda p: int(p.get("owner", -1)) != my_id)
+
+    if candidate.mission == "expand":
+        score = 0.35 + 0.10 * min(10.0, float(tgt.get("production", 0.0)))
+        if safety_margin >= 1.0:
+            score += 0.40
+        if tgt_non_owned_dist < 55.0:
+            score += 0.20
+        return "expand_front" if tgt_non_owned_dist < 55.0 else "expand_safe", float(max(-1.0, min(1.5, score)))
+
+    if candidate.mission == "attack":
+        score = 0.15
+        if safety_margin >= 3.0:
+            score += 0.95
+        elif safety_margin >= 0.0:
+            score += 0.35
+        else:
+            score -= 0.55
+        if sent_ratio >= 0.45:
+            score += 0.15
+        return "attack_opportunity" if safety_margin >= 0.0 else "attack_pressure", float(max(-1.0, min(1.5, score)))
+
+    if candidate.mission != "support":
+        return candidate.mission, 0.0
+
+    # Good support is contextual: defend a threatened planet, reinforce a real
+    # front, or redistribute rear mass toward a more active front.
+    if target_threat > 0.0:
+        defense_margin = tgt_ships + amount - target_threat
+        score = 0.75 + min(0.60, max(-0.20, defense_margin / 30.0))
+        return "support_defense", float(max(-1.0, min(1.5, score)))
+
+    target_is_front = tgt_enemy_dist <= 55.0 or tgt_non_owned_dist <= 45.0
+    source_is_rear = src_enemy_dist > tgt_enemy_dist + 15.0 or src_non_owned_dist > tgt_non_owned_dist + 15.0
+    if target_is_front and source_is_rear:
+        return "support_front", 0.90
+    if target_is_front:
+        return "support_front", 0.55
+    if source_is_rear and tgt_non_owned_dist < 80.0:
+        return "support_redistribute", 0.35
+
+    if tgt_ships >= 35.0 and amount < 8.0:
+        return "support_passive", -0.95
+    if tgt_enemy_dist > src_enemy_dist + 20.0:
+        return "support_backward", -0.75
+    return "support_passive", -0.45
 
 
 def _candidate_prior(candidate: ActionCandidate, game: Dict[str, Any]) -> float:
@@ -51,6 +147,10 @@ def _candidate_prior(candidate: ActionCandidate, game: Dict[str, Any]) -> float:
     prior += 0.35 * sent_ratio
     prior += 0.35 * useful_mass
     prior += 0.015 * max(-100.0, min(100.0, safety_margin))
+    tag, tactical_score = _classify_candidate(candidate, game)
+    candidate.tactical_tag = tag
+    candidate.tactical_score = tactical_score
+    prior += 0.45 * tactical_score
     if candidate.mission == "expand":
         prior += 0.75
         if safety_margin >= 1.0:
@@ -65,6 +165,8 @@ def _candidate_prior(candidate: ActionCandidate, game: Dict[str, Any]) -> float:
             prior -= 0.80 + min(1.25, 0.16 * abs(safety_margin - 3.0))
     elif candidate.mission == "support":
         prior -= 0.15
+        if tag in {"support_passive", "support_backward"}:
+            prior -= 0.35
     if candidate.mission in {"expand", "attack"} and candidate.amount < 4:
         prior -= 0.60
     if src_ships - candidate.amount < max(2.0, src_ships * 0.20):
@@ -81,7 +183,7 @@ def build_action_candidates(
     planets = game.get("planets", [])
     my_id = game.get("my_id", 0)
     do_nothing_features = np.zeros(16, dtype=np.float32)
-    do_nothing_cand = ActionCandidate(-1, -1, 0, "do_nothing", do_nothing_features)
+    do_nothing_cand = ActionCandidate(-1, -1, 0, "do_nothing", do_nothing_features, tactical_tag="noop")
     do_nothing_cand.score_features[-1] = _candidate_prior(do_nothing_cand, game) / 3.0
     candidates: List[ActionCandidate] = [do_nothing_cand]
     my_planets = [p for p in planets if p["owner"] == my_id and float(p.get("ships", 0.0)) >= 2.0]
@@ -130,6 +232,7 @@ def build_action_candidates(
                     0.0,
                 ], dtype=np.float32)
                 candidate = ActionCandidate(int(src["id"]), int(tgt["id"]), amount, mission, score_features)
+                candidate.tactical_tag, candidate.tactical_score = _classify_candidate(candidate, game)
                 candidate.score_features[-1] = _candidate_prior(candidate, game) / 3.0
                 candidates.append(candidate)
     return candidates

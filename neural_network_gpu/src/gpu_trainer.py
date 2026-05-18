@@ -126,6 +126,7 @@ def train_on_episodes(
     fleet_lost_sun_rates: List[float] = []
     fleet_lost_oob_rates: List[float] = []
     fleet_pending_rates: List[float] = []
+    tactical_rate_values: Dict[str, List[float]] = {}
     passivity_penalties: List[float] = []
     passive_win_flags: List[float] = []
     do_nothing_rates: List[float] = []
@@ -214,6 +215,18 @@ def train_on_episodes(
         fleet_lost_sun_rates.append(float(action_metrics.get("fleet_lost_sun_rate", 0.0)))
         fleet_lost_oob_rates.append(float(action_metrics.get("fleet_lost_oob_rate", 0.0)))
         fleet_pending_rates.append(float(action_metrics.get("fleet_pending_rate", 0.0)))
+        for tag in (
+            "support_defense",
+            "support_front",
+            "support_redistribute",
+            "support_passive",
+            "support_backward",
+            "attack_opportunity",
+            "attack_pressure",
+            "expand_front",
+            "expand_safe",
+        ):
+            tactical_rate_values.setdefault(tag, []).append(float(action_metrics.get(f"tactical_{tag}_rate", 0.0)))
         passivity_penalties.append(float(passivity_penalty))
         passive_win_flags.append(1.0 if passive_win else 0.0)
         do_nothing_rates.append(float(do_nothing_rate))
@@ -600,6 +613,15 @@ def train_on_episodes(
         "fleet_lost_sun_rate_mean": float(np.mean(fleet_lost_sun_rates)) if fleet_lost_sun_rates else 0.0,
         "fleet_lost_oob_rate_mean": float(np.mean(fleet_lost_oob_rates)) if fleet_lost_oob_rates else 0.0,
         "fleet_pending_rate_mean": float(np.mean(fleet_pending_rates)) if fleet_pending_rates else 0.0,
+        "tactical_support_defense_rate_mean": float(np.mean(tactical_rate_values.get("support_defense", []))) if tactical_rate_values.get("support_defense") else 0.0,
+        "tactical_support_front_rate_mean": float(np.mean(tactical_rate_values.get("support_front", []))) if tactical_rate_values.get("support_front") else 0.0,
+        "tactical_support_redistribute_rate_mean": float(np.mean(tactical_rate_values.get("support_redistribute", []))) if tactical_rate_values.get("support_redistribute") else 0.0,
+        "tactical_support_passive_rate_mean": float(np.mean(tactical_rate_values.get("support_passive", []))) if tactical_rate_values.get("support_passive") else 0.0,
+        "tactical_support_backward_rate_mean": float(np.mean(tactical_rate_values.get("support_backward", []))) if tactical_rate_values.get("support_backward") else 0.0,
+        "tactical_attack_opportunity_rate_mean": float(np.mean(tactical_rate_values.get("attack_opportunity", []))) if tactical_rate_values.get("attack_opportunity") else 0.0,
+        "tactical_attack_pressure_rate_mean": float(np.mean(tactical_rate_values.get("attack_pressure", []))) if tactical_rate_values.get("attack_pressure") else 0.0,
+        "tactical_expand_front_rate_mean": float(np.mean(tactical_rate_values.get("expand_front", []))) if tactical_rate_values.get("expand_front") else 0.0,
+        "tactical_expand_safe_rate_mean": float(np.mean(tactical_rate_values.get("expand_safe", []))) if tactical_rate_values.get("expand_safe") else 0.0,
         "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,
         "passive_win_rate": float(np.mean(passive_win_flags)) if passive_win_flags else 0.0,
         "do_nothing_rate_mean": float(np.mean(do_nothing_rates)) if do_nothing_rates else 1.0,

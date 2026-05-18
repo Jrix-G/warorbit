@@ -301,6 +301,8 @@ def _make_policy_agent(
                     "planned_angle": planned_angle,
                     "action_slot": int(action_slot),
                     "noop_has_real_candidate": bool(noop_has_real_candidate),
+                    "tactical_tag": str(getattr(cand, "tactical_tag", cand.mission)),
+                    "tactical_score": float(getattr(cand, "tactical_score", 0.0)),
                     "_value": outputs["value"].reshape(-1)[0],
                     "_entropy": entropy,
                 }
@@ -630,6 +632,7 @@ def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     real_actions = [a for a in action_records if a.get("mission") != "do_nothing" and int(a.get("ships", 0)) > 0]
     ships_sent = [int(a.get("ships", 0)) for a in real_actions]
     missions = Counter(str(a.get("mission", "unknown")) for a in action_records)
+    tactical = Counter(str(a.get("tactical_tag", a.get("mission", "unknown"))) for a in real_actions)
     fleet_hit_count = sum(1 for a in real_actions if bool(a.get("fleet_hit", False)))
     fleet_capture_count = sum(1 for a in real_actions if bool(a.get("fleet_captured", False)))
     fleet_lost_count = sum(1 for a in real_actions if bool(a.get("fleet_lost", False)))
@@ -674,6 +677,14 @@ def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
         "mission_attack_count": int(missions.get("attack", 0)),
         "mission_support_count": int(missions.get("support", 0)),
         "mission_do_nothing_count": int(missions.get("do_nothing", 0)),
+        "tactical_counts": dict(tactical),
+        "tactical_support_defense_rate": float(tactical.get("support_defense", 0) / real_action_count),
+        "tactical_support_front_rate": float(tactical.get("support_front", 0) / real_action_count),
+        "tactical_support_redistribute_rate": float(tactical.get("support_redistribute", 0) / real_action_count),
+        "tactical_support_passive_rate": float(tactical.get("support_passive", 0) / real_action_count),
+        "tactical_support_backward_rate": float(tactical.get("support_backward", 0) / real_action_count),
+        "tactical_attack_opportunity_rate": float(tactical.get("attack_opportunity", 0) / real_action_count),
+        "tactical_attack_pressure_rate": float(tactical.get("attack_pressure", 0) / real_action_count),
         "fleet_hit_rate": float(fleet_hit_count / real_action_count),
         "fleet_capture_rate": float(fleet_capture_count / real_action_count),
         "fleet_lost_rate": float(fleet_lost_count / real_action_count),

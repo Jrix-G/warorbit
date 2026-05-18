@@ -251,6 +251,8 @@ def _make_gpu_agent(
                     "noop_cap_value": noop_cap_value,
                     "noop_has_real_candidate": noop_has_real_candidate,
                     "noop_cap_applied": noop_cap_applied,
+                    "tactical_tag": "noop_invalid",
+                    "tactical_score": 0.0,
                 })
                 break
 
@@ -279,6 +281,8 @@ def _make_gpu_agent(
                 "noop_cap_value": noop_cap_value,
                 "noop_has_real_candidate": noop_has_real_candidate,
                 "noop_cap_applied": noop_cap_applied,
+                "tactical_tag": str(getattr(cand, "tactical_tag", cand.mission)),
+                "tactical_score": float(getattr(cand, "tactical_score", 0.0)),
             })
 
             if not move:
@@ -384,6 +388,8 @@ def worker_fn(
                 "fleet_supported": bool(s.get("fleet_supported", False)),
                 "fleet_enemy_hit": bool(s.get("fleet_enemy_hit", False)),
                 "fleet_neutral_hit": bool(s.get("fleet_neutral_hit", False)),
+                "tactical_tag": str(s.get("tactical_tag", s.get("mission", "unknown"))),
+                "tactical_score": float(s.get("tactical_score", 0.0)),
             }
             for s in trajectory
         ]
