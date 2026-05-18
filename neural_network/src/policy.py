@@ -83,16 +83,22 @@ def _classify_candidate(candidate: ActionCandidate, game: Dict[str, Any]) -> tup
         return "expand_front" if tgt_non_owned_dist < 55.0 else "expand_safe", float(max(-1.0, min(1.5, score)))
 
     if candidate.mission == "attack":
-        score = 0.15
-        if safety_margin >= 3.0:
-            score += 0.95
-        elif safety_margin >= 0.0:
-            score += 0.35
-        else:
-            score -= 0.55
-        if sent_ratio >= 0.45:
-            score += 0.15
-        return "attack_opportunity" if safety_margin >= 0.0 else "attack_pressure", float(max(-1.0, min(1.5, score)))
+        target_value = 0.08 * min(10.0, float(tgt.get("production", 0.0)))
+        frontier_bonus = 0.25 if src_enemy_dist <= 70.0 or tgt_enemy_dist <= 70.0 else 0.0
+        mass_bonus = 0.18 if sent_ratio >= 0.45 else 0.0
+        if safety_margin >= 2.0:
+            score = 1.15 + target_value + frontier_bonus + mass_bonus
+            return "attack_convert", float(max(-1.0, min(1.5, score)))
+        if safety_margin >= -max(4.0, 0.35 * tgt_ships):
+            score = 0.55 + target_value + frontier_bonus + mass_bonus
+            if tgt_enemy_dist <= 55.0:
+                score += 0.15
+            return "attack_pressure", float(max(-1.0, min(1.5, score)))
+        score = -0.35 + target_value + frontier_bonus
+        if amount >= max(6.0, 0.35 * tgt_ships):
+            score += 0.25
+            return "attack_pressure", float(max(-1.0, min(1.5, score)))
+        return "attack_poor", float(max(-1.0, min(1.5, score)))
 
     if candidate.mission != "support":
         return candidate.mission, 0.0
@@ -158,11 +164,17 @@ def _candidate_prior(candidate: ActionCandidate, game: Dict[str, Any]) -> float:
         else:
             prior -= min(1.25, 0.18 * abs(safety_margin - 1.0))
     elif candidate.mission == "attack":
-        prior += 0.25
-        if safety_margin >= 3.0:
-            prior += 0.80
+        prior += 0.45
+        if tag == "attack_convert":
+            prior += 1.05
+        elif tag == "attack_pressure":
+            prior += 0.45
         else:
-            prior -= 0.80 + min(1.25, 0.16 * abs(safety_margin - 3.0))
+            prior -= 0.55
+        if safety_margin >= 3.0:
+            prior += 0.40
+        elif safety_margin < -8.0:
+            prior -= min(0.65, 0.04 * abs(safety_margin + 8.0))
     elif candidate.mission == "support":
         prior -= 0.15
         if tag in {"support_passive", "support_backward"}:

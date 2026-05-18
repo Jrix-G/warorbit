@@ -221,12 +221,18 @@ def train_on_episodes(
             "support_redistribute",
             "support_passive",
             "support_backward",
+            "attack_convert",
             "attack_opportunity",
             "attack_pressure",
+            "attack_poor",
             "expand_front",
             "expand_safe",
         ):
             tactical_rate_values.setdefault(tag, []).append(float(action_metrics.get(f"tactical_{tag}_rate", 0.0)))
+        tactical_rate_values.setdefault("candidate_attack_convert", []).append(float(action_metrics.get("candidate_attack_convert_rate", 0.0)))
+        tactical_rate_values.setdefault("candidate_attack_pressure", []).append(float(action_metrics.get("candidate_attack_pressure_rate", 0.0)))
+        tactical_rate_values.setdefault("attack_convert_missed", []).append(float(action_metrics.get("attack_convert_missed_rate", 0.0)))
+        tactical_rate_values.setdefault("good_attack_missed", []).append(float(action_metrics.get("good_attack_missed_rate", 0.0)))
         passivity_penalties.append(float(passivity_penalty))
         passive_win_flags.append(1.0 if passive_win else 0.0)
         do_nothing_rates.append(float(do_nothing_rate))
@@ -618,8 +624,14 @@ def train_on_episodes(
         "tactical_support_redistribute_rate_mean": float(np.mean(tactical_rate_values.get("support_redistribute", []))) if tactical_rate_values.get("support_redistribute") else 0.0,
         "tactical_support_passive_rate_mean": float(np.mean(tactical_rate_values.get("support_passive", []))) if tactical_rate_values.get("support_passive") else 0.0,
         "tactical_support_backward_rate_mean": float(np.mean(tactical_rate_values.get("support_backward", []))) if tactical_rate_values.get("support_backward") else 0.0,
+        "tactical_attack_convert_rate_mean": float(np.mean(tactical_rate_values.get("attack_convert", []))) if tactical_rate_values.get("attack_convert") else 0.0,
         "tactical_attack_opportunity_rate_mean": float(np.mean(tactical_rate_values.get("attack_opportunity", []))) if tactical_rate_values.get("attack_opportunity") else 0.0,
         "tactical_attack_pressure_rate_mean": float(np.mean(tactical_rate_values.get("attack_pressure", []))) if tactical_rate_values.get("attack_pressure") else 0.0,
+        "tactical_attack_poor_rate_mean": float(np.mean(tactical_rate_values.get("attack_poor", []))) if tactical_rate_values.get("attack_poor") else 0.0,
+        "candidate_attack_convert_rate_mean": float(np.mean(tactical_rate_values.get("candidate_attack_convert", []))) if tactical_rate_values.get("candidate_attack_convert") else 0.0,
+        "candidate_attack_pressure_rate_mean": float(np.mean(tactical_rate_values.get("candidate_attack_pressure", []))) if tactical_rate_values.get("candidate_attack_pressure") else 0.0,
+        "attack_convert_missed_rate_mean": float(np.mean(tactical_rate_values.get("attack_convert_missed", []))) if tactical_rate_values.get("attack_convert_missed") else 0.0,
+        "good_attack_missed_rate_mean": float(np.mean(tactical_rate_values.get("good_attack_missed", []))) if tactical_rate_values.get("good_attack_missed") else 0.0,
         "tactical_expand_front_rate_mean": float(np.mean(tactical_rate_values.get("expand_front", []))) if tactical_rate_values.get("expand_front") else 0.0,
         "tactical_expand_safe_rate_mean": float(np.mean(tactical_rate_values.get("expand_safe", []))) if tactical_rate_values.get("expand_safe") else 0.0,
         "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,

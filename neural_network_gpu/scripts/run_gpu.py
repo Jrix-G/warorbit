@@ -843,8 +843,13 @@ def _evaluate(
             "tactical_support_redistribute_rate": _metric_mean("tactical_support_redistribute_rate"),
             "tactical_support_passive_rate": _metric_mean("tactical_support_passive_rate"),
             "tactical_support_backward_rate": _metric_mean("tactical_support_backward_rate"),
+            "tactical_attack_convert_rate": _metric_mean("tactical_attack_convert_rate"),
             "tactical_attack_opportunity_rate": _metric_mean("tactical_attack_opportunity_rate"),
             "tactical_attack_pressure_rate": _metric_mean("tactical_attack_pressure_rate"),
+            "candidate_attack_convert_rate": _metric_mean("candidate_attack_convert_rate"),
+            "candidate_attack_pressure_rate": _metric_mean("candidate_attack_pressure_rate"),
+            "attack_convert_missed_rate": _metric_mean("attack_convert_missed_rate"),
+            "good_attack_missed_rate": _metric_mean("good_attack_missed_rate"),
             "tactical_expand_front_rate": _metric_mean("tactical_expand_front_rate"),
             "tactical_expand_safe_rate": _metric_mean("tactical_expand_safe_rate"),
             "fleet_hit_rate": _metric_mean("fleet_hit_rate"),
@@ -880,7 +885,9 @@ def _evaluate(
                 f"sup_def={record.get('tactical_support_defense_rate', 0.0):.3f} "
                 f"sup_front={record.get('tactical_support_front_rate', 0.0):.3f} "
                 f"sup_passive={record.get('tactical_support_passive_rate', 0.0):.3f} "
-                f"atk_opp={record.get('tactical_attack_opportunity_rate', 0.0):.3f} "
+                f"atk_conv={record.get('tactical_attack_convert_rate', 0.0):.3f} "
+                f"atk_press={record.get('tactical_attack_pressure_rate', 0.0):.3f} "
+                f"atk_miss={record.get('attack_convert_missed_rate', 0.0):.3f} "
                 f"ships_p50={record.get('median_ships_sent', 0.0):.2f} "
                 f"ships_p75={record.get('ships_sent_p75', 0.0):.2f} "
                 f"ships_p90={record.get('ships_sent_p90', 0.0):.2f} "
@@ -1460,7 +1467,9 @@ def main() -> None:
                     f"sup_front={metrics.get('tactical_support_front_rate_mean', 0):.3f} "
                     f"sup_redist={metrics.get('tactical_support_redistribute_rate_mean', 0):.3f} "
                     f"sup_passive={metrics.get('tactical_support_passive_rate_mean', 0):.3f} "
-                    f"atk_opp={metrics.get('tactical_attack_opportunity_rate_mean', 0):.3f} "
+                    f"atk_conv={metrics.get('tactical_attack_convert_rate_mean', 0):.3f} "
+                    f"atk_press={metrics.get('tactical_attack_pressure_rate_mean', 0):.3f} "
+                    f"atk_miss={metrics.get('attack_convert_missed_rate_mean', 0):.3f} "
                     f"mix={metrics.get('mission_mix_reward_mean', 0):.3f} "
                     f"support={metrics.get('mission_support_ratio_mean', 0):.3f} "
                     f"attack={metrics.get('mission_attack_ratio_mean', 0):.3f} "

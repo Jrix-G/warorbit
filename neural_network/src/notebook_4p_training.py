@@ -267,6 +267,9 @@ def _make_policy_agent(
                 min_expand_attack_ships=min_expand_attack_ships,
                 allow_support=bool(config.get("allow_support_actions", True)),
             )
+            candidate_tactical_tags = [str(getattr(c, "tactical_tag", c.mission)) for c in candidates]
+            candidate_has_attack_convert = any(tag == "attack_convert" for tag in candidate_tactical_tags)
+            candidate_has_attack_pressure = any(tag == "attack_pressure" for tag in candidate_tactical_tags)
             candidate_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
             outputs = model(
                 torch.tensor(encoded.features, dtype=torch.float32, device=model_device),
@@ -303,6 +306,9 @@ def _make_policy_agent(
                     "noop_has_real_candidate": bool(noop_has_real_candidate),
                     "tactical_tag": str(getattr(cand, "tactical_tag", cand.mission)),
                     "tactical_score": float(getattr(cand, "tactical_score", 0.0)),
+                    "candidate_has_attack_convert": bool(candidate_has_attack_convert),
+                    "candidate_has_attack_pressure": bool(candidate_has_attack_pressure),
+                    "candidate_has_good_attack": bool(candidate_has_attack_convert or candidate_has_attack_pressure),
                     "_value": outputs["value"].reshape(-1)[0],
                     "_entropy": entropy,
                 }
@@ -678,11 +684,15 @@ def _action_summary(action_records: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
         "mission_support_count": int(missions.get("support", 0)),
         "mission_do_nothing_count": int(missions.get("do_nothing", 0)),
         "tactical_counts": dict(tactical),
+        "candidate_attack_convert_rate": float(sum(1 for a in action_records if bool(a.get("candidate_has_attack_convert", False))) / max(1, action_count)),
+        "candidate_attack_pressure_rate": float(sum(1 for a in action_records if bool(a.get("candidate_has_attack_pressure", False))) / max(1, action_count)),
+        "attack_convert_missed_rate": float(sum(1 for a in action_records if bool(a.get("candidate_has_attack_convert", False)) and str(a.get("tactical_tag", "")) != "attack_convert") / max(1, action_count)),
         "tactical_support_defense_rate": float(tactical.get("support_defense", 0) / real_action_count),
         "tactical_support_front_rate": float(tactical.get("support_front", 0) / real_action_count),
         "tactical_support_redistribute_rate": float(tactical.get("support_redistribute", 0) / real_action_count),
         "tactical_support_passive_rate": float(tactical.get("support_passive", 0) / real_action_count),
         "tactical_support_backward_rate": float(tactical.get("support_backward", 0) / real_action_count),
+        "tactical_attack_convert_rate": float(tactical.get("attack_convert", 0) / real_action_count),
         "tactical_attack_opportunity_rate": float(tactical.get("attack_opportunity", 0) / real_action_count),
         "tactical_attack_pressure_rate": float(tactical.get("attack_pressure", 0) / real_action_count),
         "fleet_hit_rate": float(fleet_hit_count / real_action_count),

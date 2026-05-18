@@ -58,6 +58,10 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
     fleet_lost_sun = 0
     fleet_lost_oob = 0
     fleet_pending = 0
+    candidate_attack_convert = 0
+    candidate_attack_pressure = 0
+    attack_convert_missed = 0
+    good_attack_missed = 0
 
     for rec in records:
         mission = str(rec.get("mission") or "do_nothing")
@@ -69,6 +73,13 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
 
         mission_counts[mission] = mission_counts.get(mission, 0) + 1
         tactical_counts[tactical_tag] = tactical_counts.get(tactical_tag, 0) + 1
+        has_attack_convert = bool(rec.get("candidate_has_attack_convert", False))
+        has_attack_pressure = bool(rec.get("candidate_has_attack_pressure", False))
+        has_good_attack = bool(rec.get("candidate_has_good_attack", has_attack_convert or has_attack_pressure))
+        candidate_attack_convert += int(has_attack_convert)
+        candidate_attack_pressure += int(has_attack_pressure)
+        attack_convert_missed += int(has_attack_convert and tactical_tag != "attack_convert")
+        good_attack_missed += int(has_good_attack and tactical_tag not in {"attack_convert", "attack_pressure"})
         mission_ship_totals.setdefault(mission, []).append(ships)
         slot_ship_totals.setdefault(action_slot, []).append(ships)
         slot_counts[action_slot] = slot_counts.get(action_slot, 0) + 1
@@ -141,6 +152,10 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
         "fleet_lost_sun_rate": float(fleet_lost_sun) / float(max(1, real_action_count)),
         "fleet_lost_oob_rate": float(fleet_lost_oob) / float(max(1, real_action_count)),
         "fleet_pending_rate": float(fleet_pending) / float(max(1, real_action_count)),
+        "candidate_attack_convert_rate": float(candidate_attack_convert) / float(max(1, action_count)),
+        "candidate_attack_pressure_rate": float(candidate_attack_pressure) / float(max(1, action_count)),
+        "attack_convert_missed_rate": float(attack_convert_missed) / float(max(1, action_count)),
+        "good_attack_missed_rate": float(good_attack_missed) / float(max(1, action_count)),
     }
 
     metrics["mission_counts"] = dict(mission_counts)
@@ -157,8 +172,10 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
         "support_redistribute",
         "support_passive",
         "support_backward",
+        "attack_convert",
         "attack_opportunity",
         "attack_pressure",
+        "attack_poor",
         "expand_front",
         "expand_safe",
     ):

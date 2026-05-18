@@ -195,6 +195,10 @@ def _make_gpu_agent(
             )
             if not candidates:
                 break
+            candidate_tactical_tags = [str(getattr(c, "tactical_tag", c.mission)) for c in candidates]
+            candidate_has_attack_convert = any(tag == "attack_convert" for tag in candidate_tactical_tags)
+            candidate_has_attack_pressure = any(tag == "attack_pressure" for tag in candidate_tactical_tags)
+            candidate_has_good_attack = candidate_has_attack_convert or candidate_has_attack_pressure
 
             state_features = np.array(encoded.features, dtype=np.float32)
             cand_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
@@ -253,6 +257,9 @@ def _make_gpu_agent(
                     "noop_cap_applied": noop_cap_applied,
                     "tactical_tag": "noop_invalid",
                     "tactical_score": 0.0,
+                    "candidate_has_attack_convert": bool(candidate_has_attack_convert),
+                    "candidate_has_attack_pressure": bool(candidate_has_attack_pressure),
+                    "candidate_has_good_attack": bool(candidate_has_good_attack),
                 })
                 break
 
@@ -283,6 +290,9 @@ def _make_gpu_agent(
                 "noop_cap_applied": noop_cap_applied,
                 "tactical_tag": str(getattr(cand, "tactical_tag", cand.mission)),
                 "tactical_score": float(getattr(cand, "tactical_score", 0.0)),
+                "candidate_has_attack_convert": bool(candidate_has_attack_convert),
+                "candidate_has_attack_pressure": bool(candidate_has_attack_pressure),
+                "candidate_has_good_attack": bool(candidate_has_good_attack),
             })
 
             if not move:
@@ -390,6 +400,9 @@ def worker_fn(
                 "fleet_neutral_hit": bool(s.get("fleet_neutral_hit", False)),
                 "tactical_tag": str(s.get("tactical_tag", s.get("mission", "unknown"))),
                 "tactical_score": float(s.get("tactical_score", 0.0)),
+                "candidate_has_attack_convert": bool(s.get("candidate_has_attack_convert", False)),
+                "candidate_has_attack_pressure": bool(s.get("candidate_has_attack_pressure", False)),
+                "candidate_has_good_attack": bool(s.get("candidate_has_good_attack", False)),
             }
             for s in trajectory
         ]
