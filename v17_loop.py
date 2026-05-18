@@ -67,6 +67,9 @@ def main():
     ap.add_argument("--iterations", type=int, default=18)
     ap.add_argument("--games", type=int, default=200, help="games/iteration")
     ap.add_argument("--n-sims", type=int, default=100)
+    ap.add_argument("--n-sims-end", type=int, default=0,
+                    help="if >0, ramp n_sims linearly from --n-sims to this "
+                         "value across iterations (deeper search later)")
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--epochs", type=int, default=6)
     ap.add_argument("--lr", type=float, default=5e-4)
@@ -115,19 +118,25 @@ def main():
     buffer: list = []
     for it in range(start, args.iterations + 1):
         t0 = time.time()
+        if args.n_sims_end > 0 and args.iterations > 1:
+            frac = (it - 1) / (args.iterations - 1)
+            cur_sims = int(round(args.n_sims
+                                 + frac * (args.n_sims_end - args.n_sims)))
+        else:
+            cur_sims = args.n_sims
         sd = {k: v.cpu() for k, v in net.state_dict().items()}
         tasks = []
         if args.mode == 2:
             for i in range(args.games):
-                tasks.append((sd, d, 2, 30000 + it * 10000 + i, args.n_sims,
+                tasks.append((sd, d, 2, 30000 + it * 10000 + i, cur_sims,
                               args.vs_v15_frac))
         else:
             half = args.games // 2
             for i in range(half):
-                tasks.append((sd, d, 2, 30000 + it * 10000 + i, args.n_sims,
+                tasks.append((sd, d, 2, 30000 + it * 10000 + i, cur_sims,
                               args.vs_v15_frac))
             for i in range(args.games - half):
-                tasks.append((sd, d, 4, 60000 + it * 10000 + i, args.n_sims,
+                tasks.append((sd, d, 4, 60000 + it * 10000 + i, cur_sims,
                               args.vs_v15_frac))
 
         srv = None
@@ -161,7 +170,8 @@ def main():
                    f"analysis/v17_iter{it}.pt")
         pl, vl = stats[-1]
         print(f"[loop] iter {it}/{args.iterations}: {len(new)} new samples "
-              f"(buffer {len(buffer)}) policy_ce={pl:.4f} value_mse={vl:.4f} "
+              f"(buffer {len(buffer)}) n_sims={cur_sims} "
+              f"policy_ce={pl:.4f} value_mse={vl:.4f} "
               f"win_avg={VAL.mean():+.3f} ({(time.time()-t0)/60:.1f} min)")
 
 
