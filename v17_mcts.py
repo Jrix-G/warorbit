@@ -72,8 +72,32 @@ def _greedy_targets(probs, fs, player):
     return targets
 
 
+def _aggressive_targets(fs, player):
+    """Every owned planet targets the nearest planet it does not own.
+
+    A deterministic aggressive candidate. The net's policy prior can collapse
+    toward 'pass' (pass is the majority per-planet action); when it does, the
+    policy-sampled candidates are all near-passes and MCTS never sees an
+    attack. This candidate guarantees MCTS can always evaluate launching."""
+    planets = fs.planets
+    n = len(planets)
+    owner = planets[:, enc.OWNER].astype(np.int64)
+    px = planets[:, enc.X]
+    py = planets[:, enc.Y]
+    t = np.full(n, -1, dtype=np.int64)
+    foreign = np.where(owner != player)[0]
+    if len(foreign) == 0:
+        return t
+    for i in range(n):
+        if owner[i] != player:
+            continue
+        d = (px[foreign] - px[i]) ** 2 + (py[foreign] - py[i]) ** 2
+        t[i] = int(foreign[int(np.argmin(d))])
+    return t
+
+
 def _candidate_moves(probs, fs, player, k, rng):
-    """k+2 candidate moves: greedy, all-pass, and k policy samples.
+    """Candidate moves: greedy, all-pass, all-attack-nearest, k policy samples.
     A move is a target array [N]; returns list of (targets, prior_logprob)."""
     n = len(fs.planets)
     owned = [i for i in range(n)
@@ -92,6 +116,7 @@ def _candidate_moves(probs, fs, player, k, rng):
 
     _add(_greedy_targets(probs, fs, player))      # greedy
     _add(np.full(n, -1, dtype=np.int64))          # do-nothing
+    _add(_aggressive_targets(fs, player))         # all-attack-nearest
     for _ in range(k):
         t = np.full(n, -1, dtype=np.int64)
         for i in owned:
@@ -124,6 +149,13 @@ class _Node:
         self.moves = [t for (t, _) in cands]
         lp = np.array([l for (_, l) in cands], dtype=np.float64)
         pri = np.exp(lp - lp.max())
+        pri = pri / pri.sum()
+        # Prior floor: a net policy collapsed toward 'pass' gives the
+        # aggressive candidate a near-zero prior, so PUCT never expands it.
+        # Floor every candidate at half-uniform so the search can still
+        # evaluate launching even when the net says 'pass' everywhere.
+        floor = 0.5 / len(pri)
+        pri = np.maximum(pri, floor)
         pri = pri / pri.sum()
         if root:                                  # exploration noise at root
             noise = rng.dirichlet([DIRICHLET_ALPHA] * len(pri))
