@@ -188,7 +188,8 @@ def _enumerate_shots(fs: fsim.FastState, player: int,
 
 def _eval_combo(fs: fsim.FastState, player: int, combo: list,
                 horizon: int, bc_cont: bool = False,
-                weights: "v15_eval.EvalWeights" = None) -> float:
+                weights: "v15_eval.EvalWeights" = None,
+                value_fn=None, value_lambda: float = 0.0) -> float:
     """Apply `combo` at step 1, then run a continuation for `horizon` steps so
     the combo's fleets travel, arrive and resolve combat; return the ESC score
     of the leaf.
@@ -212,8 +213,15 @@ def _eval_combo(fs: fsim.FastState, player: int, combo: list,
             break
         cont = v15_bc.bc_policy(st) if bc_cont else [[] for _ in range(n)]
         st = fsim.step(st, cont)
-    return v15_eval.evaluate(st, player,
-                             weights if weights is not None else v15_eval.ESC)
+    esc = v15_eval.evaluate(st, player,
+                            weights if weights is not None else v15_eval.ESC)
+    if value_fn is None or value_lambda <= 0.0:
+        return esc
+    # V15++ graft: learned value [-1,1] -> [0,1], the same scale as the ESC
+    # score; the blend only refines V15's ranking — lambda<1 keeps V15's eval
+    # in the mix, so a wrong net can nudge but never replace it.
+    net01 = 0.5 * (float(value_fn(st, player)) + 1.0)
+    return (1.0 - value_lambda) * esc + value_lambda * net01
 
 
 def _valid_combo(combo: list) -> bool:
@@ -226,7 +234,8 @@ def search(obs, config=None, *, time_budget: float = 0.7,
            horizon: int = 24, bc_cont: bool = False,
            weights: "v15_eval.EvalWeights" = None,
            n_policy_samples: int = 0, seed: int = 0,
-           use_value_fn: bool = False) -> list:
+           use_value_fn: bool = False,
+           value_fn=None, value_lambda: float = 0.0) -> list:
     """V15.3 RCC — coordinated-combination search.
 
     bc_cont — if True, combos are scored with a behavioral-cloning continuation
@@ -258,7 +267,8 @@ def search(obs, config=None, *, time_budget: float = 0.7,
         h1 = max(4, horizon // 2)
 
         # --- baseline: the do-nothing move ---
-        baseline = _eval_combo(fs, our, [], horizon, bc_cont, weights)
+        baseline = _eval_combo(fs, our, [], horizon, bc_cont, weights,
+                               value_fn, value_lambda)
 
         # --- stage 1: score each atomic shot in isolation ---
         scored = []
@@ -266,7 +276,8 @@ def search(obs, config=None, *, time_budget: float = 0.7,
             if time.monotonic() > deadline:
                 break
             scored.append(
-                (shot, _eval_combo(fs, our, [shot], h1, bc_cont, weights)))
+                (shot, _eval_combo(fs, our, [shot], h1, bc_cont, weights,
+                                   value_fn, value_lambda)))
         if not scored:
             return v7_move
         scored.sort(key=lambda kv: kv[1], reverse=True)
@@ -286,7 +297,8 @@ def search(obs, config=None, *, time_budget: float = 0.7,
         for combo in subsets:
             if time.monotonic() > deadline:
                 break
-            sc = _eval_combo(fs, our, combo, horizon, bc_cont, weights)
+            sc = _eval_combo(fs, our, combo, horizon, bc_cont, weights,
+                             value_fn, value_lambda)
             if sc > best_score:
                 best_score = sc
                 best_combo = combo

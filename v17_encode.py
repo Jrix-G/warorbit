@@ -164,6 +164,48 @@ def decode_move(fs: fsim.FastState, player: int,
     return moves
 
 
+def action_to_targets(fs: fsim.FastState, player: int,
+                      launches) -> np.ndarray:
+    """Inverse of decode_move: map a launch list back to per-owned-planet
+    target indices — the policy-head label for imitation learning.
+
+    launches: [[src_id, angle, ships], ...] (the engine action format).
+    Returns targets[N]: targets[i] = target planet index for owned planet i,
+    or -1 (pass / not owned / unmatched). A launch's target is the planet
+    whose current bearing from the source best matches the launch angle.
+
+    Note: launch angles aim at an interception of the target's future orbital
+    position, so the bearing match is approximate; it is exact for sources
+    that aim at the current position (e.g. V15) and a close proxy otherwise.
+    """
+    planets = fs.planets
+    n = len(planets)
+    targets = np.full(n, -1, dtype=np.int64)
+    if n == 0 or not launches:
+        return targets
+    row_of = {int(planets[i, ID]): i for i in range(n)}
+    px = planets[:, X]
+    py = planets[:, Y]
+    for launch in launches:
+        if launch is None or len(launch) < 2:
+            continue
+        i = row_of.get(int(launch[0]))
+        if i is None or int(planets[i, OWNER]) != player:
+            continue
+        ang = float(launch[1])
+        best_j, best_d = -1, 1e18
+        for j in range(n):
+            if j == i:
+                continue
+            bearing = math.atan2(py[j] - py[i], px[j] - px[i])
+            d = abs((bearing - ang + math.pi) % (2.0 * math.pi) - math.pi)
+            if d < best_d:
+                best_d, best_j = d, j
+        if best_j >= 0:
+            targets[i] = best_j
+    return targets
+
+
 if __name__ == "__main__":
     import random
     import v14_core

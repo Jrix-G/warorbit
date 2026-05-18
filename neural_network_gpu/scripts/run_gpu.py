@@ -546,6 +546,9 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "ppo_clip_eps": args.ppo_clip_eps,
         "ppo_epochs": args.ppo_epochs,
         "ppo_minibatch_size": args.ppo_minibatch_size,
+        "on_policy_imitation_coef": args.on_policy_imitation_coef,
+        "on_policy_imitation_min_margin": args.on_policy_imitation_min_margin,
+        "on_policy_imitation_max_weight": args.on_policy_imitation_max_weight,
         # Activity shaping
         "dense_reward_enabled": True,
         "dense_planet_coef": args.dense_planet_coef,
@@ -1135,6 +1138,24 @@ def main() -> None:
     parser.add_argument("--temperature-decay-updates", type=int, default=200)
     parser.add_argument("--teacher-checkpoint", default="", help="Optional frozen teacher checkpoint for KL distillation")
     parser.add_argument("--teacher-kl-coef", type=float, default=0.0)
+    parser.add_argument(
+        "--on-policy-imitation-coef",
+        type=float,
+        default=0.0,
+        help="Auxiliary supervised loss on tactical targets computed from the states visited by the current NN policy.",
+    )
+    parser.add_argument(
+        "--on-policy-imitation-min-margin",
+        type=float,
+        default=0.20,
+        help="Only imitate an alternative tactical target when it beats the selected action by this oracle-score margin.",
+    )
+    parser.add_argument(
+        "--on-policy-imitation-max-weight",
+        type=float,
+        default=2.0,
+        help="Maximum per-step margin weight for the on-policy imitation loss.",
+    )
     parser.add_argument("--entropy-coef-start", type=float, default=0.10)
     parser.add_argument("--dense-planet-coef", type=float, default=0.05)
     parser.add_argument("--dense-production-coef", type=float, default=0.04)
@@ -1210,6 +1231,9 @@ def main() -> None:
                 "temperature_start",
                 "temperature_end",
                 "policy_prior_strength",
+                "on_policy_imitation_coef",
+                "on_policy_imitation_min_margin",
+                "on_policy_imitation_max_weight",
                 "do_nothing_logit_penalty",
                 "do_nothing_prob_cap",
                 "do_nothing_prob_caps_by_slot",
@@ -1442,6 +1466,10 @@ def main() -> None:
                     f"value_loss={metrics.get('value_loss', 0):.3f} "
                     f"total_loss={metrics.get('total_loss', 0):.3f} "
                     f"teacher_kl={metrics.get('teacher_kl', 0):.4f} "
+                    f"op_imit={metrics.get('on_policy_imitation_loss', 0):.4f} "
+                    f"op_oracle={metrics.get('on_policy_oracle_valid_rate', 0):.3f} "
+                    f"op_match={metrics.get('on_policy_oracle_match_rate', 0):.3f} "
+                    f"op_margin={metrics.get('on_policy_oracle_margin_mean', 0):.3f} "
                     f"entropy={metrics.get('entropy', 0):.3f} "
                     f"kl={metrics.get('approx_kl', 0):.4f} "
                     f"clip_frac={metrics.get('clip_frac', 0):.3f} "
@@ -1470,6 +1498,8 @@ def main() -> None:
                     f"atk_conv={metrics.get('tactical_attack_convert_rate_mean', 0):.3f} "
                     f"atk_press={metrics.get('tactical_attack_pressure_rate_mean', 0):.3f} "
                     f"atk_miss={metrics.get('attack_convert_missed_rate_mean', 0):.3f} "
+                    f"oracle_match={metrics.get('tactical_oracle_match_rate_mean', 0):.3f} "
+                    f"oracle_real={metrics.get('tactical_oracle_real_rate_mean', 0):.3f} "
                     f"mix={metrics.get('mission_mix_reward_mean', 0):.3f} "
                     f"support={metrics.get('mission_support_ratio_mean', 0):.3f} "
                     f"attack={metrics.get('mission_attack_ratio_mean', 0):.3f} "
@@ -1547,6 +1577,9 @@ def main() -> None:
                             "temperature_start": float(cfg.get("temperature_start", 0.0)),
                             "temperature_end": float(cfg.get("temperature_end", 0.0)),
                             "policy_prior_strength": float(cfg.get("policy_prior_strength", 0.0)),
+                            "on_policy_imitation_coef": float(cfg.get("on_policy_imitation_coef", 0.0)),
+                            "on_policy_imitation_min_margin": float(cfg.get("on_policy_imitation_min_margin", 0.0)),
+                            "on_policy_imitation_max_weight": float(cfg.get("on_policy_imitation_max_weight", 1.0)),
                             "do_nothing_logit_penalty": float(cfg.get("do_nothing_logit_penalty", 0.0)),
                             "do_nothing_prob_cap": float(cfg.get("do_nothing_prob_cap", 1.0)),
                             "do_nothing_prob_caps_by_slot": list(cfg.get("do_nothing_prob_caps_by_slot", [])),
@@ -1716,6 +1749,9 @@ def main() -> None:
                             "temperature_start": float(cfg.get("temperature_start", 0.0)),
                             "temperature_end": float(cfg.get("temperature_end", 0.0)),
                             "policy_prior_strength": float(cfg.get("policy_prior_strength", 0.0)),
+                            "on_policy_imitation_coef": float(cfg.get("on_policy_imitation_coef", 0.0)),
+                            "on_policy_imitation_min_margin": float(cfg.get("on_policy_imitation_min_margin", 0.0)),
+                            "on_policy_imitation_max_weight": float(cfg.get("on_policy_imitation_max_weight", 1.0)),
                             "do_nothing_logit_penalty": float(cfg.get("do_nothing_logit_penalty", 0.0)),
                             "do_nothing_prob_cap": float(cfg.get("do_nothing_prob_cap", 1.0)),
                             "do_nothing_prob_caps_by_slot": list(cfg.get("do_nothing_prob_caps_by_slot", [])),
@@ -1785,6 +1821,9 @@ def main() -> None:
                                 "temperature_start": float(cfg.get("temperature_start", 1.05)),
                                 "temperature_end": float(cfg.get("temperature_end", 0.18)),
                                 "policy_prior_strength": float(cfg.get("policy_prior_strength", 0.0)),
+                                "on_policy_imitation_coef": float(cfg.get("on_policy_imitation_coef", 0.0)),
+                                "on_policy_imitation_min_margin": float(cfg.get("on_policy_imitation_min_margin", 0.0)),
+                                "on_policy_imitation_max_weight": float(cfg.get("on_policy_imitation_max_weight", 1.0)),
                                 "do_nothing_logit_penalty": float(cfg.get("do_nothing_logit_penalty", 0.0)),
                                 "do_nothing_prob_cap": float(cfg.get("do_nothing_prob_cap", 1.0)),
                                 "do_nothing_prob_caps_by_slot": list(cfg.get("do_nothing_prob_caps_by_slot", [])),

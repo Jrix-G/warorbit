@@ -161,7 +161,8 @@
       "PowerShell(Remove-Item *)",
       "PowerShell(cd C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit; $env:KMP_DUPLICATE_LIB_OK=\"TRUE\"; python -u run_generation.py --gen 1 --games 400 --bench 60 --workers 8 --episode-steps 400 2>&1 | Select-String -NotMatch \"Loading environment|checkpoint\")",
       "PowerShell(cd C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit; $env:KMP_DUPLICATE_LIB_OK=\"TRUE\"; python -u bench_rmcs.py --games 24 --workers 8 --depth 3 2>&1 | Select-String -NotMatch \"Loading environment|checkpoint\")",
-      "PowerShell(cd C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit; python -c \"import ast; ast.parse\\(open\\('v17_warmstart.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\"; $env:KMP_DUPLICATE_LIB_OK=\"TRUE\"; python -u v17_warmstart.py --games 16 --workers 8 --epochs 4 2>&1 | Select-String -NotMatch \"Loading environment|checkpoint\")"
+      "PowerShell(cd C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit; python -c \"import ast; ast.parse\\(open\\('v17_warmstart.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\"; $env:KMP_DUPLICATE_LIB_OK=\"TRUE\"; python -u v17_warmstart.py --games 16 --workers 8 --epochs 4 2>&1 | Select-String -NotMatch \"Loading environment|checkpoint\")",
+      "WebSearch"
     ]
   }
 }

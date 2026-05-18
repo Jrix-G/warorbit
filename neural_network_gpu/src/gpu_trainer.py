@@ -79,6 +79,9 @@ def train_on_episodes(
     ppo_epochs = int(config.get("ppo_epochs", 3))
     minibatch_size = max(1, int(config.get("ppo_minibatch_size", 512)))
     teacher_kl_coef = max(0.0, float(config.get("teacher_kl_coef", 0.0))) if teacher_model is not None else 0.0
+    on_policy_imitation_coef = max(0.0, float(config.get("on_policy_imitation_coef", 0.0)))
+    on_policy_imitation_min_margin = max(0.0, float(config.get("on_policy_imitation_min_margin", 0.20)))
+    on_policy_imitation_max_weight = max(1.0, float(config.get("on_policy_imitation_max_weight", 2.0)))
     advantage_eps = 1e-6
     return_gamma = max(0.0, min(1.0, float(config.get("train_return_gamma", config.get("gamma", 0.997)))))
     return_clip = max(0.0, float(config.get("train_return_clip", 2.0)))
@@ -233,6 +236,9 @@ def train_on_episodes(
         tactical_rate_values.setdefault("candidate_attack_pressure", []).append(float(action_metrics.get("candidate_attack_pressure_rate", 0.0)))
         tactical_rate_values.setdefault("attack_convert_missed", []).append(float(action_metrics.get("attack_convert_missed_rate", 0.0)))
         tactical_rate_values.setdefault("good_attack_missed", []).append(float(action_metrics.get("good_attack_missed_rate", 0.0)))
+        tactical_rate_values.setdefault("oracle_match", []).append(float(action_metrics.get("tactical_oracle_match_rate", 0.0)))
+        tactical_rate_values.setdefault("oracle_real", []).append(float(action_metrics.get("tactical_oracle_real_rate", 0.0)))
+        tactical_rate_values.setdefault("oracle_margin", []).append(float(action_metrics.get("tactical_oracle_margin_mean", 0.0)))
         passivity_penalties.append(float(passivity_penalty))
         passive_win_flags.append(1.0 if passive_win else 0.0)
         do_nothing_rates.append(float(do_nothing_rate))
@@ -335,6 +341,9 @@ def train_on_episodes(
                 "episode_reward": float(reward),
                 "step_shape_reward": float(per_step_shape),
                 "step_weight": step_weight,
+                "tactical_oracle_idx": int(step.get("tactical_oracle_idx", -1)),
+                "tactical_oracle_margin": float(step.get("tactical_oracle_margin", 0.0)),
+                "tactical_oracle_tag": str(step.get("tactical_oracle_tag", "unknown")),
             })
             mission = str(step.get("mission") or "do_nothing")
             ships = int(step.get("ships") or 0)
@@ -399,6 +408,10 @@ def train_on_episodes(
     all_noop_probs_after_cap: List[float] = []
     all_noop_cap_fracs: List[float] = []
     all_teacher_kls: List[float] = []
+    all_on_policy_imitation_losses: List[float] = []
+    all_on_policy_oracle_valid_rates: List[float] = []
+    all_on_policy_oracle_match_rates: List[float] = []
+    all_on_policy_oracle_margins: List[float] = []
     minibatch_updates = 0
 
     model.train()
@@ -435,6 +448,12 @@ def train_on_episodes(
             adv_t = torch.as_tensor(advantages_arr[batch_indices], dtype=torch.float32, device=device)
             reward_t = torch.as_tensor([d["reward"] for d in batch], dtype=torch.float32, device=device)
             weight_t = torch.as_tensor([d["step_weight"] for d in batch], dtype=torch.float32, device=device)
+            oracle_t = torch.as_tensor([int(d.get("tactical_oracle_idx", -1)) for d in batch], dtype=torch.long, device=device)
+            oracle_margin_t = torch.as_tensor(
+                [float(d.get("tactical_oracle_margin", 0.0)) for d in batch],
+                dtype=torch.float32,
+                device=device,
+            )
             temp_t = torch.as_tensor(
                 [float(d.get("temperature") or 1.0) if float(d.get("temperature") or 0.0) > 0.0 else 1.0 for d in batch],
                 dtype=torch.float32,
@@ -513,7 +532,39 @@ def train_on_episodes(
                 teacher_kl = teacher_kl_vec.sum()
                 all_teacher_kls.append(float(teacher_kl.detach().item()))
 
-            loss = policy_loss + value_coef * value_loss - entropy_coef * entropy_loss + teacher_kl_coef * teacher_kl
+            on_policy_imitation_loss = torch.zeros((), dtype=torch.float32, device=device)
+            if on_policy_imitation_coef > 0.0:
+                safe_oracle_t = oracle_t.clamp(0, max(0, mask_t.size(1) - 1))
+                oracle_in_range = (oracle_t >= 0) & (oracle_t < mask_t.size(1))
+                oracle_masked_valid = mask_t.gather(1, safe_oracle_t.unsqueeze(-1)).squeeze(-1)
+                oracle_match = oracle_t == action_t
+                oracle_confident = oracle_margin_t >= on_policy_imitation_min_margin
+                oracle_valid = oracle_in_range & oracle_masked_valid & (oracle_match | oracle_confident)
+                all_on_policy_oracle_valid_rates.append(float(oracle_valid.float().mean().detach().item()))
+                if oracle_in_range.any():
+                    match_rate = (oracle_match & oracle_in_range).float().sum() / oracle_in_range.float().sum().clamp_min(1.0)
+                    all_on_policy_oracle_match_rates.append(float(match_rate.detach().item()))
+                if oracle_valid.any():
+                    oracle_log_prob = log_probs_all.gather(1, safe_oracle_t.unsqueeze(-1)).squeeze(-1)
+                    positive_margin = oracle_margin_t.clamp_min(0.0)
+                    if on_policy_imitation_min_margin > 0.0:
+                        margin_weight = (positive_margin / on_policy_imitation_min_margin).clamp(1.0, on_policy_imitation_max_weight)
+                    else:
+                        margin_weight = (1.0 + positive_margin).clamp(1.0, on_policy_imitation_max_weight)
+                    oracle_weight = weight_t * margin_weight * oracle_valid.to(dtype=weight_t.dtype)
+                    on_policy_imitation_loss = (-(oracle_log_prob) * oracle_weight).sum()
+                    all_on_policy_imitation_losses.append(float(on_policy_imitation_loss.detach().item()))
+                    all_on_policy_oracle_margins.extend(
+                        oracle_margin_t[oracle_valid].detach().cpu().numpy().astype(float).tolist()
+                    )
+
+            loss = (
+                policy_loss
+                + value_coef * value_loss
+                - entropy_coef * entropy_loss
+                + teacher_kl_coef * teacher_kl
+                + on_policy_imitation_coef * on_policy_imitation_loss
+            )
 
             optimizer.zero_grad()
             loss.backward()
@@ -575,6 +626,11 @@ def train_on_episodes(
         "policy_loss": float(np.mean(all_policy_losses)) if all_policy_losses else 0.0,
         "value_loss": float(np.mean(all_value_losses)) if all_value_losses else 0.0,
         "total_loss": float(np.mean(all_total_losses)) if all_total_losses else 0.0,
+        "on_policy_imitation_loss": float(np.mean(all_on_policy_imitation_losses)) if all_on_policy_imitation_losses else 0.0,
+        "on_policy_imitation_coef": float(on_policy_imitation_coef),
+        "on_policy_oracle_valid_rate": float(np.mean(all_on_policy_oracle_valid_rates)) if all_on_policy_oracle_valid_rates else 0.0,
+        "on_policy_oracle_match_rate": float(np.mean(all_on_policy_oracle_match_rates)) if all_on_policy_oracle_match_rates else 0.0,
+        "on_policy_oracle_margin_mean": float(np.mean(all_on_policy_oracle_margins)) if all_on_policy_oracle_margins else 0.0,
         "entropy": float(np.mean(all_entropies)) if all_entropies else 0.0,
         "clip_frac": float(np.mean(all_clip_fracs)) if all_clip_fracs else 0.0,
         "approx_kl": float(np.mean(all_approx_kls)) if all_approx_kls else 0.0,
@@ -632,6 +688,9 @@ def train_on_episodes(
         "candidate_attack_pressure_rate_mean": float(np.mean(tactical_rate_values.get("candidate_attack_pressure", []))) if tactical_rate_values.get("candidate_attack_pressure") else 0.0,
         "attack_convert_missed_rate_mean": float(np.mean(tactical_rate_values.get("attack_convert_missed", []))) if tactical_rate_values.get("attack_convert_missed") else 0.0,
         "good_attack_missed_rate_mean": float(np.mean(tactical_rate_values.get("good_attack_missed", []))) if tactical_rate_values.get("good_attack_missed") else 0.0,
+        "tactical_oracle_match_rate_mean": float(np.mean(tactical_rate_values.get("oracle_match", []))) if tactical_rate_values.get("oracle_match") else 0.0,
+        "tactical_oracle_real_rate_mean": float(np.mean(tactical_rate_values.get("oracle_real", []))) if tactical_rate_values.get("oracle_real") else 0.0,
+        "tactical_oracle_margin_mean": float(np.mean(tactical_rate_values.get("oracle_margin", []))) if tactical_rate_values.get("oracle_margin") else 0.0,
         "tactical_expand_front_rate_mean": float(np.mean(tactical_rate_values.get("expand_front", []))) if tactical_rate_values.get("expand_front") else 0.0,
         "tactical_expand_safe_rate_mean": float(np.mean(tactical_rate_values.get("expand_safe", []))) if tactical_rate_values.get("expand_safe") else 0.0,
         "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,

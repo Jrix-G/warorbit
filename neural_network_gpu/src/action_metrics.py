@@ -31,6 +31,9 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
             "fleet_hit_rate": 0.0,
             "fleet_lost_rate": 0.0,
             "fleet_capture_rate": 0.0,
+            "tactical_oracle_match_rate": 0.0,
+            "tactical_oracle_real_rate": 0.0,
+            "tactical_oracle_margin_mean": 0.0,
         }
 
     action_count = len(records)
@@ -62,10 +65,15 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
     candidate_attack_pressure = 0
     attack_convert_missed = 0
     good_attack_missed = 0
+    oracle_counts: Dict[str, int] = {}
+    oracle_match = 0
+    oracle_real = 0
+    oracle_margins: List[float] = []
 
     for rec in records:
         mission = str(rec.get("mission") or "do_nothing")
         tactical_tag = str(rec.get("tactical_tag") or mission)
+        oracle_tag = str(rec.get("tactical_oracle_tag") or "")
         ships = float(rec.get("ships") or 0.0)
         action_slot = int(rec.get("action_slot") or 0)
         has_real_candidate = bool(rec.get("noop_has_real_candidate", mission != "do_nothing" and ships > 0.0))
@@ -73,6 +81,11 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
 
         mission_counts[mission] = mission_counts.get(mission, 0) + 1
         tactical_counts[tactical_tag] = tactical_counts.get(tactical_tag, 0) + 1
+        if oracle_tag:
+            oracle_counts[oracle_tag] = oracle_counts.get(oracle_tag, 0) + 1
+            oracle_match += int(oracle_tag == tactical_tag)
+            oracle_real += int(oracle_tag not in {"noop", "do_nothing", "none"})
+            oracle_margins.append(float(rec.get("tactical_oracle_margin", 0.0) or 0.0))
         has_attack_convert = bool(rec.get("candidate_has_attack_convert", False))
         has_attack_pressure = bool(rec.get("candidate_has_attack_pressure", False))
         has_good_attack = bool(rec.get("candidate_has_good_attack", has_attack_convert or has_attack_pressure))
@@ -156,10 +169,14 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
         "candidate_attack_pressure_rate": float(candidate_attack_pressure) / float(max(1, action_count)),
         "attack_convert_missed_rate": float(attack_convert_missed) / float(max(1, action_count)),
         "good_attack_missed_rate": float(good_attack_missed) / float(max(1, action_count)),
+        "tactical_oracle_match_rate": float(oracle_match) / float(max(1, action_count)),
+        "tactical_oracle_real_rate": float(oracle_real) / float(max(1, action_count)),
+        "tactical_oracle_margin_mean": float(np.mean(oracle_margins)) if oracle_margins else 0.0,
     }
 
     metrics["mission_counts"] = dict(mission_counts)
     metrics["tactical_counts"] = dict(tactical_counts)
+    metrics["tactical_oracle_counts"] = dict(oracle_counts)
 
     for mission in ("expand", "attack", "support", "do_nothing"):
         ships_values = mission_ship_totals.get(mission, [])
@@ -180,8 +197,11 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
         "expand_safe",
     ):
         count = float(tactical_counts.get(tag, 0))
+        oracle_count = float(oracle_counts.get(tag, 0))
         metrics[f"tactical_{tag}_count"] = count
         metrics[f"tactical_{tag}_rate"] = count / float(max(1, real_action_count))
+        metrics[f"tactical_oracle_{tag}_count"] = oracle_count
+        metrics[f"tactical_oracle_{tag}_rate"] = oracle_count / float(max(1, action_count))
 
     for slot in sorted(set(slot_counts.keys()) | set(slot_ship_totals.keys())):
         ships_values = slot_ship_totals.get(slot, [])

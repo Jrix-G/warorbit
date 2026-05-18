@@ -34,6 +34,59 @@ from neural_network.src.population_4p_training import _strategic_dense_reward
 from neural_network_gpu.src.action_metrics import summarize_action_records
 
 
+_TACTICAL_ORACLE_PRIORITY = {
+    "attack_convert": 8.0,
+    "expand_front": 7.0,
+    "support_defense": 6.5,
+    "attack_pressure": 5.75,
+    "support_front": 4.5,
+    "expand_safe": 4.0,
+    "support_redistribute": 3.75,
+    "attack_opportunity": 3.5,
+    "attack_poor": -1.0,
+    "support_backward": -1.5,
+    "support_passive": -2.0,
+    "noop": 0.0,
+    "do_nothing": 0.0,
+}
+
+
+def _candidate_oracle_score(candidate: Any, has_real_candidate: bool) -> float:
+    mission = str(getattr(candidate, "mission", "do_nothing") or "do_nothing")
+    tag = str(getattr(candidate, "tactical_tag", mission) or mission)
+    score = float(_TACTICAL_ORACLE_PRIORITY.get(tag, _TACTICAL_ORACLE_PRIORITY.get(mission, 0.0)))
+    score += 0.35 * float(getattr(candidate, "tactical_score", 0.0) or 0.0)
+    try:
+        score += 0.20 * float(candidate.score_features[-1]) * 3.0
+    except Exception:
+        pass
+    amount = int(getattr(candidate, "amount", 0) or 0)
+    if mission in {"do_nothing", "noop"}:
+        return score - (3.0 if has_real_candidate else 0.0)
+    if amount <= 0:
+        score -= 4.0
+    elif amount <= 2 and mission in {"attack", "expand"}:
+        score -= 0.5
+    return float(score)
+
+
+def _tactical_oracle(candidates: List[Any]) -> tuple[int, float, str]:
+    if not candidates:
+        return -1, 0.0, "none"
+    has_real_candidate = len(candidates) > 1
+    best_idx = 0
+    best_score = float("-inf")
+    best_tag = "noop"
+    for idx, candidate in enumerate(candidates):
+        score = _candidate_oracle_score(candidate, has_real_candidate)
+        tag = str(getattr(candidate, "tactical_tag", getattr(candidate, "mission", "unknown")) or "unknown")
+        if score > best_score:
+            best_idx = int(idx)
+            best_score = float(score)
+            best_tag = tag
+    return best_idx, best_score, best_tag
+
+
 def _agent_for_pool_name(name: str, config: Dict[str, Any], cache: Dict[str, Any]):
     if isinstance(name, str) and name.startswith("checkpoint:"):
         path = name.split(":", 1)[1]
@@ -199,6 +252,7 @@ def _make_gpu_agent(
             candidate_has_attack_convert = any(tag == "attack_convert" for tag in candidate_tactical_tags)
             candidate_has_attack_pressure = any(tag == "attack_pressure" for tag in candidate_tactical_tags)
             candidate_has_good_attack = candidate_has_attack_convert or candidate_has_attack_pressure
+            tactical_oracle_idx, tactical_oracle_score, tactical_oracle_tag = _tactical_oracle(candidates)
 
             state_features = np.array(encoded.features, dtype=np.float32)
             cand_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
@@ -257,6 +311,10 @@ def _make_gpu_agent(
                     "noop_cap_applied": noop_cap_applied,
                     "tactical_tag": "noop_invalid",
                     "tactical_score": 0.0,
+                    "tactical_oracle_idx": int(tactical_oracle_idx),
+                    "tactical_oracle_score": float(tactical_oracle_score),
+                    "tactical_oracle_tag": str(tactical_oracle_tag),
+                    "tactical_oracle_margin": float(tactical_oracle_score),
                     "candidate_has_attack_convert": bool(candidate_has_attack_convert),
                     "candidate_has_attack_pressure": bool(candidate_has_attack_pressure),
                     "candidate_has_good_attack": bool(candidate_has_good_attack),
@@ -264,6 +322,7 @@ def _make_gpu_agent(
                 break
 
             cand = candidates[action_idx]
+            selected_oracle_score = _candidate_oracle_score(cand, len(candidates) > 1)
             action = reconstruct_action(cand, planning_game)
             move = _candidate_move(planning_game, action)
             executed_ships = int(move[0][2]) if move else 0
@@ -290,6 +349,10 @@ def _make_gpu_agent(
                 "noop_cap_applied": noop_cap_applied,
                 "tactical_tag": str(getattr(cand, "tactical_tag", cand.mission)),
                 "tactical_score": float(getattr(cand, "tactical_score", 0.0)),
+                "tactical_oracle_idx": int(tactical_oracle_idx),
+                "tactical_oracle_score": float(tactical_oracle_score),
+                "tactical_oracle_tag": str(tactical_oracle_tag),
+                "tactical_oracle_margin": float(tactical_oracle_score - selected_oracle_score),
                 "candidate_has_attack_convert": bool(candidate_has_attack_convert),
                 "candidate_has_attack_pressure": bool(candidate_has_attack_pressure),
                 "candidate_has_good_attack": bool(candidate_has_good_attack),
@@ -400,6 +463,9 @@ def worker_fn(
                 "fleet_neutral_hit": bool(s.get("fleet_neutral_hit", False)),
                 "tactical_tag": str(s.get("tactical_tag", s.get("mission", "unknown"))),
                 "tactical_score": float(s.get("tactical_score", 0.0)),
+                "tactical_oracle_idx": int(s.get("tactical_oracle_idx", -1)),
+                "tactical_oracle_tag": str(s.get("tactical_oracle_tag", "unknown")),
+                "tactical_oracle_margin": float(s.get("tactical_oracle_margin", 0.0)),
                 "candidate_has_attack_convert": bool(s.get("candidate_has_attack_convert", False)),
                 "candidate_has_attack_pressure": bool(s.get("candidate_has_attack_pressure", False)),
                 "candidate_has_good_attack": bool(s.get("candidate_has_good_attack", False)),
