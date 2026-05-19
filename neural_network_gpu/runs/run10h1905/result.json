@@ -1,0 +1,11 @@
+{
+  "best_checkpoint": "/teamspace/studios/this_studio/warorbit/runs/gpu_2p_lightning_nn_dagger_10h/best_validated.npz",
+  "best_winrate": 0.4375,
+  "elapsed_minutes": 601.3355118751526,
+  "eval_history": "/teamspace/studios/this_studio/warorbit/runs/gpu_2p_lightning_nn_dagger_10h/eval_history.jsonl",
+  "legacy_best_checkpoint": "/teamspace/studios/this_studio/warorbit/runs/gpu_2p_lightning_nn_dagger_10h/best.npz",
+  "run_name": "gpu_2p_lightning_nn_dagger_10h",
+  "target_reached": false,
+  "target_winrate": 0.8,
+  "total_episodes": 3056
+}

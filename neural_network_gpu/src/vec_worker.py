@@ -87,6 +87,76 @@ def _tactical_oracle(candidates: List[Any]) -> tuple[int, float, str]:
     return best_idx, best_score, best_tag
 
 
+def _counterfactual_candidate_scores(candidates: List[Any], config: Dict[str, Any]) -> tuple[np.ndarray, int, float, float]:
+    """Score every legal candidate as a soft policy-improvement target.
+
+    This is only a training target. Runtime inference still uses the neural
+    network logits. The score deliberately ranks all alternatives instead of
+    turning the best action into a brittle one-hot label.
+    """
+    if not candidates:
+        return np.zeros((0,), dtype=np.float32), -1, 0.0, 0.0
+
+    has_real_candidate = len(candidates) > 1
+    prior_weight = float(config.get("counterfactual_prior_weight", 0.35))
+    tactical_weight = float(config.get("counterfactual_tactical_weight", 1.0))
+    oracle_scale = float(config.get("counterfactual_oracle_scale", 0.45))
+    amount_weight = float(config.get("counterfactual_amount_weight", 0.20))
+    distance_penalty = float(config.get("counterfactual_distance_penalty", 0.10))
+    support_front_bonus = float(config.get("counterfactual_support_front_bonus", 0.25))
+    support_passive_penalty = float(config.get("counterfactual_support_passive_penalty", 0.45))
+    attack_bonus = float(config.get("counterfactual_attack_bonus", 0.15))
+    expand_bonus = float(config.get("counterfactual_expand_bonus", 0.10))
+    noop_penalty = float(config.get("counterfactual_noop_penalty", 2.0))
+    temperature = max(1e-3, float(config.get("counterfactual_temperature", 0.80)))
+
+    scores: List[float] = []
+    for candidate in candidates:
+        mission = str(getattr(candidate, "mission", "do_nothing") or "do_nothing")
+        tag = str(getattr(candidate, "tactical_tag", mission) or mission)
+        features = np.asarray(getattr(candidate, "score_features", np.zeros(16, dtype=np.float32)), dtype=np.float32)
+        amount = float(getattr(candidate, "amount", 0.0) or 0.0)
+        score = tactical_weight * oracle_scale * _candidate_oracle_score(candidate, has_real_candidate)
+
+        if features.size >= 16:
+            sent_ratio = float(features[2])
+            distance = float(features[4])
+            prior = float(features[-1]) * 3.0
+            score += prior_weight * prior
+            if mission in {"attack", "expand"}:
+                score += amount_weight * sent_ratio
+                score -= distance_penalty * distance
+            elif mission == "support":
+                score += 0.5 * amount_weight * sent_ratio
+                score -= 0.4 * distance_penalty * distance
+
+        if mission == "attack":
+            score += attack_bonus
+        elif mission == "expand":
+            score += expand_bonus
+        elif mission == "support":
+            if tag in {"support_defense", "support_front", "support_redistribute"}:
+                score += support_front_bonus
+            elif tag in {"support_passive", "support_backward"}:
+                score -= support_passive_penalty
+        elif mission in {"do_nothing", "noop"} and has_real_candidate:
+            score -= noop_penalty
+
+        if amount <= 0.0 and mission not in {"do_nothing", "noop"}:
+            score -= 3.0
+        scores.append(float(score))
+
+    score_arr = np.asarray(scores, dtype=np.float32)
+    best_idx = int(np.argmax(score_arr)) if score_arr.size else -1
+    sorted_scores = np.sort(score_arr)
+    margin = float(sorted_scores[-1] - sorted_scores[-2]) if sorted_scores.size >= 2 else 0.0
+    logits = (score_arr - float(np.max(score_arr))) / temperature
+    probs = np.exp(logits).astype(np.float64)
+    probs /= max(1e-12, float(np.sum(probs)))
+    entropy = float(-np.sum(probs * np.log(np.maximum(probs, 1e-12)))) if probs.size else 0.0
+    return score_arr, best_idx, margin, entropy
+
+
 def _agent_for_pool_name(name: str, config: Dict[str, Any], cache: Dict[str, Any]):
     if isinstance(name, str) and name.startswith("checkpoint:"):
         path = name.split(":", 1)[1]
@@ -253,6 +323,9 @@ def _make_gpu_agent(
             candidate_has_attack_pressure = any(tag == "attack_pressure" for tag in candidate_tactical_tags)
             candidate_has_good_attack = candidate_has_attack_convert or candidate_has_attack_pressure
             tactical_oracle_idx, tactical_oracle_score, tactical_oracle_tag = _tactical_oracle(candidates)
+            counterfactual_scores, counterfactual_best_idx, counterfactual_margin, counterfactual_entropy = (
+                _counterfactual_candidate_scores(candidates, config)
+            )
 
             state_features = np.array(encoded.features, dtype=np.float32)
             cand_features = np.stack([c.score_features for c in candidates]).astype(np.float32)
@@ -315,6 +388,11 @@ def _make_gpu_agent(
                     "tactical_oracle_score": float(tactical_oracle_score),
                     "tactical_oracle_tag": str(tactical_oracle_tag),
                     "tactical_oracle_margin": float(tactical_oracle_score),
+                    "counterfactual_scores": counterfactual_scores,
+                    "counterfactual_best_idx": int(counterfactual_best_idx),
+                    "counterfactual_margin": float(counterfactual_margin),
+                    "counterfactual_entropy": float(counterfactual_entropy),
+                    "counterfactual_selected_score": 0.0,
                     "candidate_has_attack_convert": bool(candidate_has_attack_convert),
                     "candidate_has_attack_pressure": bool(candidate_has_attack_pressure),
                     "candidate_has_good_attack": bool(candidate_has_good_attack),
@@ -353,6 +431,11 @@ def _make_gpu_agent(
                 "tactical_oracle_score": float(tactical_oracle_score),
                 "tactical_oracle_tag": str(tactical_oracle_tag),
                 "tactical_oracle_margin": float(tactical_oracle_score - selected_oracle_score),
+                "counterfactual_scores": counterfactual_scores,
+                "counterfactual_best_idx": int(counterfactual_best_idx),
+                "counterfactual_margin": float(counterfactual_margin),
+                "counterfactual_entropy": float(counterfactual_entropy),
+                "counterfactual_selected_score": float(counterfactual_scores[action_idx]) if 0 <= action_idx < len(counterfactual_scores) else 0.0,
                 "candidate_has_attack_convert": bool(candidate_has_attack_convert),
                 "candidate_has_attack_pressure": bool(candidate_has_attack_pressure),
                 "candidate_has_good_attack": bool(candidate_has_good_attack),
@@ -448,6 +531,7 @@ def worker_fn(
             {
                 "mission": s["mission"],
                 "ships": s["ships"],
+                "action_idx": int(s.get("action_idx", -1)),
                 "noop_has_real_candidate": bool(s.get("noop_has_real_candidate", False)),
                 "action_slot": int(s.get("action_slot", 0)),
                 "fleet_launch_mapped": bool(s.get("fleet_launch_mapped", False)),
@@ -466,6 +550,9 @@ def worker_fn(
                 "tactical_oracle_idx": int(s.get("tactical_oracle_idx", -1)),
                 "tactical_oracle_tag": str(s.get("tactical_oracle_tag", "unknown")),
                 "tactical_oracle_margin": float(s.get("tactical_oracle_margin", 0.0)),
+                "counterfactual_best_idx": int(s.get("counterfactual_best_idx", -1)),
+                "counterfactual_margin": float(s.get("counterfactual_margin", 0.0)),
+                "counterfactual_entropy": float(s.get("counterfactual_entropy", 0.0)),
                 "candidate_has_attack_convert": bool(s.get("candidate_has_attack_convert", False)),
                 "candidate_has_attack_pressure": bool(s.get("candidate_has_attack_pressure", False)),
                 "candidate_has_good_attack": bool(s.get("candidate_has_good_attack", False)),

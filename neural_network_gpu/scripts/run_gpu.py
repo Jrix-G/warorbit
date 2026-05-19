@@ -549,6 +549,16 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "on_policy_imitation_coef": args.on_policy_imitation_coef,
         "on_policy_imitation_min_margin": args.on_policy_imitation_min_margin,
         "on_policy_imitation_max_weight": args.on_policy_imitation_max_weight,
+        "counterfactual_imitation_coef": args.counterfactual_imitation_coef,
+        "counterfactual_temperature": args.counterfactual_temperature,
+        "counterfactual_min_margin": args.counterfactual_min_margin,
+        "counterfactual_max_weight": args.counterfactual_max_weight,
+        "counterfactual_selected_outcome_coef": args.counterfactual_selected_outcome_coef,
+        "counterfactual_selected_episode_coef": args.counterfactual_selected_episode_coef,
+        "counterfactual_selected_step_shape_coef": args.counterfactual_selected_step_shape_coef,
+        "counterfactual_prior_weight": args.counterfactual_prior_weight,
+        "counterfactual_tactical_weight": args.counterfactual_tactical_weight,
+        "counterfactual_oracle_scale": args.counterfactual_oracle_scale,
         # Activity shaping
         "dense_reward_enabled": True,
         "dense_planet_coef": args.dense_planet_coef,
@@ -1156,6 +1166,66 @@ def main() -> None:
         default=2.0,
         help="Maximum per-step margin weight for the on-policy imitation loss.",
     )
+    parser.add_argument(
+        "--counterfactual-imitation-coef",
+        type=float,
+        default=0.0,
+        help="Auxiliary KL loss toward a soft all-candidate counterfactual policy-improvement target.",
+    )
+    parser.add_argument(
+        "--counterfactual-temperature",
+        type=float,
+        default=0.80,
+        help="Softmax temperature for counterfactual target distributions. Lower is sharper.",
+    )
+    parser.add_argument(
+        "--counterfactual-min-margin",
+        type=float,
+        default=0.05,
+        help="Minimum top-vs-second counterfactual score gap before applying the loss.",
+    )
+    parser.add_argument(
+        "--counterfactual-max-weight",
+        type=float,
+        default=2.5,
+        help="Maximum margin confidence multiplier for the counterfactual loss.",
+    )
+    parser.add_argument(
+        "--counterfactual-selected-outcome-coef",
+        type=float,
+        default=1.0,
+        help="Scale for causal outcome correction on the sampled candidate in counterfactual targets.",
+    )
+    parser.add_argument(
+        "--counterfactual-selected-episode-coef",
+        type=float,
+        default=0.12,
+        help="How much terminal episode reward adjusts the selected candidate target score.",
+    )
+    parser.add_argument(
+        "--counterfactual-selected-step-shape-coef",
+        type=float,
+        default=0.35,
+        help="How much causal step shaping adjusts the selected candidate target score.",
+    )
+    parser.add_argument(
+        "--counterfactual-prior-weight",
+        type=float,
+        default=0.35,
+        help="Weight of candidate prior features inside the all-candidate target scorer.",
+    )
+    parser.add_argument(
+        "--counterfactual-tactical-weight",
+        type=float,
+        default=1.0,
+        help="Weight of tactical candidate ranking inside the all-candidate target scorer.",
+    )
+    parser.add_argument(
+        "--counterfactual-oracle-scale",
+        type=float,
+        default=0.45,
+        help="Scale applied to the discrete tactical oracle scores before softmax target construction.",
+    )
     parser.add_argument("--entropy-coef-start", type=float, default=0.10)
     parser.add_argument("--dense-planet-coef", type=float, default=0.05)
     parser.add_argument("--dense-production-coef", type=float, default=0.04)
@@ -1234,6 +1304,16 @@ def main() -> None:
                 "on_policy_imitation_coef",
                 "on_policy_imitation_min_margin",
                 "on_policy_imitation_max_weight",
+                "counterfactual_imitation_coef",
+                "counterfactual_temperature",
+                "counterfactual_min_margin",
+                "counterfactual_max_weight",
+                "counterfactual_selected_outcome_coef",
+                "counterfactual_selected_episode_coef",
+                "counterfactual_selected_step_shape_coef",
+                "counterfactual_prior_weight",
+                "counterfactual_tactical_weight",
+                "counterfactual_oracle_scale",
                 "do_nothing_logit_penalty",
                 "do_nothing_prob_cap",
                 "do_nothing_prob_caps_by_slot",
@@ -1470,6 +1550,12 @@ def main() -> None:
                     f"op_oracle={metrics.get('on_policy_oracle_valid_rate', 0):.3f} "
                     f"op_match={metrics.get('on_policy_oracle_match_rate', 0):.3f} "
                     f"op_margin={metrics.get('on_policy_oracle_margin_mean', 0):.3f} "
+                    f"cf_imit={metrics.get('counterfactual_imitation_loss', 0):.4f} "
+                    f"cf_valid={metrics.get('counterfactual_valid_rate', 0):.3f} "
+                    f"cf_match={metrics.get('counterfactual_policy_match_rate', 0):.3f} "
+                    f"cf_margin={metrics.get('counterfactual_margin_mean', 0):.3f} "
+                    f"cf_top={metrics.get('counterfactual_top_prob_mean', 0):.3f} "
+                    f"cf_sel={metrics.get('counterfactual_selected_prob_mean', 0):.3f} "
                     f"entropy={metrics.get('entropy', 0):.3f} "
                     f"kl={metrics.get('approx_kl', 0):.4f} "
                     f"clip_frac={metrics.get('clip_frac', 0):.3f} "
@@ -1500,6 +1586,7 @@ def main() -> None:
                     f"atk_miss={metrics.get('attack_convert_missed_rate_mean', 0):.3f} "
                     f"oracle_match={metrics.get('tactical_oracle_match_rate_mean', 0):.3f} "
                     f"oracle_real={metrics.get('tactical_oracle_real_rate_mean', 0):.3f} "
+                    f"cf_action_match={metrics.get('action_counterfactual_match_rate_mean', 0):.3f} "
                     f"mix={metrics.get('mission_mix_reward_mean', 0):.3f} "
                     f"support={metrics.get('mission_support_ratio_mean', 0):.3f} "
                     f"attack={metrics.get('mission_attack_ratio_mean', 0):.3f} "
@@ -1580,6 +1667,16 @@ def main() -> None:
                             "on_policy_imitation_coef": float(cfg.get("on_policy_imitation_coef", 0.0)),
                             "on_policy_imitation_min_margin": float(cfg.get("on_policy_imitation_min_margin", 0.0)),
                             "on_policy_imitation_max_weight": float(cfg.get("on_policy_imitation_max_weight", 1.0)),
+                            "counterfactual_imitation_coef": float(cfg.get("counterfactual_imitation_coef", 0.0)),
+                            "counterfactual_temperature": float(cfg.get("counterfactual_temperature", 0.80)),
+                            "counterfactual_min_margin": float(cfg.get("counterfactual_min_margin", 0.0)),
+                            "counterfactual_max_weight": float(cfg.get("counterfactual_max_weight", 1.0)),
+                            "counterfactual_selected_outcome_coef": float(cfg.get("counterfactual_selected_outcome_coef", 0.0)),
+                            "counterfactual_selected_episode_coef": float(cfg.get("counterfactual_selected_episode_coef", 0.0)),
+                            "counterfactual_selected_step_shape_coef": float(cfg.get("counterfactual_selected_step_shape_coef", 0.0)),
+                            "counterfactual_prior_weight": float(cfg.get("counterfactual_prior_weight", 0.0)),
+                            "counterfactual_tactical_weight": float(cfg.get("counterfactual_tactical_weight", 0.0)),
+                            "counterfactual_oracle_scale": float(cfg.get("counterfactual_oracle_scale", 0.45)),
                             "do_nothing_logit_penalty": float(cfg.get("do_nothing_logit_penalty", 0.0)),
                             "do_nothing_prob_cap": float(cfg.get("do_nothing_prob_cap", 1.0)),
                             "do_nothing_prob_caps_by_slot": list(cfg.get("do_nothing_prob_caps_by_slot", [])),
@@ -1752,6 +1849,16 @@ def main() -> None:
                             "on_policy_imitation_coef": float(cfg.get("on_policy_imitation_coef", 0.0)),
                             "on_policy_imitation_min_margin": float(cfg.get("on_policy_imitation_min_margin", 0.0)),
                             "on_policy_imitation_max_weight": float(cfg.get("on_policy_imitation_max_weight", 1.0)),
+                            "counterfactual_imitation_coef": float(cfg.get("counterfactual_imitation_coef", 0.0)),
+                            "counterfactual_temperature": float(cfg.get("counterfactual_temperature", 0.80)),
+                            "counterfactual_min_margin": float(cfg.get("counterfactual_min_margin", 0.0)),
+                            "counterfactual_max_weight": float(cfg.get("counterfactual_max_weight", 1.0)),
+                            "counterfactual_selected_outcome_coef": float(cfg.get("counterfactual_selected_outcome_coef", 0.0)),
+                            "counterfactual_selected_episode_coef": float(cfg.get("counterfactual_selected_episode_coef", 0.0)),
+                            "counterfactual_selected_step_shape_coef": float(cfg.get("counterfactual_selected_step_shape_coef", 0.0)),
+                            "counterfactual_prior_weight": float(cfg.get("counterfactual_prior_weight", 0.0)),
+                            "counterfactual_tactical_weight": float(cfg.get("counterfactual_tactical_weight", 0.0)),
+                            "counterfactual_oracle_scale": float(cfg.get("counterfactual_oracle_scale", 0.45)),
                             "do_nothing_logit_penalty": float(cfg.get("do_nothing_logit_penalty", 0.0)),
                             "do_nothing_prob_cap": float(cfg.get("do_nothing_prob_cap", 1.0)),
                             "do_nothing_prob_caps_by_slot": list(cfg.get("do_nothing_prob_caps_by_slot", [])),
@@ -1824,6 +1931,16 @@ def main() -> None:
                                 "on_policy_imitation_coef": float(cfg.get("on_policy_imitation_coef", 0.0)),
                                 "on_policy_imitation_min_margin": float(cfg.get("on_policy_imitation_min_margin", 0.0)),
                                 "on_policy_imitation_max_weight": float(cfg.get("on_policy_imitation_max_weight", 1.0)),
+                                "counterfactual_imitation_coef": float(cfg.get("counterfactual_imitation_coef", 0.0)),
+                                "counterfactual_temperature": float(cfg.get("counterfactual_temperature", 0.80)),
+                                "counterfactual_min_margin": float(cfg.get("counterfactual_min_margin", 0.0)),
+                                "counterfactual_max_weight": float(cfg.get("counterfactual_max_weight", 1.0)),
+                                "counterfactual_selected_outcome_coef": float(cfg.get("counterfactual_selected_outcome_coef", 0.0)),
+                                "counterfactual_selected_episode_coef": float(cfg.get("counterfactual_selected_episode_coef", 0.0)),
+                                "counterfactual_selected_step_shape_coef": float(cfg.get("counterfactual_selected_step_shape_coef", 0.0)),
+                                "counterfactual_prior_weight": float(cfg.get("counterfactual_prior_weight", 0.0)),
+                                "counterfactual_tactical_weight": float(cfg.get("counterfactual_tactical_weight", 0.0)),
+                                "counterfactual_oracle_scale": float(cfg.get("counterfactual_oracle_scale", 0.45)),
                                 "do_nothing_logit_penalty": float(cfg.get("do_nothing_logit_penalty", 0.0)),
                                 "do_nothing_prob_cap": float(cfg.get("do_nothing_prob_cap", 1.0)),
                                 "do_nothing_prob_caps_by_slot": list(cfg.get("do_nothing_prob_caps_by_slot", [])),

@@ -34,6 +34,9 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
             "tactical_oracle_match_rate": 0.0,
             "tactical_oracle_real_rate": 0.0,
             "tactical_oracle_margin_mean": 0.0,
+            "counterfactual_match_rate": 0.0,
+            "counterfactual_margin_mean": 0.0,
+            "counterfactual_entropy_mean": 0.0,
         }
 
     action_count = len(records)
@@ -69,11 +72,16 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
     oracle_match = 0
     oracle_real = 0
     oracle_margins: List[float] = []
+    counterfactual_match = 0
+    counterfactual_valid = 0
+    counterfactual_margins: List[float] = []
+    counterfactual_entropies: List[float] = []
 
     for rec in records:
         mission = str(rec.get("mission") or "do_nothing")
         tactical_tag = str(rec.get("tactical_tag") or mission)
         oracle_tag = str(rec.get("tactical_oracle_tag") or "")
+        counterfactual_best_idx = int(rec.get("counterfactual_best_idx", -1))
         ships = float(rec.get("ships") or 0.0)
         action_slot = int(rec.get("action_slot") or 0)
         has_real_candidate = bool(rec.get("noop_has_real_candidate", mission != "do_nothing" and ships > 0.0))
@@ -86,6 +94,11 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
             oracle_match += int(oracle_tag == tactical_tag)
             oracle_real += int(oracle_tag not in {"noop", "do_nothing", "none"})
             oracle_margins.append(float(rec.get("tactical_oracle_margin", 0.0) or 0.0))
+        if counterfactual_best_idx >= 0:
+            counterfactual_valid += 1
+            counterfactual_match += int(counterfactual_best_idx == int(rec.get("action_idx", -999)))
+            counterfactual_margins.append(float(rec.get("counterfactual_margin", 0.0) or 0.0))
+            counterfactual_entropies.append(float(rec.get("counterfactual_entropy", 0.0) or 0.0))
         has_attack_convert = bool(rec.get("candidate_has_attack_convert", False))
         has_attack_pressure = bool(rec.get("candidate_has_attack_pressure", False))
         has_good_attack = bool(rec.get("candidate_has_good_attack", has_attack_convert or has_attack_pressure))
@@ -172,6 +185,9 @@ def summarize_action_records(action_records: Iterable[Dict[str, Any]]) -> Dict[s
         "tactical_oracle_match_rate": float(oracle_match) / float(max(1, action_count)),
         "tactical_oracle_real_rate": float(oracle_real) / float(max(1, action_count)),
         "tactical_oracle_margin_mean": float(np.mean(oracle_margins)) if oracle_margins else 0.0,
+        "counterfactual_match_rate": float(counterfactual_match) / float(max(1, counterfactual_valid)),
+        "counterfactual_margin_mean": float(np.mean(counterfactual_margins)) if counterfactual_margins else 0.0,
+        "counterfactual_entropy_mean": float(np.mean(counterfactual_entropies)) if counterfactual_entropies else 0.0,
     }
 
     metrics["mission_counts"] = dict(mission_counts)

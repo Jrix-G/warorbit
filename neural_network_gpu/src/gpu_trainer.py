@@ -59,6 +59,53 @@ def _mission_mix_shaping_reward(action_metrics: Dict[str, Any], config: Dict[str
     }
 
 
+def _counterfactual_selected_bonus(
+    step: Dict[str, Any],
+    episode_reward: float,
+    step_shape: float,
+    config: Dict[str, Any],
+) -> float:
+    """Outcome correction for the actually sampled candidate.
+
+    The full counterfactual target ranks every candidate before the move is
+    played. This term then uses causal feedback from the sampled move so the
+    target remains anchored to real outcomes instead of pure hand ranking.
+    """
+    coef = max(0.0, float(config.get("counterfactual_selected_outcome_coef", 1.0)))
+    if coef <= 0.0:
+        return 0.0
+
+    mission = str(step.get("mission") or "do_nothing")
+    ships = int(step.get("ships") or 0)
+    is_noop = mission == "do_nothing" or ships <= 0
+    bonus = 0.0
+    if is_noop:
+        if bool(step.get("noop_has_real_candidate", False)):
+            bonus -= float(config.get("counterfactual_selected_legal_noop_penalty", 0.35))
+    else:
+        if bool(step.get("fleet_captured", False)):
+            bonus += float(config.get("counterfactual_selected_capture_bonus", 0.90))
+        elif bool(step.get("fleet_enemy_hit", False)):
+            bonus += float(config.get("counterfactual_selected_enemy_hit_bonus", 0.35))
+        elif bool(step.get("fleet_neutral_hit", False)):
+            bonus += float(config.get("counterfactual_selected_neutral_hit_bonus", 0.25))
+        elif bool(step.get("fleet_supported", False)):
+            bonus += float(config.get("counterfactual_selected_support_bonus", 0.20))
+        elif bool(step.get("fleet_hit", False)):
+            bonus += float(config.get("counterfactual_selected_hit_bonus", 0.12))
+        if bool(step.get("fleet_lost", False)):
+            bonus -= float(config.get("counterfactual_selected_lost_penalty", 0.80))
+        if bool(step.get("fleet_pending", False)):
+            bonus -= float(config.get("counterfactual_selected_pending_penalty", 0.03))
+
+    bonus += float(config.get("counterfactual_selected_episode_coef", 0.12)) * float(episode_reward)
+    bonus += float(config.get("counterfactual_selected_step_shape_coef", 0.35)) * float(step_shape)
+    clip = max(0.0, float(config.get("counterfactual_selected_bonus_clip", 1.20)))
+    if clip > 0.0:
+        bonus = max(-clip, min(clip, bonus))
+    return float(coef * bonus)
+
+
 def train_on_episodes(
     model: NeuralNetworkModel,
     optimizer: torch.optim.Optimizer,
@@ -82,6 +129,10 @@ def train_on_episodes(
     on_policy_imitation_coef = max(0.0, float(config.get("on_policy_imitation_coef", 0.0)))
     on_policy_imitation_min_margin = max(0.0, float(config.get("on_policy_imitation_min_margin", 0.20)))
     on_policy_imitation_max_weight = max(1.0, float(config.get("on_policy_imitation_max_weight", 2.0)))
+    counterfactual_imitation_coef = max(0.0, float(config.get("counterfactual_imitation_coef", 0.0)))
+    counterfactual_temperature = max(1e-3, float(config.get("counterfactual_temperature", 0.80)))
+    counterfactual_min_margin = max(0.0, float(config.get("counterfactual_min_margin", 0.05)))
+    counterfactual_max_weight = max(1.0, float(config.get("counterfactual_max_weight", 2.5)))
     advantage_eps = 1e-6
     return_gamma = max(0.0, min(1.0, float(config.get("train_return_gamma", config.get("gamma", 0.997)))))
     return_clip = max(0.0, float(config.get("train_return_clip", 2.0)))
@@ -239,6 +290,9 @@ def train_on_episodes(
         tactical_rate_values.setdefault("oracle_match", []).append(float(action_metrics.get("tactical_oracle_match_rate", 0.0)))
         tactical_rate_values.setdefault("oracle_real", []).append(float(action_metrics.get("tactical_oracle_real_rate", 0.0)))
         tactical_rate_values.setdefault("oracle_margin", []).append(float(action_metrics.get("tactical_oracle_margin_mean", 0.0)))
+        tactical_rate_values.setdefault("counterfactual_match", []).append(float(action_metrics.get("counterfactual_match_rate", 0.0)))
+        tactical_rate_values.setdefault("counterfactual_margin", []).append(float(action_metrics.get("counterfactual_margin_mean", 0.0)))
+        tactical_rate_values.setdefault("counterfactual_entropy", []).append(float(action_metrics.get("counterfactual_entropy_mean", 0.0)))
         passivity_penalties.append(float(passivity_penalty))
         passive_win_flags.append(1.0 if passive_win else 0.0)
         do_nothing_rates.append(float(do_nothing_rate))
@@ -327,6 +381,18 @@ def train_on_episodes(
             if per_step_shape_clip > 0.0:
                 per_step_shape = max(-per_step_shape_clip, min(per_step_shape_clip, per_step_shape))
             episode_per_step_shape_total += per_step_shape
+            counterfactual_scores = np.asarray(
+                step.get("counterfactual_scores", []),
+                dtype=np.float32,
+            )
+            if counterfactual_scores.shape[:1] != step["candidates"].shape[:1]:
+                counterfactual_scores = np.full((int(step["candidates"].shape[0]),), np.nan, dtype=np.float32)
+            counterfactual_selected_bonus = _counterfactual_selected_bonus(
+                step,
+                float(reward),
+                float(per_step_shape),
+                config,
+            )
 
             episode_rows.append({
                 "state": step["state"],
@@ -344,6 +410,11 @@ def train_on_episodes(
                 "tactical_oracle_idx": int(step.get("tactical_oracle_idx", -1)),
                 "tactical_oracle_margin": float(step.get("tactical_oracle_margin", 0.0)),
                 "tactical_oracle_tag": str(step.get("tactical_oracle_tag", "unknown")),
+                "counterfactual_scores": counterfactual_scores.astype(np.float32, copy=False),
+                "counterfactual_selected_bonus": float(counterfactual_selected_bonus),
+                "counterfactual_best_idx": int(step.get("counterfactual_best_idx", -1)),
+                "counterfactual_margin": float(step.get("counterfactual_margin", 0.0)),
+                "counterfactual_entropy": float(step.get("counterfactual_entropy", 0.0)),
             })
             mission = str(step.get("mission") or "do_nothing")
             ships = int(step.get("ships") or 0)
@@ -412,6 +483,13 @@ def train_on_episodes(
     all_on_policy_oracle_valid_rates: List[float] = []
     all_on_policy_oracle_match_rates: List[float] = []
     all_on_policy_oracle_margins: List[float] = []
+    all_counterfactual_imitation_losses: List[float] = []
+    all_counterfactual_valid_rates: List[float] = []
+    all_counterfactual_margins: List[float] = []
+    all_counterfactual_entropies: List[float] = []
+    all_counterfactual_top_probs: List[float] = []
+    all_counterfactual_policy_match_rates: List[float] = []
+    all_counterfactual_selected_probs: List[float] = []
     minibatch_updates = 0
 
     model.train()
@@ -435,14 +513,27 @@ def train_on_episodes(
 
             states = np.stack([d["state"] for d in batch]).astype(np.float32, copy=False)
             cands_padded = np.zeros((len(batch), max_n, cand_dim), dtype=np.float32)
+            counterfactual_scores_padded = np.full((len(batch), max_n), np.nan, dtype=np.float32)
+            counterfactual_row_valid = np.zeros((len(batch),), dtype=bool)
             mask = np.zeros((len(batch), max_n), dtype=bool)
             for row, (d, n) in enumerate(zip(batch, n_cands)):
                 cands_padded[row, :n] = d["candidates"]
                 mask[row, :n] = True
+                cf_scores = np.asarray(d.get("counterfactual_scores", []), dtype=np.float32)
+                if cf_scores.shape[:1] == (n,) and np.isfinite(cf_scores).any():
+                    counterfactual_scores_padded[row, :n] = cf_scores[:n]
+                    counterfactual_row_valid[row] = True
 
             state_t = torch.as_tensor(states, dtype=torch.float32, device=device)
             cand_t = torch.as_tensor(cands_padded, dtype=torch.float32, device=device)
             mask_t = torch.as_tensor(mask, dtype=torch.bool, device=device)
+            counterfactual_score_t = torch.as_tensor(counterfactual_scores_padded, dtype=torch.float32, device=device)
+            counterfactual_row_valid_t = torch.as_tensor(counterfactual_row_valid, dtype=torch.bool, device=device)
+            counterfactual_selected_bonus_t = torch.as_tensor(
+                [float(d.get("counterfactual_selected_bonus", 0.0)) for d in batch],
+                dtype=torch.float32,
+                device=device,
+            )
             action_t = torch.as_tensor([d["action_idx"] for d in batch], dtype=torch.long, device=device)
             old_lp_t = torch.as_tensor([d["old_log_prob"] for d in batch], dtype=torch.float32, device=device)
             adv_t = torch.as_tensor(advantages_arr[batch_indices], dtype=torch.float32, device=device)
@@ -558,12 +649,72 @@ def train_on_episodes(
                         oracle_margin_t[oracle_valid].detach().cpu().numpy().astype(float).tolist()
                     )
 
+            counterfactual_imitation_loss = torch.zeros((), dtype=torch.float32, device=device)
+            if counterfactual_imitation_coef > 0.0:
+                cf_scores = counterfactual_score_t.clone()
+                cf_finite = torch.isfinite(cf_scores)
+                cf_scores = torch.where(cf_finite, cf_scores, torch.full_like(cf_scores, -1.0e9))
+                cf_scores = cf_scores.masked_fill(~mask_t, -1.0e9)
+                safe_action_t = action_t.clamp(0, max(0, mask_t.size(1) - 1))
+                action_in_range = (action_t >= 0) & (action_t < mask_t.size(1))
+                action_masked_valid = mask_t.gather(1, safe_action_t.unsqueeze(-1)).squeeze(-1)
+                selected_valid = action_in_range & action_masked_valid
+                if selected_valid.any():
+                    cf_scores = cf_scores.scatter_add(
+                        1,
+                        safe_action_t.unsqueeze(-1),
+                        (counterfactual_selected_bonus_t * selected_valid.to(dtype=torch.float32)).unsqueeze(-1),
+                    )
+                    cf_scores = cf_scores.masked_fill(~mask_t, -1.0e9)
+
+                has_two_candidates = mask_t.sum(dim=-1) >= 2
+                if cf_scores.size(1) >= 2:
+                    top_values, top_indices = torch.topk(cf_scores, k=2, dim=-1)
+                    cf_margin_t = top_values[:, 0] - top_values[:, 1]
+                    cf_best_t = top_indices[:, 0]
+                else:
+                    cf_margin_t = torch.zeros(cf_scores.size(0), dtype=torch.float32, device=device)
+                    cf_best_t = torch.zeros(cf_scores.size(0), dtype=torch.long, device=device)
+                cf_valid = counterfactual_row_valid_t & has_two_candidates & (cf_margin_t >= counterfactual_min_margin)
+                all_counterfactual_valid_rates.append(float(cf_valid.float().mean().detach().item()))
+
+                target_logits = cf_scores / counterfactual_temperature
+                target_probs = torch.softmax(target_logits, dim=-1).nan_to_num(0.0)
+                target_probs = target_probs * mask_t.to(dtype=target_probs.dtype)
+                target_probs = target_probs / target_probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+                target_log_probs = torch.log(target_probs.clamp_min(1e-12))
+                target_entropy = -(target_probs * target_log_probs).sum(dim=-1)
+                target_top_prob = target_probs.gather(1, cf_best_t.unsqueeze(-1)).squeeze(-1)
+                policy_best_t = probs.argmax(dim=-1)
+                cf_policy_match = policy_best_t == cf_best_t
+                selected_target_prob = target_probs.gather(1, safe_action_t.unsqueeze(-1)).squeeze(-1)
+
+                if cf_valid.any():
+                    if counterfactual_min_margin > 0.0:
+                        cf_weight = (cf_margin_t / counterfactual_min_margin).clamp(1.0, counterfactual_max_weight)
+                    else:
+                        cf_weight = (1.0 + cf_margin_t.clamp_min(0.0)).clamp(1.0, counterfactual_max_weight)
+                    counterfactual_kl = (target_probs * (target_log_probs - log_probs_all)).sum(dim=-1)
+                    counterfactual_imitation_loss = (
+                        counterfactual_kl
+                        * weight_t
+                        * cf_weight
+                        * cf_valid.to(dtype=weight_t.dtype)
+                    ).sum()
+                    all_counterfactual_imitation_losses.append(float(counterfactual_imitation_loss.detach().item()))
+                    all_counterfactual_margins.extend(cf_margin_t[cf_valid].detach().cpu().numpy().astype(float).tolist())
+                    all_counterfactual_entropies.extend(target_entropy[cf_valid].detach().cpu().numpy().astype(float).tolist())
+                    all_counterfactual_top_probs.extend(target_top_prob[cf_valid].detach().cpu().numpy().astype(float).tolist())
+                    all_counterfactual_policy_match_rates.append(float(cf_policy_match[cf_valid].float().mean().detach().item()))
+                    all_counterfactual_selected_probs.extend(selected_target_prob[cf_valid].detach().cpu().numpy().astype(float).tolist())
+
             loss = (
                 policy_loss
                 + value_coef * value_loss
                 - entropy_coef * entropy_loss
                 + teacher_kl_coef * teacher_kl
                 + on_policy_imitation_coef * on_policy_imitation_loss
+                + counterfactual_imitation_coef * counterfactual_imitation_loss
             )
 
             optimizer.zero_grad()
@@ -631,6 +782,14 @@ def train_on_episodes(
         "on_policy_oracle_valid_rate": float(np.mean(all_on_policy_oracle_valid_rates)) if all_on_policy_oracle_valid_rates else 0.0,
         "on_policy_oracle_match_rate": float(np.mean(all_on_policy_oracle_match_rates)) if all_on_policy_oracle_match_rates else 0.0,
         "on_policy_oracle_margin_mean": float(np.mean(all_on_policy_oracle_margins)) if all_on_policy_oracle_margins else 0.0,
+        "counterfactual_imitation_loss": float(np.mean(all_counterfactual_imitation_losses)) if all_counterfactual_imitation_losses else 0.0,
+        "counterfactual_imitation_coef": float(counterfactual_imitation_coef),
+        "counterfactual_valid_rate": float(np.mean(all_counterfactual_valid_rates)) if all_counterfactual_valid_rates else 0.0,
+        "counterfactual_margin_mean": float(np.mean(all_counterfactual_margins)) if all_counterfactual_margins else 0.0,
+        "counterfactual_entropy_mean": float(np.mean(all_counterfactual_entropies)) if all_counterfactual_entropies else 0.0,
+        "counterfactual_top_prob_mean": float(np.mean(all_counterfactual_top_probs)) if all_counterfactual_top_probs else 0.0,
+        "counterfactual_policy_match_rate": float(np.mean(all_counterfactual_policy_match_rates)) if all_counterfactual_policy_match_rates else 0.0,
+        "counterfactual_selected_prob_mean": float(np.mean(all_counterfactual_selected_probs)) if all_counterfactual_selected_probs else 0.0,
         "entropy": float(np.mean(all_entropies)) if all_entropies else 0.0,
         "clip_frac": float(np.mean(all_clip_fracs)) if all_clip_fracs else 0.0,
         "approx_kl": float(np.mean(all_approx_kls)) if all_approx_kls else 0.0,
@@ -691,6 +850,9 @@ def train_on_episodes(
         "tactical_oracle_match_rate_mean": float(np.mean(tactical_rate_values.get("oracle_match", []))) if tactical_rate_values.get("oracle_match") else 0.0,
         "tactical_oracle_real_rate_mean": float(np.mean(tactical_rate_values.get("oracle_real", []))) if tactical_rate_values.get("oracle_real") else 0.0,
         "tactical_oracle_margin_mean": float(np.mean(tactical_rate_values.get("oracle_margin", []))) if tactical_rate_values.get("oracle_margin") else 0.0,
+        "action_counterfactual_match_rate_mean": float(np.mean(tactical_rate_values.get("counterfactual_match", []))) if tactical_rate_values.get("counterfactual_match") else 0.0,
+        "action_counterfactual_margin_mean": float(np.mean(tactical_rate_values.get("counterfactual_margin", []))) if tactical_rate_values.get("counterfactual_margin") else 0.0,
+        "action_counterfactual_entropy_mean": float(np.mean(tactical_rate_values.get("counterfactual_entropy", []))) if tactical_rate_values.get("counterfactual_entropy") else 0.0,
         "tactical_expand_front_rate_mean": float(np.mean(tactical_rate_values.get("expand_front", []))) if tactical_rate_values.get("expand_front") else 0.0,
         "tactical_expand_safe_rate_mean": float(np.mean(tactical_rate_values.get("expand_safe", []))) if tactical_rate_values.get("expand_safe") else 0.0,
         "passivity_penalty_mean": float(np.mean(passivity_penalties)) if passivity_penalties else 0.0,
