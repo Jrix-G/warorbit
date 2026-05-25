@@ -1,0 +1,49 @@
+{
+  "after": {
+    "failures": [
+      "min_avg_margin_4p"
+    ],
+    "passed": false,
+    "rules": {
+      "max_agent_errors": 0,
+      "min_avg_margin_4p": 0.0,
+      "min_ci_low_4p": 0.2,
+      "min_games_4p": 8,
+      "min_games_total": 16,
+      "min_wr_2p": 0.55,
+      "min_wr_4p": 0.45
+    },
+    "summary": {
+      "candidate_errors": 0,
+      "games": 16,
+      "modes": {
+        "2p": {
+          "avg_margin": 599.125,
+          "ci_high": 0.863158240538479,
+          "ci_low": 0.30573785458380187,
+          "mean_rank": 1.375,
+          "seat_bias_max_abs": 0.125,
+          "tie_score_mean": 0.625,
+          "total": 8,
+          "winrate": 0.625,
+          "wins": 5
+        },
+        "4p": {
+          "avg_margin": -180.875,
+          "ci_high": 0.7847874731755582,
+          "ci_low": 0.21521252682444186,
+          "mean_rank": 2.25,
+          "seat_bias_max_abs": 0.0,
+          "tie_score_mean": 0.5,
+          "total": 8,
+          "winrate": 0.5,
+          "wins": 4
+        }
+      },
+      "path": "analysis\\v21_oracle_collect_4p_v15_24_bench_8x100.jsonl"
+    }
+  },
+  "artifacts": {},
+  "name": "oracle_v15_24",
+  "promotable": false
+}

@@ -162,7 +162,25 @@
       "PowerShell(cd C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit; $env:KMP_DUPLICATE_LIB_OK=\"TRUE\"; python -u run_generation.py --gen 1 --games 400 --bench 60 --workers 8 --episode-steps 400 2>&1 | Select-String -NotMatch \"Loading environment|checkpoint\")",
       "PowerShell(cd C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit; $env:KMP_DUPLICATE_LIB_OK=\"TRUE\"; python -u bench_rmcs.py --games 24 --workers 8 --depth 3 2>&1 | Select-String -NotMatch \"Loading environment|checkpoint\")",
       "PowerShell(cd C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit; python -c \"import ast; ast.parse\\(open\\('v17_warmstart.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\"; $env:KMP_DUPLICATE_LIB_OK=\"TRUE\"; python -u v17_warmstart.py --games 16 --workers 8 --epochs 4 2>&1 | Select-String -NotMatch \"Loading environment|checkpoint\")",
-      "WebSearch"
+      "WebSearch",
+      "Bash(mkdir -p analysis/old_run)",
+      "Bash(mv analysis/v17_loop.pt analysis/old_run/)",
+      "Bash(mv analysis/v17_iter1.pt analysis/old_run/)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python -u v17_loop.py --iterations 1 --games 4 --n-sims 12 --workers 4 --vs-v15-frac 0.4)",
+      "Bash(mv analysis/v17_loop.pt analysis/old_run/v17_loop_smoke.pt)",
+      "Bash(mv analysis/v17_iter1.pt analysis/old_run/v17_iter1_smoke.pt)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" nohup python -u v17_loop.py --iterations 12 --games 40 --n-sims 40 --n-sims-end 80 --workers 8 --vs-v15-frac 0.4 --mode 4)",
+      "Bash(echo \"launched PID $!\")",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python -u v17_eval.py --ckpt analysis/v17_iter3.pt --games 16 --workers 4 --n-sims 50 --opponent v15)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python -u v17_launchdiag.py --ckpt analysis/v17_iter4.pt --games 3 --workers 4 --n-sims 50)",
+      "Bash(kill 1040)",
+      "Bash(pkill -f v17_loop.py)",
+      "Bash(ps -W)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python v18_agent.py)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python -u v18_bench.py --games 2 --modes 2,4 --n-sims 24 --workers 4 --evaluator rollout-esc --rollout 14)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python -u v18_bench.py --games 2 --modes 2,4 --n-sims 24 --workers 4 --evaluator rollout-esc --rollout 22)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python v18_search.py)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python -u v18_bench.py --games 2 --modes 2,4 --workers 4 --search gumbel)"
     ]
   }
 }

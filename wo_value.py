@@ -18,17 +18,24 @@ from wo_net import WOValueNet
 
 
 def load_value_fn(ckpt: str = "analysis/wo_value.pt", device: str = "cpu"):
-    """Return a callable value_fn(fs, player) -> float in [-1,1]."""
-    c = torch.load(ckpt, map_location=device)
+    """Return a callable value_fn(fs, player) -> float.
+
+    If the checkpoint was trained with --residual, value_fn returns the
+    predicted residual (outcome01 - ESC) in [-1,1] and carries
+    value_fn.is_residual = True.  The search then uses ESC + λ*residual
+    instead of (1-λ)*ESC + λ*net01.
+    """
+    c = torch.load(ckpt, map_location=device, weights_only=False)
     net = WOValueNet(d=int(c["d"]))
     net.load_state_dict(c["state_dict"])
     net.eval().to(device)
     torch.set_num_threads(1)
+    is_residual = bool(c.get("residual", False))
 
     def value_fn(fs, player: int) -> float:
         pf, gf = enc.encode(fs, player)
         n = pf.shape[0]
-        if n == 0:                                  # no planets -> neutral
+        if n == 0:
             return 0.0
         with torch.no_grad():
             v = net(torch.as_tensor(pf[None], device=device),
@@ -36,6 +43,7 @@ def load_value_fn(ckpt: str = "analysis/wo_value.pt", device: str = "cpu"):
                     torch.ones(1, n, dtype=torch.bool, device=device))
         return float(v[0])
 
+    value_fn.is_residual = is_residual
     return value_fn
 
 

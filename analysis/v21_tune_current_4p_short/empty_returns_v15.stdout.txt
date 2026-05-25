@@ -1,0 +1,14 @@
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+V20 bench candidate=v20_agent:agent style=obs vs=raw_v15_search modes=4p base_seeds=4 seat_rotation=cycle scheduled_games=4 workers=4
+[4/4] 4p seed=30000003 seat=3 win=0 score=293 vs1130 margin=-837 L=113/174
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+
+=== FINAL: V20 candidate vs raw V15 ===
+  4p: W=0/4 WR=0.000 CI=[0.000,0.490] margin=-611.0 launches us=67.0 v15=126.2
+       seats: s0 0/1 | s1 0/1 | s2 0/1 | s3 0/1
+  AGG: W=0/4 WR=0.000 CI=[0.000,0.490] -> LOSES_TO_RAW_V15
+elapsed 0.7 min
+per-game log -> analysis\v21_tune_current_4p_short\empty_returns_v15.jsonl

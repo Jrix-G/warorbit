@@ -36,18 +36,49 @@ def _mission_mix_shaping_reward(action_metrics: Dict[str, Any], config: Dict[str
     attack_ratio = attack / real
     support_ratio = support / real
     coef = max(0.0, float(config.get("train_mission_mix_bonus_coef", 0.0)))
+    if coef <= 0.0:
+        return 0.0, {
+            "mission_mix_reward": 0.0,
+            "mission_expand_ratio": float(expand_ratio),
+            "mission_attack_ratio": float(attack_ratio),
+            "mission_support_ratio": float(support_ratio),
+            "mission_replay_l1": 0.0,
+            "mission_attack_deficit": 0.0,
+            "mission_expand_excess": 0.0,
+        }
+
+    # Replay corpus baseline (top-10 winners, 50k samples) is attack/support
+    # heavy. This term is intentionally small: it corrects pathological mission
+    # drift without replacing win/loss as the main objective.
+    target_attack = max(0.0, min(1.0, float(config.get("train_target_attack_ratio", 0.42))))
     target_support = max(0.0, min(1.0, float(config.get("train_target_support_ratio", 0.30))))
-    support_band = max(1e-6, float(config.get("train_support_ratio_band", 0.20)))
+    target_expand = max(0.0, min(1.0, float(config.get("train_target_expand_ratio", 0.22))))
+    total_target = max(1e-6, target_attack + target_support + target_expand)
+    target_attack /= total_target
+    target_support /= total_target
+    target_expand /= total_target
+    ratio_band = max(1e-6, float(config.get("train_mission_ratio_band", config.get("train_support_ratio_band", 0.22))))
     min_support = max(0.0, min(1.0, float(config.get("train_min_support_ratio", 0.12))))
-    max_attack = max(0.0, min(1.0, float(config.get("train_max_attack_ratio", 0.58))))
+    min_attack = max(0.0, min(1.0, float(config.get("train_min_attack_ratio", 0.18))))
+    max_attack = max(0.0, min(1.0, float(config.get("train_max_attack_ratio", 0.62))))
+    max_expand = max(0.0, min(1.0, float(config.get("train_max_expand_ratio", 0.50))))
     clip = max(0.0, float(config.get("train_mission_mix_reward_clip", 0.20)))
 
-    support_shape = max(0.0, 1.0 - abs(support_ratio - target_support) / support_band)
-    reward = coef * support_shape
+    attack_shape = max(0.0, 1.0 - abs(attack_ratio - target_attack) / ratio_band)
+    support_shape = max(0.0, 1.0 - abs(support_ratio - target_support) / ratio_band)
+    expand_shape = max(0.0, 1.0 - abs(expand_ratio - target_expand) / ratio_band)
+    reward = coef * (1.30 * attack_shape + 0.75 * support_shape + 0.45 * expand_shape) / 2.50
+    attack_deficit = max(0.0, min_attack - attack_ratio)
+    expand_excess = max(0.0, expand_ratio - max_expand)
     if support_ratio < min_support:
         reward -= coef * ((min_support - support_ratio) / max(1e-6, min_support))
+    if attack_deficit > 0.0:
+        reward -= coef * float(config.get("train_attack_deficit_penalty", 1.20)) * (attack_deficit / max(1e-6, min_attack))
     if attack_ratio > max_attack:
         reward -= coef * ((attack_ratio - max_attack) / max(1e-6, 1.0 - max_attack))
+    if expand_excess > 0.0:
+        reward -= coef * float(config.get("train_expand_excess_penalty", 0.90)) * (expand_excess / max(1e-6, 1.0 - max_expand))
+    replay_l1 = abs(attack_ratio - target_attack) + abs(support_ratio - target_support) + abs(expand_ratio - target_expand)
     if clip > 0.0:
         reward = max(-clip, min(clip, reward))
 
@@ -56,6 +87,9 @@ def _mission_mix_shaping_reward(action_metrics: Dict[str, Any], config: Dict[str
         "mission_expand_ratio": float(expand_ratio),
         "mission_attack_ratio": float(attack_ratio),
         "mission_support_ratio": float(support_ratio),
+        "mission_replay_l1": float(replay_l1),
+        "mission_attack_deficit": float(attack_deficit),
+        "mission_expand_excess": float(expand_excess),
     }
 
 
@@ -136,6 +170,10 @@ def train_on_episodes(
     advantage_eps = 1e-6
     return_gamma = max(0.0, min(1.0, float(config.get("train_return_gamma", config.get("gamma", 0.997)))))
     return_clip = max(0.0, float(config.get("train_return_clip", 2.0)))
+    terminal_reward_coef = float(config.get("train_terminal_reward_coef", 1.0))
+    dense_reward_coef = float(config.get("train_dense_reward_coef", 0.06))
+    activity_reward_coef = float(config.get("train_activity_reward_coef", 0.0))
+    reward_clip = max(0.0, float(config.get("train_reward_clip", 1.20)))
     event_shaping_enabled = bool(config.get("train_event_shaping_enabled", True))
     effective_activity_action_bonus = float(config.get("train_action_bonus_coef", 0.08))
     effective_activity_ship_bonus = float(config.get("train_ships_sent_bonus_coef", 0.04))
@@ -168,6 +206,9 @@ def train_on_episodes(
     mission_expand_ratios: List[float] = []
     mission_attack_ratios: List[float] = []
     mission_support_ratios: List[float] = []
+    mission_replay_l1s: List[float] = []
+    mission_attack_deficits: List[float] = []
+    mission_expand_excesses: List[float] = []
     event_shape_rewards: List[float] = []
     fleet_launch_mapped_rates: List[float] = []
     fleet_outcome_known_rates: List[float] = []
@@ -247,8 +288,15 @@ def train_on_episodes(
             else terminal_reward
         )
         dense_reward = float(ep.get("dense_reward", 0.0))
-        reward = float(adjusted_terminal_reward + 0.15 * dense_reward + 0.05 * activity_reward + mission_mix_reward - passivity_penalty)
-        reward = max(-1.2, min(1.2, reward))
+        reward = float(
+            terminal_reward_coef * adjusted_terminal_reward
+            + dense_reward_coef * dense_reward
+            + activity_reward_coef * activity_reward
+            + mission_mix_reward
+            - passivity_penalty
+        )
+        if reward_clip > 0.0:
+            reward = max(-reward_clip, min(reward_clip, reward))
         rewards.append(reward)
         terminal_rewards.append(terminal_reward)
         adjusted_terminal_rewards.append(adjusted_terminal_reward)
@@ -258,6 +306,9 @@ def train_on_episodes(
         mission_expand_ratios.append(float(mission_mix_stats["mission_expand_ratio"]))
         mission_attack_ratios.append(float(mission_mix_stats["mission_attack_ratio"]))
         mission_support_ratios.append(float(mission_mix_stats["mission_support_ratio"]))
+        mission_replay_l1s.append(float(mission_mix_stats.get("mission_replay_l1", 0.0)))
+        mission_attack_deficits.append(float(mission_mix_stats.get("mission_attack_deficit", 0.0)))
+        mission_expand_excesses.append(float(mission_mix_stats.get("mission_expand_excess", 0.0)))
         fleet_launch_mapped_rates.append(float(action_metrics.get("fleet_launch_mapped_rate", 0.0)))
         fleet_outcome_known_rates.append(float(action_metrics.get("fleet_outcome_known_rate", 0.0)))
         fleet_hit_rates.append(float(action_metrics.get("fleet_hit_rate", 0.0)))
@@ -811,6 +862,10 @@ def train_on_episodes(
         "raw_advantage_std": float(np.std(raw_advantages_arr)) if raw_advantages_arr.size else 0.0,
         "train_return_gamma": float(return_gamma),
         "train_return_clip": float(return_clip),
+        "train_terminal_reward_coef": float(terminal_reward_coef),
+        "train_dense_reward_coef": float(dense_reward_coef),
+        "train_activity_reward_coef": float(activity_reward_coef),
+        "train_reward_clip": float(reward_clip),
         "terminal_reward_mean": float(np.mean(terminal_rewards)) if terminal_rewards else 0.0,
         "adjusted_terminal_reward_mean": float(np.mean(adjusted_terminal_rewards)) if adjusted_terminal_rewards else 0.0,
         "dense_reward_mean": float(np.mean(dense_rewards)) if dense_rewards else 0.0,
@@ -821,6 +876,9 @@ def train_on_episodes(
         "mission_expand_ratio_mean": float(np.mean(mission_expand_ratios)) if mission_expand_ratios else 0.0,
         "mission_attack_ratio_mean": float(np.mean(mission_attack_ratios)) if mission_attack_ratios else 0.0,
         "mission_support_ratio_mean": float(np.mean(mission_support_ratios)) if mission_support_ratios else 0.0,
+        "mission_replay_l1_mean": float(np.mean(mission_replay_l1s)) if mission_replay_l1s else 0.0,
+        "mission_attack_deficit_mean": float(np.mean(mission_attack_deficits)) if mission_attack_deficits else 0.0,
+        "mission_expand_excess_mean": float(np.mean(mission_expand_excesses)) if mission_expand_excesses else 0.0,
         "event_shaping_enabled": float(1.0 if event_shaping_enabled else 0.0),
         "event_shape_reward_mean": float(np.mean(event_shape_rewards)) if event_shape_rewards else 0.0,
         "fleet_launch_mapped_rate_mean": float(np.mean(fleet_launch_mapped_rates)) if fleet_launch_mapped_rates else 0.0,

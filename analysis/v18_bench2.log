@@ -1,0 +1,57 @@
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+V18 search=gumbel evaluator=rollout-esc rollout=14 n_sims=64
+[1/40] 2p seed=20000004 win=0 score=0 vs1562 L=72/76
+[2/40] 2p seed=20000007 win=0 score=0 vs3856 L=86/75
+[3/40] 2p seed=20000005 win=0 score=0 vs3167 L=70/59
+[4/40] 2p seed=20000006 win=0 score=0 vs1603 L=73/91
+[5/40] 2p seed=20000001 win=0 score=0 vs2589 L=90/107
+[6/40] 2p seed=20000000 win=0 score=0 vs2392 L=106/139
+[7/40] 2p seed=20000009 win=0 score=0 vs2794 L=63/54
+[8/40] 2p seed=20000003 win=0 score=0 vs3945 L=160/162
+[9/40] 2p seed=20000002 win=1 score=3464 vs0 L=177/152
+[10/40] 2p seed=20000010 win=0 score=0 vs4039 L=94/127
+[11/40] 2p seed=20000008 win=0 score=0 vs3085 L=98/107
+[12/40] 2p seed=20000011 win=0 score=0 vs2363 L=94/107
+[13/40] 2p seed=20000012 win=0 score=0 vs5055 L=144/133
+[14/40] 2p seed=20000013 win=0 score=0 vs3655 L=134/127
+[15/40] 2p seed=20000018 win=0 score=0 vs3631 L=126/133
+[16/40] 2p seed=20000015 win=0 score=0 vs4454 L=167/169
+[17/40] 2p seed=20000017 win=0 score=0 vs4766 L=175/157
+[18/40] 2p seed=20000019 win=0 score=0 vs5358 L=194/193
+[19/40] 2p seed=20000014 win=1 score=5302 vs0 L=213/199
+[20/40] 2p seed=20000016 win=0 score=0 vs3519 L=180/146
+[21/40] 4p seed=20000002 win=0 score=0 vs5254 L=33/360
+[22/40] 4p seed=20000006 win=0 score=0 vs2031 L=72/322
+[23/40] 4p seed=20000000 win=0 score=0 vs3835 L=92/554
+[24/40] 4p seed=20000005 win=0 score=0 vs2037 L=117/255
+[25/40] 4p seed=20000004 win=0 score=0 vs2759 L=62/482
+[26/40] 4p seed=20000001 win=1 score=3155 vs0 L=194/482
+[27/40] 4p seed=20000008 win=0 score=0 vs1929 L=26/236
+[28/40] 4p seed=20000011 win=0 score=0 vs3946 L=53/299
+[29/40] 4p seed=20000007 win=0 score=621 vs634 L=273/691
+[30/40] 4p seed=20000003 win=1 score=5022 vs10 L=303/583
+[31/40] 4p seed=20000009 win=0 score=0 vs2768 L=115/467
+[32/40] 4p seed=20000012 win=0 score=0 vs5100 L=114/472
+[33/40] 4p seed=20000013 win=0 score=0 vs5074 L=101/415
+[34/40] 4p seed=20000016 win=0 score=0 vs3207 L=84/338
+[35/40] 4p seed=20000014 win=0 score=0 vs5062 L=64/521
+[36/40] 4p seed=20000010 win=1 score=3381 vs0 L=276/537
+[37/40] 4p seed=20000018 win=0 score=0 vs3943 L=125/260
+[38/40] 4p seed=20000019 win=0 score=0 vs6667 L=84/716
+[39/40] 4p seed=20000015 win=0 score=0 vs3969 L=172/890
+[40/40] 4p seed=20000017 win=0 score=0 vs5673 L=147/831
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+[bot_v7] loaded checkpoint 53% from scorer_v7_kaggle.npz (gen=273, wr=0.533)
+
+=== FINAL  search=gumbel  n_sims=64 ===
+  2p: W=2/20 WR=0.100 CI=[0.028,0.301] | avg launches us=126 v15=126
+  4p: W=3/20 WR=0.150 CI=[0.052,0.360] | avg launches us=125 v15=486
+  AGG: W=5/40 WR=0.125 CI=[0.055,0.261]
+elapsed 15.0 min
+per-game log -> analysis/v18_run2.jsonl

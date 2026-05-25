@@ -35,14 +35,14 @@ from neural_network_gpu.src.action_metrics import summarize_action_records
 
 
 _TACTICAL_ORACLE_PRIORITY = {
-    "attack_convert": 8.0,
-    "expand_front": 7.0,
-    "support_defense": 6.5,
-    "attack_pressure": 5.75,
-    "support_front": 4.5,
-    "expand_safe": 4.0,
-    "support_redistribute": 3.75,
-    "attack_opportunity": 3.5,
+    "attack_convert": 9.0,
+    "attack_pressure": 6.8,
+    "support_defense": 6.4,
+    "attack_opportunity": 5.6,
+    "expand_front": 5.0,
+    "support_redistribute": 4.6,
+    "support_front": 4.2,
+    "expand_safe": 2.6,
     "attack_poor": -1.0,
     "support_backward": -1.5,
     "support_passive": -2.0,
@@ -103,12 +103,25 @@ def _counterfactual_candidate_scores(candidates: List[Any], config: Dict[str, An
     oracle_scale = float(config.get("counterfactual_oracle_scale", 0.45))
     amount_weight = float(config.get("counterfactual_amount_weight", 0.20))
     distance_penalty = float(config.get("counterfactual_distance_penalty", 0.10))
-    support_front_bonus = float(config.get("counterfactual_support_front_bonus", 0.25))
-    support_passive_penalty = float(config.get("counterfactual_support_passive_penalty", 0.45))
-    attack_bonus = float(config.get("counterfactual_attack_bonus", 0.15))
-    expand_bonus = float(config.get("counterfactual_expand_bonus", 0.10))
+    attack_bonus = float(config.get("counterfactual_attack_bonus", 0.10))
+    attack_convert_bonus = float(config.get("counterfactual_attack_convert_bonus", 1.20))
+    attack_pressure_bonus = float(config.get("counterfactual_attack_pressure_bonus", 0.70))
+    attack_opportunity_bonus = float(config.get("counterfactual_attack_opportunity_bonus", 0.45))
+    attack_poor_penalty = float(config.get("counterfactual_attack_poor_penalty", 0.75))
+    good_attack_compete_penalty = float(config.get("counterfactual_good_attack_compete_penalty", 0.35))
+    expand_bonus = float(config.get("counterfactual_expand_bonus", -0.05))
+    expand_front_bonus = float(config.get("counterfactual_expand_front_bonus", 0.10))
+    expand_safe_penalty = float(config.get("counterfactual_expand_safe_penalty", 0.25))
+    support_front_bonus = float(config.get("counterfactual_support_front_bonus", 0.20))
+    support_defense_bonus = float(config.get("counterfactual_support_defense_bonus", 0.85))
+    support_redistribute_bonus = float(config.get("counterfactual_support_redistribute_bonus", 0.50))
+    support_passive_penalty = float(config.get("counterfactual_support_passive_penalty", 0.65))
+    support_backward_penalty = float(config.get("counterfactual_support_backward_penalty", 0.45))
     noop_penalty = float(config.get("counterfactual_noop_penalty", 2.0))
     temperature = max(1e-3, float(config.get("counterfactual_temperature", 0.80)))
+    candidate_tags = [str(getattr(candidate, "tactical_tag", getattr(candidate, "mission", "unknown")) or "unknown") for candidate in candidates]
+    has_attack_convert = any(tag == "attack_convert" for tag in candidate_tags)
+    has_good_attack = has_attack_convert or any(tag == "attack_pressure" for tag in candidate_tags)
 
     scores: List[float] = []
     for candidate in candidates:
@@ -132,16 +145,38 @@ def _counterfactual_candidate_scores(candidates: List[Any], config: Dict[str, An
 
         if mission == "attack":
             score += attack_bonus
+            if tag == "attack_convert":
+                score += attack_convert_bonus
+            elif tag == "attack_pressure":
+                score += attack_pressure_bonus
+            elif tag == "attack_opportunity":
+                score += attack_opportunity_bonus
+            elif tag == "attack_poor":
+                score -= attack_poor_penalty
         elif mission == "expand":
             score += expand_bonus
+            if tag == "expand_front":
+                score += expand_front_bonus
+            elif tag == "expand_safe":
+                score -= expand_safe_penalty
         elif mission == "support":
-            if tag in {"support_defense", "support_front", "support_redistribute"}:
+            if tag == "support_defense":
+                score += support_defense_bonus
+            elif tag == "support_redistribute":
+                score += support_redistribute_bonus
+            elif tag == "support_front":
                 score += support_front_bonus
-            elif tag in {"support_passive", "support_backward"}:
+            elif tag == "support_passive":
                 score -= support_passive_penalty
+            elif tag == "support_backward":
+                score -= support_backward_penalty
         elif mission in {"do_nothing", "noop"} and has_real_candidate:
             score -= noop_penalty
 
+        if has_attack_convert and tag != "attack_convert":
+            score -= 0.50 * good_attack_compete_penalty
+        elif has_good_attack and mission != "attack":
+            score -= good_attack_compete_penalty
         if amount <= 0.0 and mission not in {"do_nothing", "noop"}:
             score -= 3.0
         scores.append(float(score))

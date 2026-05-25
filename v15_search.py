@@ -130,9 +130,11 @@ def _needed_ships(src_row, tgt_row, n_players: int) -> int:
 
 
 def _enumerate_shots(fs: fsim.FastState, player: int,
-                     v7_move: list) -> list[list]:
+                     v7_move: list,
+                     policy_fn=None) -> list[list]:
     """Atomic shots: V7's own launches (good ship-sizing) plus, for each owned
-    planet, capture-sized shots toward its nearest non-owned planets."""
+    planet, capture-sized shots toward its nearest non-owned planets, plus
+    optional policy-net suggestions (imitation of top-player targets)."""
     planets = fs.planets
     N = len(planets)
     shots: list[list] = []
@@ -161,6 +163,24 @@ def _enumerate_shots(fs: fsim.FastState, player: int,
     py = planets[:, Y]
     mine = np.where(owners == player)[0]
     foreign = np.where(owners != player)[0]
+
+    # Policy-net suggestions: imitation of top-player (src_enc_idx, tgt_enc_idx)
+    if policy_fn is not None and len(foreign) > 0:
+        try:
+            suggestions = policy_fn(fs, player)
+            for src_ei, tgt_ei in suggestions:
+                if src_ei >= N or tgt_ei >= N:
+                    continue
+                garrison = planets[src_ei, SHIPS]
+                if garrison < 2:
+                    continue
+                need = _needed_ships(planets[src_ei], planets[tgt_ei], fs.n_players)
+                send = min(int(garrison), max(need, int(garrison * 0.5)))
+                ang = math.atan2(py[tgt_ei] - py[src_ei], px[tgt_ei] - px[src_ei])
+                _add(planets[src_ei, ID], ang, send)
+        except Exception:
+            pass
+
     if len(foreign) == 0:
         return shots[:_K_ATOMIC]
 
@@ -217,10 +237,12 @@ def _eval_combo(fs: fsim.FastState, player: int, combo: list,
                             weights if weights is not None else v15_eval.ESC)
     if value_fn is None or value_lambda <= 0.0:
         return esc
-    # V15++ graft: learned value [-1,1] -> [0,1], the same scale as the ESC
-    # score; the blend only refines V15's ranking — lambda<1 keeps V15's eval
-    # in the mix, so a wrong net can nudge but never replace it.
-    net01 = 0.5 * (float(value_fn(st, player)) + 1.0)
+    raw = float(value_fn(st, player))
+    if getattr(value_fn, "is_residual", False):
+        # residual net predicts (outcome01 - ESC); add it back as a correction.
+        return esc + value_lambda * raw
+    # legacy: net predicts outcome in [-1,1]; map to [0,1] and blend.
+    net01 = 0.5 * (raw + 1.0)
     return (1.0 - value_lambda) * esc + value_lambda * net01
 
 
@@ -235,7 +257,8 @@ def search(obs, config=None, *, time_budget: float = 0.7,
            weights: "v15_eval.EvalWeights" = None,
            n_policy_samples: int = 0, seed: int = 0,
            use_value_fn: bool = False,
-           value_fn=None, value_lambda: float = 0.0) -> list:
+           value_fn=None, value_lambda: float = 0.0,
+           policy_fn=None) -> list:
     """V15.3 RCC — coordinated-combination search.
 
     bc_cont — if True, combos are scored with a behavioral-cloning continuation
@@ -260,7 +283,7 @@ def search(obs, config=None, *, time_budget: float = 0.7,
         fs = fsim.from_obs(obs, n_players=2)
         fs.n_players = _infer_n_players(fs.planets)
 
-        atomic = _enumerate_shots(fs, our, v7_move)
+        atomic = _enumerate_shots(fs, our, v7_move, policy_fn=policy_fn)
         if not atomic:
             return v7_move
 

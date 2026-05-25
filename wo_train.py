@@ -33,18 +33,19 @@ from wo_net import WOValueNet
 def _load(paths):
     """Concatenate datasets; episode ids are made globally unique across files
     so the by-episode split never mixes one game's states across the split."""
-    PF, GF, MASK, VAL, EP = [], [], [], [], []
+    PF, GF, MASK, VAL, ESC_ARR, EP = [], [], [], [], [], []
     ep_off = 0
     for p in paths:
         z = np.load(p)
         val = z["VAL"]
         ep = z["EP"] if "EP" in z.files else np.zeros(len(val), np.int32)
+        esc = z["ESC"] if "ESC" in z.files else np.full(len(val), 0.5, np.float32)
         PF.append(z["PF"]); GF.append(z["GF"]); MASK.append(z["MASK"])
-        VAL.append(val); EP.append(ep.astype(np.int64) + ep_off)
+        VAL.append(val); ESC_ARR.append(esc); EP.append(ep.astype(np.int64) + ep_off)
         ep_off += (int(ep.max()) + 1) if len(ep) else 0
         print(f"  {p}: {len(val)} samples, {ep_off} episodes cumulative")
     return (np.concatenate(PF), np.concatenate(GF), np.concatenate(MASK),
-            np.concatenate(VAL), np.concatenate(EP))
+            np.concatenate(VAL), np.concatenate(ESC_ARR), np.concatenate(EP))
 
 
 def _split(ep, val_frac, seed):
@@ -71,11 +72,22 @@ def main():
     ap.add_argument("--val-frac", type=float, default=0.15)
     ap.add_argument("--patience", type=int, default=12)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--residual", action="store_true",
+                    help="train to predict (outcome01 - ESC) instead of raw outcome")
     args = ap.parse_args()
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     torch.manual_seed(args.seed)
 
-    PF, GF, MASK, VAL, EP = _load(args.data)
+    PF, GF, MASK, VAL, ESC_ARR, EP = _load(args.data)
+
+    if args.residual:
+        # target = val01 - ESC  where val01=(val+1)/2 in [0,1], ESC in [0,1]
+        # residual in [-1,1], net output is tanh -> [-1,1] — matched scales.
+        # search uses: score = ESC + lambda * net_residual (see v15_search).
+        VAL = ((VAL + 1.0) / 2.0) - ESC_ARR
+        print(f"[wo_train] residual mode: target=val01-ESC  "
+              f"mean={VAL.mean():+.4f}  std={VAL.std():.4f}")
+
     tr, va = _split(EP, args.val_frac, args.seed)
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[wo_train] {len(VAL)} samples  train={int(tr.sum())} "
@@ -129,7 +141,8 @@ def main():
                 break
 
     torch.save({"state_dict": best_state, "d": args.d,
-                "val_mse": best_mse, "baseline_mse": base},
+                "val_mse": best_mse, "baseline_mse": base,
+                "residual": args.residual},
                args.out)
     gain = (base - best_mse) / base * 100.0 if base > 0 else 0.0
     print(f"[wo_train] done ({(time.time() - t0) / 60:.1f} min)  "

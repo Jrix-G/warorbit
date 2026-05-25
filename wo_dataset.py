@@ -33,6 +33,7 @@ import time
 
 import numpy as np
 
+import v15_eval
 import v15_fast_sim as fsim
 import v17_encode as enc
 
@@ -126,7 +127,8 @@ def samples_from_episode(ep):
             targets = enc.action_to_targets(fs, p, launches)
             pol = _policy_target(fs, p, targets)
             pfp, polp, mask = _pad(pf, pol)
-            yield pfp, gf.astype(np.float32), polp, mask, float(val[p])
+            esc = v15_eval.evaluate(fs, p, v15_eval.ESC)
+            yield pfp, gf.astype(np.float32), polp, mask, float(val[p]), float(esc)
 
 
 def _episode_id(ep, fallback):
@@ -152,7 +154,7 @@ def main():
         return
 
     t0 = time.time()
-    PF, GF, POL, MASK, VAL, EP = [], [], [], [], [], []
+    PF, GF, POL, MASK, VAL, ESC_ARR, EP = [], [], [], [], [], [], []
     seen = {}                                    # episode id -> source file
     for f in files:
         base = os.path.basename(f)
@@ -170,7 +172,8 @@ def main():
         cnt = 0
         for s in samples_from_episode(ep):
             PF.append(s[0]); GF.append(s[1]); POL.append(s[2])
-            MASK.append(s[3]); VAL.append(s[4]); EP.append(ep_idx)
+            MASK.append(s[3]); VAL.append(s[4]); ESC_ARR.append(s[5])
+            EP.append(ep_idx)
             cnt += 1
         print(f"[wo_dataset] {base}: {cnt} samples")
 
@@ -183,9 +186,10 @@ def main():
     POL = np.stack(POL)
     MASK = np.stack(MASK)
     VAL = np.array(VAL, dtype=np.float32)
+    ESC_ARR = np.array(ESC_ARR, dtype=np.float32)
     EP = np.array(EP, dtype=np.int32)
     np.savez_compressed(args.out, PF=PF, GF=GF, POL=POL, MASK=MASK,
-                        VAL=VAL, EP=EP)
+                        VAL=VAL, ESC=ESC_ARR, EP=EP)
 
     # sanity stats: launch-fraction is the policy-head class balance — if
     # launching is rare, supervised training needs class weighting.

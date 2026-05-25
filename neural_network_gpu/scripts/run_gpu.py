@@ -559,6 +559,21 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "counterfactual_prior_weight": args.counterfactual_prior_weight,
         "counterfactual_tactical_weight": args.counterfactual_tactical_weight,
         "counterfactual_oracle_scale": args.counterfactual_oracle_scale,
+        "counterfactual_attack_bonus": args.counterfactual_attack_bonus,
+        "counterfactual_attack_convert_bonus": args.counterfactual_attack_convert_bonus,
+        "counterfactual_attack_pressure_bonus": args.counterfactual_attack_pressure_bonus,
+        "counterfactual_attack_opportunity_bonus": args.counterfactual_attack_opportunity_bonus,
+        "counterfactual_attack_poor_penalty": args.counterfactual_attack_poor_penalty,
+        "counterfactual_good_attack_compete_penalty": args.counterfactual_good_attack_compete_penalty,
+        "counterfactual_expand_bonus": args.counterfactual_expand_bonus,
+        "counterfactual_expand_front_bonus": args.counterfactual_expand_front_bonus,
+        "counterfactual_expand_safe_penalty": args.counterfactual_expand_safe_penalty,
+        "counterfactual_support_front_bonus": args.counterfactual_support_front_bonus,
+        "counterfactual_support_defense_bonus": args.counterfactual_support_defense_bonus,
+        "counterfactual_support_redistribute_bonus": args.counterfactual_support_redistribute_bonus,
+        "counterfactual_support_passive_penalty": args.counterfactual_support_passive_penalty,
+        "counterfactual_support_backward_penalty": args.counterfactual_support_backward_penalty,
+        "counterfactual_noop_penalty": args.counterfactual_noop_penalty,
         # Activity shaping
         "dense_reward_enabled": True,
         "dense_planet_coef": args.dense_planet_coef,
@@ -568,6 +583,10 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "dense_survival_coef": 0.05,
         "dense_reward_clip": args.dense_reward_clip,
         "train_target_do_nothing_rate": 0.35,  # raw (legacy), kept for fallback
+        "train_terminal_reward_coef": args.train_terminal_reward_coef,
+        "train_dense_reward_coef": args.train_dense_reward_coef,
+        "train_activity_reward_coef": args.train_activity_reward_coef,
+        "train_reward_clip": args.train_reward_clip,
         "train_target_legal_noop_rate": args.train_target_legal_noop_rate,
         "train_noop_penalty_coef": 0.70,
         "train_passivity_penalty_coef": 0.30,
@@ -603,10 +622,17 @@ def _build_config(args: argparse.Namespace) -> Dict[str, Any]:
         "train_passive_win_terminal_reward": args.passive_win_terminal_reward,
         "deterministic_avoid_noop_if_real": True,
         "train_mission_mix_bonus_coef": args.train_mission_mix_bonus_coef,
+        "train_target_attack_ratio": args.train_target_attack_ratio,
         "train_target_support_ratio": args.train_target_support_ratio,
+        "train_target_expand_ratio": args.train_target_expand_ratio,
         "train_support_ratio_band": args.train_support_ratio_band,
+        "train_mission_ratio_band": args.train_mission_ratio_band,
+        "train_min_attack_ratio": args.train_min_attack_ratio,
         "train_min_support_ratio": args.train_min_support_ratio,
         "train_max_attack_ratio": args.train_max_attack_ratio,
+        "train_max_expand_ratio": args.train_max_expand_ratio,
+        "train_attack_deficit_penalty": args.train_attack_deficit_penalty,
+        "train_expand_excess_penalty": args.train_expand_excess_penalty,
         "train_mission_mix_reward_clip": args.train_mission_mix_reward_clip,
         # Slow eval-level stabilizer. It replaces fast train-step behavior
         # shaping when auto-tune is enabled.
@@ -1226,17 +1252,43 @@ def main() -> None:
         default=0.45,
         help="Scale applied to the discrete tactical oracle scores before softmax target construction.",
     )
+    parser.add_argument("--counterfactual-attack-bonus", type=float, default=0.10)
+    parser.add_argument("--counterfactual-attack-convert-bonus", type=float, default=1.20)
+    parser.add_argument("--counterfactual-attack-pressure-bonus", type=float, default=0.70)
+    parser.add_argument("--counterfactual-attack-opportunity-bonus", type=float, default=0.45)
+    parser.add_argument("--counterfactual-attack-poor-penalty", type=float, default=0.75)
+    parser.add_argument("--counterfactual-good-attack-compete-penalty", type=float, default=0.35)
+    parser.add_argument("--counterfactual-expand-bonus", type=float, default=-0.05)
+    parser.add_argument("--counterfactual-expand-front-bonus", type=float, default=0.10)
+    parser.add_argument("--counterfactual-expand-safe-penalty", type=float, default=0.25)
+    parser.add_argument("--counterfactual-support-front-bonus", type=float, default=0.20)
+    parser.add_argument("--counterfactual-support-defense-bonus", type=float, default=0.85)
+    parser.add_argument("--counterfactual-support-redistribute-bonus", type=float, default=0.50)
+    parser.add_argument("--counterfactual-support-passive-penalty", type=float, default=0.65)
+    parser.add_argument("--counterfactual-support-backward-penalty", type=float, default=0.45)
+    parser.add_argument("--counterfactual-noop-penalty", type=float, default=2.0)
     parser.add_argument("--entropy-coef-start", type=float, default=0.10)
     parser.add_argument("--dense-planet-coef", type=float, default=0.05)
     parser.add_argument("--dense-production-coef", type=float, default=0.04)
     parser.add_argument("--dense-ship-share-coef", type=float, default=0.14)
     parser.add_argument("--dense-score-coef", type=float, default=0.10)
     parser.add_argument("--dense-reward-clip", type=float, default=0.40)
+    parser.add_argument("--train-terminal-reward-coef", type=float, default=1.0)
+    parser.add_argument("--train-dense-reward-coef", type=float, default=0.06)
+    parser.add_argument("--train-activity-reward-coef", type=float, default=0.0)
+    parser.add_argument("--train-reward-clip", type=float, default=1.20)
     parser.add_argument("--train-mission-mix-bonus-coef", type=float, default=0.0)
-    parser.add_argument("--train-target-support-ratio", type=float, default=0.30)
+    parser.add_argument("--train-target-attack-ratio", type=float, default=0.42)
+    parser.add_argument("--train-target-support-ratio", type=float, default=0.36)
+    parser.add_argument("--train-target-expand-ratio", type=float, default=0.22)
     parser.add_argument("--train-support-ratio-band", type=float, default=0.20)
+    parser.add_argument("--train-mission-ratio-band", type=float, default=0.22)
+    parser.add_argument("--train-min-attack-ratio", type=float, default=0.18)
     parser.add_argument("--train-min-support-ratio", type=float, default=0.12)
-    parser.add_argument("--train-max-attack-ratio", type=float, default=0.58)
+    parser.add_argument("--train-max-attack-ratio", type=float, default=0.62)
+    parser.add_argument("--train-max-expand-ratio", type=float, default=0.50)
+    parser.add_argument("--train-attack-deficit-penalty", type=float, default=1.20)
+    parser.add_argument("--train-expand-excess-penalty", type=float, default=0.90)
     parser.add_argument("--train-mission-mix-reward-clip", type=float, default=0.20)
     parser.add_argument("--stabilizer-target-noop", type=float, default=0.60)
     parser.add_argument("--stabilizer-target-passivity", type=float, default=0.50)
@@ -1288,6 +1340,51 @@ def main() -> None:
             "train_event_max_ship_volume_bonus",
             "train_event_max_activity_action_bonus",
             "train_event_max_activity_ships_bonus",
+            "train_terminal_reward_coef",
+            "train_dense_reward_coef",
+            "train_activity_reward_coef",
+            "train_reward_clip",
+            "train_mission_mix_bonus_coef",
+            "train_target_attack_ratio",
+            "train_target_support_ratio",
+            "train_target_expand_ratio",
+            "train_support_ratio_band",
+            "train_mission_ratio_band",
+            "train_min_attack_ratio",
+            "train_min_support_ratio",
+            "train_max_attack_ratio",
+            "train_max_expand_ratio",
+            "train_attack_deficit_penalty",
+            "train_expand_excess_penalty",
+            "train_mission_mix_reward_clip",
+            "on_policy_imitation_coef",
+            "on_policy_imitation_min_margin",
+            "on_policy_imitation_max_weight",
+            "counterfactual_imitation_coef",
+            "counterfactual_temperature",
+            "counterfactual_min_margin",
+            "counterfactual_max_weight",
+            "counterfactual_selected_outcome_coef",
+            "counterfactual_selected_episode_coef",
+            "counterfactual_selected_step_shape_coef",
+            "counterfactual_prior_weight",
+            "counterfactual_tactical_weight",
+            "counterfactual_oracle_scale",
+            "counterfactual_attack_bonus",
+            "counterfactual_attack_convert_bonus",
+            "counterfactual_attack_pressure_bonus",
+            "counterfactual_attack_opportunity_bonus",
+            "counterfactual_attack_poor_penalty",
+            "counterfactual_good_attack_compete_penalty",
+            "counterfactual_expand_bonus",
+            "counterfactual_expand_front_bonus",
+            "counterfactual_expand_safe_penalty",
+            "counterfactual_support_front_bonus",
+            "counterfactual_support_defense_bonus",
+            "counterfactual_support_redistribute_bonus",
+            "counterfactual_support_passive_penalty",
+            "counterfactual_support_backward_penalty",
+            "counterfactual_noop_penalty",
             "policy_prior_strength",
             "entropy_coef_start",
             "max_actions_per_turn",
@@ -1314,6 +1411,21 @@ def main() -> None:
                 "counterfactual_prior_weight",
                 "counterfactual_tactical_weight",
                 "counterfactual_oracle_scale",
+                "counterfactual_attack_bonus",
+                "counterfactual_attack_convert_bonus",
+                "counterfactual_attack_pressure_bonus",
+                "counterfactual_attack_opportunity_bonus",
+                "counterfactual_attack_poor_penalty",
+                "counterfactual_good_attack_compete_penalty",
+                "counterfactual_expand_bonus",
+                "counterfactual_expand_front_bonus",
+                "counterfactual_expand_safe_penalty",
+                "counterfactual_support_front_bonus",
+                "counterfactual_support_defense_bonus",
+                "counterfactual_support_redistribute_bonus",
+                "counterfactual_support_passive_penalty",
+                "counterfactual_support_backward_penalty",
+                "counterfactual_noop_penalty",
                 "do_nothing_logit_penalty",
                 "do_nothing_prob_cap",
                 "do_nothing_prob_caps_by_slot",
@@ -1332,11 +1444,22 @@ def main() -> None:
                 "train_event_max_ship_volume_bonus",
                 "train_event_max_activity_action_bonus",
                 "train_event_max_activity_ships_bonus",
+                "train_terminal_reward_coef",
+                "train_dense_reward_coef",
+                "train_activity_reward_coef",
+                "train_reward_clip",
                 "train_mission_mix_bonus_coef",
+                "train_target_attack_ratio",
                 "train_target_support_ratio",
+                "train_target_expand_ratio",
                 "train_support_ratio_band",
+                "train_mission_ratio_band",
+                "train_min_attack_ratio",
                 "train_min_support_ratio",
                 "train_max_attack_ratio",
+                "train_max_expand_ratio",
+                "train_attack_deficit_penalty",
+                "train_expand_excess_penalty",
                 "train_mission_mix_reward_clip",
                 "max_actions_per_turn",
                 "min_expand_attack_ships",
@@ -1588,6 +1711,9 @@ def main() -> None:
                     f"oracle_real={metrics.get('tactical_oracle_real_rate_mean', 0):.3f} "
                     f"cf_action_match={metrics.get('action_counterfactual_match_rate_mean', 0):.3f} "
                     f"mix={metrics.get('mission_mix_reward_mean', 0):.3f} "
+                    f"replay_l1={metrics.get('mission_replay_l1_mean', 0):.3f} "
+                    f"attack_def={metrics.get('mission_attack_deficit_mean', 0):.3f} "
+                    f"expand_excess={metrics.get('mission_expand_excess_mean', 0):.3f} "
                     f"support={metrics.get('mission_support_ratio_mean', 0):.3f} "
                     f"attack={metrics.get('mission_attack_ratio_mean', 0):.3f} "
                     f"expand={metrics.get('mission_expand_ratio_mean', 0):.3f} "
