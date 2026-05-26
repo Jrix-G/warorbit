@@ -1,0 +1,28 @@
+{
+  "best": {
+    "loss": 4.939574062824249,
+    "exact_top1": 0.0306396484375,
+    "direction_top1": 0.058349609375,
+    "samples": 8192.0,
+    "epoch": 5,
+    "train_loss": 4.88084965138822
+  },
+  "input_dim": 2539,
+  "hidden_dim": 320,
+  "device": "cuda",
+  "args": {
+    "dataset_dir": "/home/jason/warorbit/neural_network_gpu/replay_corpus/imitation_4p_top10_v1",
+    "output_dir": "/home/jason/warorbit/runs/imitation_4p_coarse_v1",
+    "init_checkpoint": "/home/jason/warorbit/runs/gpu_2p_top1_distance_guarded_local_v2/best_validated.npz",
+    "hidden_dim": 0,
+    "epochs": 20,
+    "batch_size": 256,
+    "val_samples": 8192,
+    "val_shard_ratio": 0.2,
+    "lr": 0.001,
+    "weight_decay": 0.0001,
+    "grad_clip": 1.0,
+    "device": "",
+    "seed": 19
+  }
+}

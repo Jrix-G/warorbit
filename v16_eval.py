@@ -29,7 +29,11 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-N_FEATURES = 11
+import v15_eval
+
+# Kept in lock-step with the evaluator basis so the ES theta layout always
+# matches the feature vector produced by v15_eval / v15_gpu_search.
+N_FEATURES = v15_eval.N_FEATURES
 
 
 def n_params(hidden: int) -> int:
@@ -116,8 +120,8 @@ if __name__ == "__main__":
     th = initial_theta(H)
     assert len(th) == n_params(H), (len(th), n_params(H))
     p = unpack(th, H, dev, dt)
-    esc_w = torch.tensor(
-        [0.40, 0.30, 0.05, 0.15, 0.10, 0, 0, 0, 0, 0, 0], dtype=dt)
+    esc_w = torch.zeros(N_FEATURES, dtype=dt)
+    esc_w[:5] = torch.tensor([0.40, 0.30, 0.05, 0.15, 0.10], dtype=dt)
 
     feats = torch.rand((20, N_FEATURES), dtype=dt)
     value, spread = value_and_spread(feats, esc_w, p)

@@ -152,6 +152,11 @@ def _orbit_stars_agent(obs, config=None):
     return moves if moves else _distance_agent(obs, config)
 
 
+def _v15_agent(obs, config=None):
+    import v15_search
+    return v15_search.search(obs, config)
+
+
 LOCAL_ZOO: Dict[str, Callable] = {
     "passive": _passive_agent,
     "random": _random_agent,
@@ -161,6 +166,7 @@ LOCAL_ZOO: Dict[str, Callable] = {
     "sun_dodge": _sun_dodge_agent,
     "structured": _distance_agent,
     "orbit_stars": _orbit_stars_agent,
+    "v15": _v15_agent,
 }
 
 

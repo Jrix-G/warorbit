@@ -1,11 +1,28 @@
 {
-  "dataset_dir": "replay_corpus\\imitation_4p_top10_v1",
-  "output_dir": "..\\runs\\imitation_4p_top10_v1",
+  "dataset_dir": "replay_corpus/imitation_4p_top10_v1",
+  "output_dir": "../runs/imitation_4p_top10_v1",
   "shards": 13,
+  "train_shards": [
+    "replay_corpus/imitation_4p_top10_v1/shard_00008.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00006.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00007.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00011.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00001.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00002.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00003.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00009.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00012.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00005.npz"
+  ],
+  "val_shards": [
+    "replay_corpus/imitation_4p_top10_v1/shard_00000.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00004.npz",
+    "replay_corpus/imitation_4p_top10_v1/shard_00010.npz"
+  ],
   "input_dim": 2539,
   "hidden_dim": 320,
   "device": "cuda",
-  "init_checkpoint": "..\\runs\\gpu_2p_top1_distance_guarded_local_v2\\best_validated.npz",
+  "init_checkpoint": "../runs/gpu_2p_top1_distance_guarded_local_v2/best_validated.npz",
   "load_report": {
     "loaded": [
       "input_proj.0.weight",
@@ -49,22 +66,23 @@
     }
   },
   "best": {
-    "loss": 6.5047731921076775,
-    "top1": 0.0257568359375,
-    "top3": 0.0504150390625,
+    "loss": 6.315576747059822,
+    "top1": 0.03173828125,
+    "top3": 0.0653076171875,
     "samples": 8192.0,
-    "epoch": 2,
-    "train_loss": 6.607076181475159
+    "epoch": 11,
+    "train_loss": 6.208265178912395
   },
   "args": {
-    "dataset_dir": ".\\replay_corpus\\imitation_4p_top10_v1",
-    "output_dir": "..\\runs\\imitation_4p_top10_v1",
-    "init_checkpoint": "..\\runs\\gpu_2p_top1_distance_guarded_local_v2\\best_validated.npz",
+    "dataset_dir": "replay_corpus/imitation_4p_top10_v1",
+    "output_dir": "../runs/imitation_4p_top10_v1",
+    "init_checkpoint": "../runs/gpu_2p_top1_distance_guarded_local_v2/best_validated.npz",
     "hidden_dim": 0,
-    "epochs": 3,
-    "batch_size": 128,
+    "epochs": 20,
+    "batch_size": 256,
     "val_samples": 8192,
-    "lr": 2e-05,
+    "val_shard_ratio": 0.2,
+    "lr": 0.001,
     "weight_decay": 0.0001,
     "grad_clip": 1.0,
     "device": "",

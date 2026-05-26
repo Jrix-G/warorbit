@@ -1,0 +1,10 @@
+[2026-05-26 12:02:08 UTC] run_start name=gpu_2p_v15_climb device=cuda workers=12 target=0.85
+[2026-05-26 12:02:08 UTC] policy_prior_strength=0.2
+[2026-05-26 12:02:08 UTC] resumed from runs/gpu_2p_overnight_v2/best_validated.npz
+[2026-05-26 12:02:09 UTC] params=1847362 lr=5e-05
+[2026-05-26 12:02:09 UTC] curriculum_tier=simple_2p train_pool=['random', 'greedy', 'greedy', 'starter', 'starter', 'distance', 'distance', 'v15']
+[2026-05-26 12:02:12 UTC] inference_server started
+[2026-05-26 12:02:12 UTC] 12 workers started
+[2026-05-26 12:02:33 UTC] eval_start checkpoint=candidate opponent=random games=32
+[2026-05-26 12:06:59 UTC] eval_progress checkpoint=candidate opponent=random games=8/32 wins=6
+[2026-05-26 12:12:33 UTC] eval_progress checkpoint=candidate opponent=random games=16/32 wins=12

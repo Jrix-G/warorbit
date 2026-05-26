@@ -23,9 +23,13 @@ import v15_gpu_sim as gsim
 
 ID, OWNER, X, Y, R, SHIPS, PROD = range(7)
 F_OWNER, F_SHIPS = 1, 6
+F_X, F_Y, F_ANGLE = 2, 3, 4
+BOARD_SIZE = 100.0
 CENTER = 50.0
 ROTATION_RADIUS_LIMIT = 50.0
 _EPS = 1e-9
+_DIAG = float((BOARD_SIZE ** 2 + BOARD_SIZE ** 2) ** 0.5)
+_TAU = 10.0
 
 K_SRC = 8        # atomic shots = top-K_SRC owned planets, one shot each
 T_TOP = 6        # atomic survivors entering the subset search
@@ -74,8 +78,96 @@ def _player_totals(batch: gsim.GpuBatch):
     return garrison, fleet, prodt, planets
 
 
+def _extra_batch_features(batch: gsim.GpuBatch, player: int,
+                          ships: torch.Tensor) -> torch.Tensor:
+    """[B, 13] V18 signals — batched mirror of v15_eval._extra_features.
+
+    `ships` is [B, P] garrison+fleet power per player."""
+    dev, dt = batch.device, batch.planets.dtype
+    P = batch.n_players
+    pl = batch.planets
+    o, x, y = pl[:, :, OWNER], pl[:, :, X], pl[:, :, Y]
+    r, sh, pr = pl[:, :, R], pl[:, :, SHIPS], pl[:, :, PROD]
+    pmask = batch.pmask
+    mine = (o == player) & pmask
+    enemy = (o >= 0) & (o != player) & pmask
+    neutral = (o < 0) & pmask
+    INF = torch.full((), 1e9, dtype=dt, device=dev)
+    zero = torch.zeros((), dtype=dt, device=dev)
+    nm = mine.sum(dim=1).clamp(min=1).to(dt)
+    has_my = mine.any(dim=1)
+    has_en = enemy.any(dim=1)
+
+    D = torch.hypot(x[:, :, None] - x[:, None, :], y[:, :, None] - y[:, None, :])
+    dmin_enemy = torch.where(enemy[:, None, :], D, INF).min(dim=2).values        # [B,N]
+    frontier_mean = torch.where(mine, dmin_enemy, zero).sum(dim=1) / nm
+    frontier = 1.0 - (frontier_mean / _DIAG).clamp(max=1.0)
+    frontier = torch.where(has_my & has_en, frontier, torch.full_like(frontier, 0.5))
+
+    cx = (x * mine).sum(dim=1) / nm
+    cy = (y * mine).sum(dim=1) / nm
+    disp = torch.where(mine, torch.hypot(x - cx[:, None], y - cy[:, None]), zero).sum(dim=1) / nm
+    dispersion = 1.0 - (disp / (_DIAG * 0.5)).clamp(max=1.0)
+    dispersion = torch.where(has_my, dispersion, torch.full_like(dispersion, 0.5))
+
+    d_to_my = torch.where(mine[:, None, :], D, INF).min(dim=2).values            # [B,N]
+    contested_k = neutral & (d_to_my < dmin_enemy)
+    nn = neutral.sum(dim=1)
+    contested = torch.where(nn > 0, contested_k.sum(dim=1).to(dt) / nn.clamp(min=1).to(dt), zero)
+
+    fl, fmask = batch.fleets, batch.fmask
+    fo = fl[:, :, F_OWNER]
+    fx, fy = fl[:, :, F_X], fl[:, :, F_Y]
+    fang, fsh = fl[:, :, F_ANGLE], fl[:, :, F_SHIPS]
+    efl = (fo >= 0) & (fo != player) & fmask                                     # [B,M]
+    has_thr = has_my & efl.any(dim=1)   # CPU computes threat/tempo only here
+    dcos, dsin = torch.cos(fang), torch.sin(fang)
+    wx = x[:, None, :] - fx[:, :, None]                                          # [B,M,N]
+    wy = y[:, None, :] - fy[:, :, None]
+    t = wx * dcos[:, :, None] + wy * dsin[:, :, None]
+    perp = (-wx * dsin[:, :, None] + wy * dcos[:, :, None]).abs()
+    hit = (t > 0) & (perp <= (r[:, None, :] + 2.0)) & efl[:, :, None] & mine[:, None, :]
+    threat = (fsh[:, :, None] * hit).sum(dim=1)                                  # [B,N]
+    garr_my = torch.where(mine, sh, zero)
+    incoming = (threat.sum(dim=1) / (garr_my.sum(dim=1) + _EPS)).clamp(max=1.0)
+    incoming = torch.where(has_thr, incoming, zero)
+    at_risk = torch.where(has_thr, ((threat > sh) & mine).sum(dim=1).to(dt) / nm, zero)
+    diff = torch.where(mine, (threat - sh) / (threat + sh + _EPS),
+                       torch.full_like(sh, -1.0))
+    worst = 0.5 * (diff.max(dim=1).values + 1.0)
+    worst = torch.where(has_thr, worst, torch.full_like(worst, 0.5))
+
+    speed = max(float(batch.ship_speed), 1.0)
+    eta = torch.where(mine[:, None, :], torch.hypot(wx, wy), INF).min(dim=2).values / speed
+    tot_s = ships.sum(dim=1).clamp(min=_EPS)
+    eta_enemy = ((fsh * torch.exp(-eta / _TAU) * efl).sum(dim=1) / tot_s).clamp(max=1.0)
+    eta_enemy = torch.where(has_thr, eta_enemy, zero)
+
+    targets = (~mine) & pmask
+    near_idx = torch.where(mine[:, None, :], D, INF).min(dim=2).indices          # [B,N]
+    force = torch.gather(sh, 1, near_idx) * 0.5
+    cap = (force > sh) & targets
+    tot_p = pr.sum(dim=1).clamp(min=_EPS)
+    free_cap = torch.where(has_my, (torch.where(cap, pr, zero).sum(dim=1) / tot_p).clamp(max=1.0), zero)
+    expansion = torch.where(
+        has_my, (cap & neutral).sum(dim=1).to(dt) / pmask.sum(dim=1).clamp(min=1).to(dt), zero)
+
+    me_pow = ships[:, player]
+    others = [q for q in range(P) if q != player]
+    max_opp = torch.stack([ships[:, q] for q in others], dim=1).max(dim=1).values
+    tot = ships.sum(dim=1)
+    am_leader = (me_pow >= max_opp).to(dt)
+    gap = ((max_opp - me_pow).clamp(min=0.0) / (tot + _EPS)).clamp(max=1.0)
+    lead = ((me_pow - max_opp).clamp(min=0.0) / (tot + _EPS)).clamp(max=1.0) * am_leader
+    gangup = ((tot - me_pow) / (me_pow + _EPS)).clamp(max=1.0)
+
+    return torch.stack([frontier, dispersion, contested, incoming, at_risk, worst,
+                        eta_enemy, free_cap, expansion, am_leader, gap, lead,
+                        gangup], dim=1).clamp(0.0, 1.0)
+
+
 def batch_features(batch: gsim.GpuBatch, player: int) -> torch.Tensor:
-    """[B, 11] — the v15_eval feature vector for `player`, batched."""
+    """[B, 24] — the v15_eval feature vector for `player`, batched."""
     garrison, fleet, prod, planets = _player_totals(batch)
     P = batch.n_players
     dt = batch.planets.dtype
@@ -115,11 +207,12 @@ def batch_features(batch: gsim.GpuBatch, player: int) -> torch.Tensor:
     enemy_fleet_press = opp_f.sum(dim=1) / tot_s[:, 0]
     step_frac = (batch.step.to(dt) / 500.0).clamp(max=1.0)
 
-    feats = torch.stack([
+    base = torch.stack([
         ship_share, prod_share, planet_share, domination, prod_margin,
         fleet_share, elim_share, top_planet_prod, ship_conc,
-        step_frac, enemy_fleet_press], dim=1)
-    return feats.clamp(0.0, 1.0)
+        step_frac, enemy_fleet_press], dim=1).clamp(0.0, 1.0)
+    extra = _extra_batch_features(batch, player, ships)
+    return torch.cat([base, extra], dim=1)
 
 
 def batch_eval(batch: gsim.GpuBatch, player: int, w, m, s) -> torch.Tensor:

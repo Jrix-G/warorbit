@@ -11,7 +11,14 @@
       "Bash(awk '{print $1,$2,$3,$4}')",
       "Bash(Get-Item \"C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\runs\\\\gpu_2p_overnight_9h\\\\gpu_train.log\")",
       "Bash(Select-Object Length, LastWriteTime)",
-      "PowerShell(Select-String -Path \"C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\runs\\\\gpu_2p_overnight_9h\\\\gpu_train.log\" -Pattern \"promoted|ROLLBACK|eval episodes\" | Select-Object -Last 40 | ForEach-Object { $_.Line })"
+      "PowerShell(Select-String -Path \"C:\\\\Users\\\\Capitaine\\\\Documents\\\\GitHub\\\\warorbit\\\\runs\\\\gpu_2p_overnight_9h\\\\gpu_train.log\" -Pattern \"promoted|ROLLBACK|eval episodes\" | Select-Object -Last 40 | ForEach-Object { $_.Line })",
+      "Bash(git *)",
+      "Bash(python3 -m json.tool)",
+      "Read(///wsl.localhost/Ubuntu/home/jason/**)",
+      "Bash(ls -la runs/imitation_4p_coarse_v1/)",
+      "Bash(python3 -c \"import torch;print\\('cuda',torch.cuda.is_available\\(\\), torch.cuda.get_device_name\\(0\\) if torch.cuda.is_available\\(\\) else 'none'\\)\")",
+      "Bash(wsl -d Ubuntu bash -lc \"cd ~/warorbit && python3 -c 'import torch;print\\(\\\\\"cuda\\\\\",torch.cuda.is_available\\(\\), \\(torch.cuda.get_device_name\\(0\\) if torch.cuda.is_available\\(\\) else \\\\\"none\\\\\"\\)\\)'\")",
+      "Bash(wsl *)"
     ]
   }
 }

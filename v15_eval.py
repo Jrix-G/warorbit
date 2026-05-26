@@ -37,14 +37,25 @@ import numpy as np
 import v15_fast_sim as fsim
 
 OWNER, SHIPS, PROD = fsim.OWNER, fsim.SHIPS, fsim.PROD
+X, Y, R = fsim.X, fsim.Y, fsim.R
 F_OWNER, F_SHIPS = fsim.F_OWNER, fsim.F_SHIPS
+F_X, F_Y, F_ANGLE = fsim.F_X, fsim.F_Y, fsim.F_ANGLE
+BOARD_SIZE = fsim.BOARD_SIZE
 
 _EPS = 1e-9
-N_FEATURES = 11
+# Features 0-10  : V15 global standing (original ESC basis).
+# Features 11-23 : V18 expansion basis — geometry / threat / tempo / opportunity
+#                  / coalition. ESC weights for 5-23 are 0.0, so the ESC scores
+#                  EXACTLY as V15; the ES loop is what gives them weight. This is
+#                  the lever that lifts the V15 ceiling without a neural net.
+N_FEATURES = 24
+_N_EXTRA = 13
+_DIAG = float(np.hypot(BOARD_SIZE, BOARD_SIZE))
+_TAU = 10.0  # tempo decay (turns) for ETA-weighted enemy fleet pressure
 
-# hand-tuned ESC weights for the first five features; signals 5-10 -> 0.0
-_W_2P = np.array([0.40, 0.30, 0.05, 0.15, 0.10, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-_W_4P = np.array([0.25, 0.35, 0.05, 0.20, 0.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+# hand-tuned ESC weights for the first five features; signals 5-23 -> 0.0
+_W_2P = np.array([0.40, 0.30, 0.05, 0.15, 0.10] + [0.0] * 19)
+_W_4P = np.array([0.25, 0.35, 0.05, 0.20, 0.15] + [0.0] * 19)
 
 
 @dataclass
@@ -117,6 +128,89 @@ def _clip01(x: float) -> float:
     return min(max(x, 0.0), 1.0)
 
 
+def _extra_features(fs: fsim.FastState, player: int,
+                    ships_by_player: np.ndarray) -> np.ndarray:
+    """13 V18 signals (geometry/threat/tempo/opportunity/coalition), clipped.
+
+    `ships_by_player` is garrison+fleet power per player (from player_totals)."""
+    n = fs.n_players
+    P = fs.planets
+    frontier = dispersion = contested = 0.5
+    incoming = at_risk = 0.0
+    worst = 0.5
+    eta_enemy = free_cap = expansion = 0.0
+    if len(P):
+        po = P[:, OWNER].astype(np.int64)
+        px, py, pr = P[:, X], P[:, Y], P[:, R]
+        psh, ppr = P[:, SHIPS], P[:, PROD]
+        mine = po == player
+        enemy = (po >= 0) & (po != player)
+        neutral = po < 0
+        tot_p = float(ppr.sum())
+        if mine.any():
+            mx, my_ = px[mine], py[mine]
+            if enemy.any():
+                ex, ey = px[enemy], py[enemy]
+                d = np.hypot(mx[:, None] - ex[None, :], my_[:, None] - ey[None, :])
+                frontier = 1.0 - min(float(d.min(axis=1).mean()) / _DIAG, 1.0)
+            cx, cy = float(mx.mean()), float(my_.mean())
+            disp = float(np.hypot(mx - cx, my_ - cy).mean())
+            dispersion = 1.0 - min(disp / (_DIAG * 0.5), 1.0)
+            if neutral.any():
+                nx, ny = px[neutral], py[neutral]
+                dmy = np.hypot(nx[:, None] - mx[None, :], ny[:, None] - my_[None, :]).min(axis=1)
+                if enemy.any():
+                    den = np.hypot(nx[:, None] - px[enemy][None, :],
+                                   ny[:, None] - py[enemy][None, :]).min(axis=1)
+                else:
+                    den = np.full_like(dmy, np.inf)
+                contested = float((dmy < den).mean())
+            if len(fs.fleets):
+                fo = fs.fleets[:, F_OWNER].astype(np.int64)
+                efl = (fo >= 0) & (fo != player)
+                if efl.any():
+                    fx, fy = fs.fleets[efl, F_X], fs.fleets[efl, F_Y]
+                    fang, fsh = fs.fleets[efl, F_ANGLE], fs.fleets[efl, F_SHIPS]
+                    dcos, dsin = np.cos(fang), np.sin(fang)
+                    mrp, msh = pr[mine], psh[mine]
+                    wx = mx[None, :] - fx[:, None]
+                    wy = my_[None, :] - fy[:, None]
+                    t = wx * dcos[:, None] + wy * dsin[:, None]
+                    perp = np.abs(-wx * dsin[:, None] + wy * dcos[:, None])
+                    hit = (t > 0) & (perp <= (mrp[None, :] + 2.0))
+                    threat = (fsh[:, None] * hit).sum(axis=0)
+                    incoming = min(float(threat.sum()) / (float(msh.sum()) + _EPS), 1.0)
+                    at_risk = float((threat > msh).mean())
+                    diff = (threat - msh) / (threat + msh + _EPS)
+                    worst = 0.5 * (float(diff.max()) + 1.0)
+                    speed = max(float(fs.ship_speed), 1.0)
+                    eta = np.hypot(wx, wy).min(axis=1) / speed
+                    tot_s = float(ships_by_player.sum())
+                    if tot_s > _EPS:
+                        eta_enemy = min(float((fsh * np.exp(-eta / _TAU)).sum()) / tot_s, 1.0)
+            targets = ~mine
+            if targets.any() and tot_p > _EPS:
+                tx, ty = px[targets], py[targets]
+                tsh, tpr, town = psh[targets], ppr[targets], po[targets]
+                d2 = np.hypot(tx[:, None] - mx[None, :], ty[:, None] - my_[None, :])
+                force = psh[mine][d2.argmin(axis=1)] * 0.5
+                cap = force > tsh
+                free_cap = min(float(tpr[cap].sum()) / tot_p, 1.0)
+                expansion = float(((town < 0) & cap).sum()) / max(1, len(P))
+    me_pow = float(ships_by_player[player])
+    opp = [q for q in range(n) if q != player]
+    max_opp = max((float(ships_by_player[q]) for q in opp), default=0.0)
+    tot = float(ships_by_player.sum())
+    am_leader = 1.0 if me_pow >= max_opp else 0.0
+    gap_to_leader = min(max(max_opp - me_pow, 0.0) / (tot + _EPS), 1.0)
+    lead_margin = min(max(me_pow - max_opp, 0.0) / (tot + _EPS), 1.0) * am_leader
+    gangup = min((tot - me_pow) / (me_pow + _EPS), 1.0)
+    out = np.array([frontier, dispersion, contested, incoming, at_risk, worst,
+                    eta_enemy, free_cap, expansion, am_leader, gap_to_leader,
+                    lead_margin, gangup])
+    return np.clip(out, 0.0, 1.0)
+
+
 def features(fs: fsim.FastState, player: int) -> np.ndarray:
     """Eleven position signals for `player`, each clipped to [0,1]."""
     garrison, fleet, prod, planets = player_totals(fs)
@@ -163,13 +257,14 @@ def features(fs: fsim.FastState, player: int) -> np.ndarray:
 
     step_frac = min(fs.step / 500.0, 1.0)
 
-    return np.array([
+    base = np.array([
         _clip01(ship_share), _clip01(prod_share), _clip01(planet_share),
         _clip01(domination), _clip01(prod_margin), _clip01(fleet_share),
         _clip01(elim_share), _clip01(top_planet_prod),
         _clip01(ship_concentration), _clip01(step_frac),
         _clip01(enemy_fleet_press),
     ])
+    return np.concatenate([base, _extra_features(fs, player, ships)])
 
 
 def evaluate(fs: fsim.FastState, player: int,
